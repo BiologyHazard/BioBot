@@ -1,0 +1,11 @@
+__pycache__/
+.mypy_cache/
+/accounts/
+/data/
+/qqgroup/
+/go-cqhttp/
+/*.*
+!.gitignore
+!bot.py
+!.env
+!.env.prod
