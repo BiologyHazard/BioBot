@@ -36,8 +36,8 @@ async def learn_func(bot: Bot, event: Event, message: Message = CommandArg()):
     if event.message_type != 'group':
         await learn.finish(not_group_text)
     try:
-        trigger_message, reply_message = str(
-            message).strip().split(maxsplit=1)
+        trigger_message, reply_message = (
+            str(message).strip().split(maxsplit=1))
     except ValueError:
         await learn.finish(learn_missing_para_text, at_sender=True)
     if (not trigger_message) or (not reply_message):

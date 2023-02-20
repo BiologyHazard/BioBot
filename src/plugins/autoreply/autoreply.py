@@ -50,21 +50,21 @@ def _get_sender_info(sender: Sender):
     }
 
 
-async def _load_from_file(group_id: int):
+async def _load_from_file(group_id: int) -> None:
     if group_id in main_dict:
         return
 
     if not os.path.exists(data_path):
         os.makedirs(data_path)
 
-    file_path = os.path.join(data_path, f'{group_id}.json')
+    file_path: str = os.path.join(data_path, f'{group_id}.json')
     if os.path.exists(file_path):
         async with aiofiles.open(file_path, 'r', encoding='utf-8') as fp:
             main_dict[group_id] = defaultdict(dict, json.loads(await fp.read()))
 
 
-async def _save_to_file(group_id: int):
-    file_path = os.path.join(data_path, f'{group_id}.json')
+async def _save_to_file(group_id: int) -> None:
+    file_path: str = os.path.join(data_path, f'{group_id}.json')
     async with aiofiles.open(file_path, 'w', encoding='utf-8') as file:
         await file.write(json.dumps(main_dict[group_id], ensure_ascii=False, indent=4))
 
@@ -73,7 +73,7 @@ async def learn_autoreply(group_id: int, trigger_message: str, reply_message: st
     await _load_from_file(group_id)
     trigger_message, reply_message = (_str_msg_proprecess(trigger_message),
                                       _str_msg_proprecess(reply_message),)
-    reply_messages_dict = main_dict[group_id][trigger_message]
+    reply_messages_dict: reply_dict_T = main_dict[group_id][trigger_message]
 
     if reply_message in reply_messages_dict:
         return ResultCode.LEARN_DUPLICATED
@@ -90,7 +90,7 @@ async def forget_autoreply(group_id: int, trigger_message: str, reply_message: s
     if trigger_message not in main_dict[group_id]:
         return ResultCode.FORGET_FAILED
 
-    reply_messages_dict = main_dict[group_id][trigger_message]
+    reply_messages_dict: reply_dict_T = main_dict[group_id][trigger_message]
 
     if reply_message not in reply_messages_dict:
         return ResultCode.FORGET_FAILED
@@ -108,7 +108,7 @@ async def forget_autoreply(group_id: int, trigger_message: str, reply_message: s
 
 async def get_reply(group_id: int, message: str) -> (str | None):
     await _load_from_file(group_id)
-    message = _str_msg_proprecess(message)
+    message: str = _str_msg_proprecess(message)
     logger.trace(repr(message))
     logger.trace(repr(main_dict))
     if message not in main_dict[group_id]:
@@ -118,11 +118,11 @@ async def get_reply(group_id: int, message: str) -> (str | None):
 
 async def query_reply(group_id: int, message: str) -> tuple[int, str]:
     await _load_from_file(group_id)
-    message = _str_msg_proprecess(message)
+    message: str = _str_msg_proprecess(message)
     if message not in main_dict[group_id]:
         return (0, '')
 
-    reply_list = []
+    reply_list: list[str] = []
     for reply_message, sender_info in main_dict[group_id][message].items():
         reply_list.append(
             f"{reply_message}  由{sender_info['card']}({sender_info['qqid']}) 设置")
