@@ -8,12 +8,14 @@ from nonebot import logger
 from nonebot.adapters.onebot.v11 import Message
 from nonebot.adapters.onebot.v11.event import Sender
 
-from .config import data_path
+from . import config
 
 sender_dict_T = dict[str, int | str]
 reply_dict_T = dict[str, sender_dict_T]
 group_dict_T = defaultdict[str, reply_dict_T]
 main_dict_T = defaultdict[int, group_dict_T]
+
+data_path = config.data_path
 
 main_dict: main_dict_T = defaultdict(lambda: defaultdict(dict))
 

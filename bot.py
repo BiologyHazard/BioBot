@@ -1,13 +1,16 @@
-from nonebot.adapters.onebot.v11 import Adapter
+from typing import NoReturn
+
 import nonebot
+from nonebot.adapters.onebot.v11 import Adapter
+from nonebot.internal.driver import Driver
 
 
-def main():
+def main() -> NoReturn:
     nonebot.init()
 
     # app = nonebot.get_asgi()
 
-    driver = nonebot.get_driver()
+    driver: Driver = nonebot.get_driver()
     driver.register_adapter(Adapter)
     # driver.config.help_text = {}
 
