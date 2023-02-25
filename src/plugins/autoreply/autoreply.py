@@ -2,6 +2,7 @@ import json
 import os
 import random
 from collections import defaultdict
+from enum import Enum
 
 import aiofiles
 from nonebot import logger
@@ -20,7 +21,7 @@ data_path = config.data_path
 main_dict: main_dict_T = defaultdict(lambda: defaultdict(dict))
 
 
-class ResultCode:
+class ResultCode(Enum):
     LEARN_SUCCESS = 0
     LEARN_DUPLICATED = 1
     FORGET_SUCCESS = 2
@@ -43,7 +44,7 @@ def _str_msg_proprecess(message: str) -> str:
     return str(_message_preprocess(Message(message)))
 
 
-def _get_sender_info(sender: Sender):
+def _get_sender_info(sender: Sender) -> dict:
     return {
         'qqid': sender.user_id,
         'nickname': sender.nickname,
@@ -52,7 +53,7 @@ def _get_sender_info(sender: Sender):
     }
 
 
-async def _load_from_file(group_id: int) -> None:
+async def load_from_file(group_id: int) -> None:
     if group_id in main_dict:
         return
 
@@ -71,8 +72,8 @@ async def _save_to_file(group_id: int) -> None:
         await file.write(json.dumps(main_dict[group_id], ensure_ascii=False, indent=4))
 
 
-async def learn_autoreply(group_id: int, trigger_message: str, reply_message: str, sender: Sender) -> int:
-    await _load_from_file(group_id)
+async def learn_autoreply(group_id: int, trigger_message: str, reply_message: str, sender: Sender) -> ResultCode:
+    await load_from_file(group_id)
     trigger_message, reply_message = (_str_msg_proprecess(trigger_message),
                                       _str_msg_proprecess(reply_message),)
     reply_messages_dict: reply_dict_T = main_dict[group_id][trigger_message]
@@ -85,8 +86,8 @@ async def learn_autoreply(group_id: int, trigger_message: str, reply_message: st
     return ResultCode.LEARN_SUCCESS
 
 
-async def forget_autoreply(group_id: int, trigger_message: str, reply_message: str, sender: Sender) -> int:
-    await _load_from_file(group_id)
+async def forget_autoreply(group_id: int, trigger_message: str, reply_message: str, sender: Sender) -> ResultCode:
+    await load_from_file(group_id)
     trigger_message, reply_message = (_str_msg_proprecess(trigger_message),
                                       _str_msg_proprecess(reply_message))
     if trigger_message not in main_dict[group_id]:
@@ -108,24 +109,23 @@ async def forget_autoreply(group_id: int, trigger_message: str, reply_message: s
     return ResultCode.FORGET_SUCCESS
 
 
-async def get_reply(group_id: int, message: str) -> (str | None):
-    await _load_from_file(group_id)
-    message: str = _str_msg_proprecess(message)
-    logger.trace(repr(message))
-    logger.trace(repr(main_dict))
+async def get_reply(group_id: int, raw_message: str) -> (str | None):
+    await load_from_file(group_id)
+    message: str = _str_msg_proprecess(raw_message)
     if message not in main_dict[group_id]:
         return None
     return random.choice(list(main_dict[group_id][message]))
 
 
-async def query_reply(group_id: int, message: str) -> tuple[int, str]:
-    await _load_from_file(group_id)
-    message: str = _str_msg_proprecess(message)
+async def query_reply(group_id: int, raw_message: str) -> str | None:
+    await load_from_file(group_id)
+    message: str = _str_msg_proprecess(raw_message)
     if message not in main_dict[group_id]:
-        return (0, '')
+        return None
 
-    reply_list: list[str] = []
-    for reply_message, sender_info in main_dict[group_id][message].items():
+    num: int = len(main_dict[group_id][message])
+    reply_list: list[str] = [f'{message}的回复语（共{num}条）：']
+    for i, (reply_message, sender_info) in enumerate(main_dict[group_id][message].items()):
         reply_list.append(
-            f"{reply_message}  由{sender_info['card']}({sender_info['qqid']}) 设置")
-    return (len(reply_list), '\n'.join(reply_list))
+            f"{i}. {reply_message}  # 由{sender_info['card']}({sender_info['qqid']}) 设置")
+    return '\n'.join(reply_list)

@@ -9,3 +9,5 @@ __pycache__/
 !bot.py
 !.env
 !.env.prod
+src/plugins/permission.py
+src/plugins/wordcloud

@@ -1,12 +1,11 @@
 import re
 
-from nonebot import on_command, on_regex
-from nonebot import logger
-from nonebot.typing import T_State
+from nonebot import get_driver, logger, on_command, on_regex
 from nonebot.adapters import Event
-from nonebot.adapters.onebot.v11 import Message, MessageSegment, Bot
+from nonebot.adapters.onebot.v11 import Bot, Message, MessageSegment
+from nonebot.internal.driver import Driver
 from nonebot.params import CommandArg, EventMessage
-# from nonebot.drivers.fastapi import FastAPI
+from nonebot.typing import T_State
 
 from . import maimaidx_plate
 from .image import *
@@ -15,21 +14,22 @@ from .maimai_best_50 import generate50
 from .maimaidx_music import *
 from .tool import hash
 
-# app = FastAPI()
+
+driver: Driver = get_driver()
 
 
-# @app.on_event('startup')
-# async def get_music():
-#     """
-#     bot启动时开始获取所有数据
-#     """
-#     await mai.get_music()
+@driver.on_startup
+async def get_music() -> None:
+    """
+    bot启动时开始获取所有数据
+    """
+    await mai.get_music()
 help = on_command('help')
 
 
 @help.handle()
-async def _(bot: Bot, event: Event, state: T_State):
-    help_str = '''可用命令如下：
+async def _(bot: Bot, event: Event, state: T_State) -> None:
+    help_str: str = '''可用命令如下：
 今日舞萌 查看今天的舞萌运势
 XXXmaimaiXXX什么 随机一首歌
 随个[dx/标准][绿黄红紫白]<难度> 随机一首指定条件的乐曲

@@ -1,9 +1,10 @@
+import random
 import re
+from re import Match
 
 from nonebot import on_command, on_regex
 from nonebot.adapters.onebot.v11 import Message
 from nonebot.params import CommandArg, EventMessage
-import random
 
 # roll_regex = r"^roll [0-9]+(-|~)[0-9]+"
 # roll = on_regex(roll_regex)
@@ -11,17 +12,18 @@ roll = on_command('roll')
 
 
 @roll.handle()
-async def roll_func(message: Message = CommandArg()):
-    split_chars = ['~', '-', ' ']
+async def roll_func(message: Message = CommandArg()) -> None:
+    split_chars: list[str] = ['~', '-', ' ']
+    start: int
+    end: int
     try:
-        flag = False
         for split_char in split_chars:
             if split_char in str(message).strip():
                 start, end = map(int, str(message).strip().split(split_char))
-                flag = True
-        if not flag:
+                break
+        else:
             start, end = 1, int(str(message).strip())
-        roll_res = random.randint(start, end)
+        roll_res: int = random.randint(start, end)
         await roll.send(f'roll {start}~{end}: {roll_res}')
     except Exception:
         await roll.send('使用方法：\n'
@@ -29,18 +31,18 @@ async def roll_func(message: Message = CommandArg()):
                         '2. roll <下限>~<上限>')
 
 
-dice_regex = r'^(扔|投|骰).*?面?(骰|色)子'
-num_list = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九',
-            '十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十']
-num_dict = {v: k for k, v in enumerate(num_list)}
-DEFAULT_DICE = 6
+dice_regex: str = r'^(扔|投|骰).*?面?(骰|色)子'
+num_list: list[str] = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九',
+                       '十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十']
+num_dict: dict[str, int] = {v: k for k, v in enumerate(num_list)}
+DEFAULT_DICE: int = 6
 dice = on_regex(dice_regex)
 
 
 @dice.handle()
-async def dice_func(message: Message = EventMessage()):
+async def dice_func(message: Message = EventMessage()) -> None:
     def find_end(message: Message) -> int:
-        match = re.match(dice_regex, str(message).strip())
+        match: Match[str] | None = re.match(dice_regex, str(message).strip())
         assert match
         string: str = match.group()[1:-2]
         if string.endswith('面'):
@@ -55,11 +57,11 @@ async def dice_func(message: Message = EventMessage()):
             return DEFAULT_DICE
 
     try:
-        end = find_end(message)
+        end: int = find_end(message)
     except Exception:
         await dice.send('使用方法：\n'
                         '1. 扔色子/扔骰子\n'
                         '2. 扔<上限>面(色子|骰子)')
     else:
-        roll_res = random.randint(1, end)
+        roll_res: int = random.randint(1, end)
         await dice.send(f'roll {1}~{end}: {roll_res}')

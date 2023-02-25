@@ -1,21 +1,30 @@
+'''
+让Bot学习消息并自动回复 | Made by BioHazard
+'''
+from email.contentmanager import raw_data_manager
 from nonebot import get_driver, logger, on_command, on_message, on_regex
-from nonebot.adapters.onebot.v11 import Bot, Event, Message
+from nonebot.adapters.onebot.v11 import Bot, Event, GroupMessageEvent, Message, MessageEvent
 from nonebot.internal.driver import Driver
-from nonebot.params import CommandArg, EventMessage
+from nonebot.internal.matcher import Matcher
+from nonebot.internal.rule import Rule
+from nonebot.params import CommandArg, CommandStart, EventMessage, EventToMe, RawCommand
+from nonebot.plugin import PluginMetadata
 
-from .autoreply import (ResultCode, _load_from_file, forget_autoreply,
-                        get_reply, learn_autoreply, query_reply)
-
-driver: Driver = get_driver()
+from . import autoreply
+from .autoreply import ResultCode
 
 
-@driver.on_bot_connect
-async def on_bot_connect_func(bot: Bot) -> None:
-    group_list: list[dict] = await bot.get_group_list()
-    # logger.trace(repr(group_list))
-    for group_dict in group_list:
-        await _load_from_file(group_dict['group_id'])
-
+__plugin_meta__: PluginMetadata = PluginMetadata(
+    name='自动回复',
+    description='让Bot学习消息并自动回复 | Made by BioHazard',
+    usage='''
+指令列表：
+1. #学习 <触发语> <回复语>  # 让bot学习一条自动回复
+2. #忘记 <触发语> <回复语>  # 让bot忘记一条自动回复
+3. #查询 <触发语>  # 查询<触发语>的全部回复内容（仅限管理员使用该命令）
+'''.strip(),
+    extra={}
+)
 
 bot_nickname: str = 'Bio'
 
@@ -34,18 +43,41 @@ query_failed_text: str = f'不存在该触发词！'
 query_no_permission_text: str = f'只有管理员可以查询回复语！'
 
 
-learn = on_command('#学习 ')
-forget = on_command('#忘记 ')
-reply = on_message(block=False)
-query = on_command('#查询 ')
+@Rule
+async def is_valid_command(event: MessageEvent, raw_command: str = RawCommand()) -> bool:
+    command_arg: str = event.get_plaintext()[len(raw_command):]
+    return (not command_arg) or (command_arg != command_arg.lstrip())
+
+
+@Rule
+async def is_group_message(event: Event) -> bool:
+    return isinstance(event, GroupMessageEvent)
+
+
+@Rule
+async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
+    return bool(command_start) or to_me
+
+
+learn: type[Matcher] = on_command('学习', rule=with_command_start_or_to_me)
+forget: type[Matcher] = on_command('忘记', rule=with_command_start_or_to_me)
+reply: type[Matcher] = on_message(block=False)
+query: type[Matcher] = on_command('查询', rule=with_command_start_or_to_me)
+
+
+driver: Driver = get_driver()
+
+
+@driver.on_bot_connect
+async def on_bot_connect_func(bot: Bot) -> None:
+    group_list: list[dict] = await bot.get_group_list()
+    for group_dict in group_list:
+        await autoreply.load_from_file(group_dict['group_id'])
 
 
 @learn.handle()
 async def learn_func(bot: Bot, event: Event, message: Message = CommandArg()):
-    # logger.trace(repr(bot))
-    # logger.trace(repr(event))
-    # logger.trace(repr(message))
-    if event.message_type != 'group':
+    if not isinstance(event, GroupMessageEvent):
         await learn.finish(not_group_text)
 
     try:
@@ -57,13 +89,7 @@ async def learn_func(bot: Bot, event: Event, message: Message = CommandArg()):
     if (not trigger_message) or (not reply_message):
         await learn.finish(learn_missing_para_text, at_sender=True)
 
-    # logger.trace(trigger_msg)
-    # logger.trace(reply_msg)
-    # await learn.send(str(group_id))
-    # await learn.send(Message(trigger_msg))
-    # await learn.send(Message(reply_msg))
-
-    result_code: int = await learn_autoreply(event.group_id, trigger_message, reply_message, event.sender)
+    result_code: ResultCode = await autoreply.learn_autoreply(event.group_id, trigger_message, reply_message, event.sender)
     if result_code == ResultCode.LEARN_SUCCESS:
         await learn.finish(learn_success_text, at_sender=True)
     elif result_code == ResultCode.LEARN_DUPLICATED:
@@ -72,7 +98,7 @@ async def learn_func(bot: Bot, event: Event, message: Message = CommandArg()):
 
 @forget.handle()
 async def forget_func(bot: Bot, event: Event, message: Message = CommandArg()) -> None:
-    if event.message_type != 'group':
+    if not isinstance(event, GroupMessageEvent):
         await forget.finish(not_group_text)
 
     try:
@@ -84,7 +110,7 @@ async def forget_func(bot: Bot, event: Event, message: Message = CommandArg()) -
     if (not trigger_message) or (not reply_message):
         await forget.finish(forget_missing_para_text, at_sender=True)
 
-    result_code: int = await forget_autoreply(event.group_id, trigger_message, reply_message, event.sender)
+    result_code: ResultCode = await autoreply.forget_autoreply(event.group_id, trigger_message, reply_message, event.sender)
     if result_code == ResultCode.FORGET_SUCCESS:
         await forget.finish(forget_success_text, at_sender=True)
     elif result_code == ResultCode.FORGET_FAILED:
@@ -95,27 +121,27 @@ async def forget_func(bot: Bot, event: Event, message: Message = CommandArg()) -
 
 @reply.handle()
 async def reply_func(bot: Bot, event: Event, message: Message = EventMessage()) -> None:
-    if event.message_type != 'group':
+    if not isinstance(event, GroupMessageEvent):
         return
 
     # async with aiofiles.open('messages.txt', 'a', encoding='utf-8') as fp:
     #     await fp.write(
     #         f'{group_id} | {event.get_user_id()} : {str(message)}\n')
-    reply_message: str | None = await get_reply(event.group_id, str(message))
+    reply_message: str | None = await autoreply.get_reply(event.group_id, str(message))
     if reply_message:
         await reply.finish(Message(reply_message))
 
 
 @query.handle()
 async def query_func(bot: Bot, event: Event, message: Message = CommandArg()) -> None:
-    if event.message_type != 'group':
+    if not isinstance(event, GroupMessageEvent):
         await query.finish(not_group_text)
 
     if event.sender.role not in ['admin', 'owner']:
         await query.finish(query_no_permission_text, at_sender=True)
 
-    num, query_result = await query_reply(event.group_id, message)
-    if num == 0:
+    query_result: str | None = await autoreply.query_reply(event.group_id, str(message))
+    if query_result is None:
         await query.finish(query_failed_text, at_sender=True)
 
-    await query.finish(Message(f'{message}的回复语（共{num}条）：\n{query_result}'), at_sender=True)
+    await query.finish(Message(query_result), at_sender=True)
