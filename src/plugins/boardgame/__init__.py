@@ -1,5 +1,5 @@
 from nonebot import logger, on_command
-from nonebot.adapters.onebot.v11 import Bot, Event, Message, MessageSegment
+from nonebot.adapters.onebot.v11 import Bot, Event, Message, MessageSegment, GroupMessageEvent
 from nonebot.params import CommandArg
 
 from .boardgame import BoardGame, MoveResult, MoveSide, Pos
@@ -10,8 +10,8 @@ from .image import image_to_message_segment
 games: dict[int, BoardGame] = {}
 # game_players: dict[int, dict[int, str]] = defaultdict(list)
 
-not_group_text = '仅限群聊中使用哦~'
-game_already_started_text = '有正在进行中的游戏，发送“结束游戏”停止下棋'
+not_group_text: str = '仅限群聊中使用哦~'
+game_already_started_text: str = '有正在进行中的游戏，发送“结束游戏”停止下棋'
 
 start_gomoku = on_command('开始五子棋')
 start_othello = on_command('开始黑白棋')
@@ -29,51 +29,51 @@ def game_running(group_id: int) -> bool:
 
 @start_gomoku.handle()
 async def start_gomuku_func(bot: Bot, event: Event, message: Message = CommandArg()):
-    if event.message_type != 'group':
+    if not isinstance(event, GroupMessageEvent):
         await start_gomoku.finish(not_group_text)
 
     if game_running(event.group_id):
         await start_gomoku.finish(game_already_started_text)
 
-    game = Gomoku()
+    game: Gomoku = Gomoku()
     games[event.group_id] = game
     await start_gomoku.finish(image_to_message_segment(game.draw()))
 
 
 @start_othello.handle()
 async def start_othello_func(bot: Bot, event: Event, message: Message = CommandArg()):
-    if event.message_type != 'group':
+    if not isinstance(event, GroupMessageEvent):
         await start_gomoku.finish(not_group_text)
 
     if game_running(event.group_id):
         await start_gomoku.finish(game_already_started_text)
 
-    game = Othello()
+    game: Othello = Othello()
     games[event.group_id] = game
     await start_gomoku.finish(image_to_message_segment(game.draw()))
 
 
 @place.handle()
 async def place_func(bot: Bot, event: Event, message: Message = CommandArg()):
-    if event.message_type != 'group':
+    if not isinstance(event, GroupMessageEvent):
         await start_gomoku.finish(not_group_text)
 
     try:
-        pos = Pos.from_str(str(message))
+        pos: Pos = Pos.from_str(str(message))
     except ValueError:
         await place.finish('无法解析的落子坐标！使用例：落子 H4')
 
     if event.group_id not in games:
         await place.finish('游戏未开始，发送“开始五子棋/开始黑白棋”开始游戏')
 
-    game = games[event.group_id]
+    game: BoardGame = games[event.group_id]
     if (game.moveside == MoveSide.BLACK) and (not game.player_black):
-        game.player_black: int = event.user_id
+        game.player_black = event.user_id
         await place.send('您已加入游戏，您是黑方', at_sender=True)
         logger.trace(repr(game.player_black))
 
     if (game.moveside == MoveSide.WHITE) and (not game.player_white):
-        game.player_white: int = event.user_id
+        game.player_white = event.user_id
         await place.send('您已加入游戏，您是白方', at_sender=True)
         logger.trace(repr(game.player_white))
 
@@ -89,23 +89,23 @@ async def place_func(bot: Bot, event: Event, message: Message = CommandArg()):
 
     move_result = game.update(pos)
     if move_result == MoveResult.BLACK_WIN:
-        await place.finish(Message(['黑方获胜！', image_to_message_segment(game.draw())]))
+        await place.finish(Message(['黑方获胜！', image_to_message_segment(game.draw())]))  # type: ignore
     elif move_result == MoveResult.WHITE_WIN:
-        await place.finish(Message(['白方获胜！', image_to_message_segment(game.draw())]))
+        await place.finish(Message(['白方获胜！', image_to_message_segment(game.draw())]))  # type: ignore
     else:
         await place.send(image_to_message_segment(game.draw()))
-        await place.send(['下一手轮到', MoveSide.zh_hans[game.moveside], '方', MessageSegment.at(game.player_next) if game.player_next else '，发送“落子 <坐标>”加入游戏'])
+        await place.send(['下一手轮到', MoveSide.zh_hans[game.moveside], '方', MessageSegment.at(game.player_next) if game.player_next else '，发送“落子 <坐标>”加入游戏'])  # type: ignore
 
 
 @repent.handle()
 async def repent_func(bot: Bot, event: Event, message: Message = CommandArg()):
-    if event.message_type != 'group':
+    if not isinstance(event, GroupMessageEvent):
         await repent.finish(not_group_text)
 
     if event.group_id not in games:
         await repent.finish('游戏未开始，发送“开始五子棋”开始游戏')
 
-    game = games[event.group_id]
+    game: BoardGame = games[event.group_id]
     if len(game.history) <= 1:
         await repent.finish('请落子后再悔棋！')
 
@@ -118,7 +118,7 @@ async def repent_func(bot: Bot, event: Event, message: Message = CommandArg()):
 
 @stop_game.handle()
 async def stop_game_func(bot: Bot, event: Event, message: Message = CommandArg()):
-    if event.message_type != 'group':
+    if not isinstance(event, GroupMessageEvent):
         await stop_game.finish(not_group_text)
 
     if event.group_id not in games:

@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import time
 from collections import defaultdict
 from enum import Enum
 
@@ -11,12 +12,12 @@ from nonebot.adapters.onebot.v11.event import Sender
 
 from . import config
 
-sender_dict_T = dict[str, int | str]
+sender_dict_T = dict[str, int | str | None]
 reply_dict_T = dict[str, sender_dict_T]
 group_dict_T = defaultdict[str, reply_dict_T]
 main_dict_T = defaultdict[int, group_dict_T]
 
-data_path = config.data_path
+data_path: str = config.data_path
 
 main_dict: main_dict_T = defaultdict(lambda: defaultdict(dict))
 
@@ -29,7 +30,12 @@ class ResultCode(Enum):
     FORGET_NO_PERMISSION = 4
 
 
-# PERMISSION_LEVEL = ['member', 'admin', 'owner']
+def get_main_dict() -> main_dict_T:
+    return main_dict
+
+
+def _strftime(event_time: int) -> str:
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(event_time))
 
 
 def _message_preprocess(message: Message) -> Message:
@@ -44,7 +50,7 @@ def _str_msg_proprecess(message: str) -> str:
     return str(_message_preprocess(Message(message)))
 
 
-def _get_sender_info(sender: Sender) -> dict:
+def _get_sender_info(sender: Sender) -> sender_dict_T:
     return {
         'qqid': sender.user_id,
         'nickname': sender.nickname,
@@ -72,24 +78,32 @@ async def _save_to_file(group_id: int) -> None:
         await file.write(json.dumps(main_dict[group_id], ensure_ascii=False, indent=4))
 
 
-async def learn_autoreply(group_id: int, trigger_message: str, reply_message: str, sender: Sender) -> ResultCode:
+async def learn_autoreply(group_id: int,
+                          trigger_message: str,
+                          reply_message: str,
+                          sender: Sender,
+                          event_time: int) -> ResultCode:
     await load_from_file(group_id)
-    trigger_message, reply_message = (_str_msg_proprecess(trigger_message),
-                                      _str_msg_proprecess(reply_message),)
+    trigger_message, reply_message = (
+        _str_msg_proprecess(trigger_message), _str_msg_proprecess(reply_message),)
     reply_messages_dict: reply_dict_T = main_dict[group_id][trigger_message]
 
     if reply_message in reply_messages_dict:
         return ResultCode.LEARN_DUPLICATED
 
-    reply_messages_dict[reply_message] = _get_sender_info(sender)
+    reply_messages_dict[reply_message] = _get_sender_info(sender) | {'time': event_time}
     await _save_to_file(group_id)
     return ResultCode.LEARN_SUCCESS
 
 
-async def forget_autoreply(group_id: int, trigger_message: str, reply_message: str, sender: Sender) -> ResultCode:
+async def forget_autoreply(group_id: int,
+                           trigger_message: str,
+                           reply_message: str,
+                           sender: Sender,
+                           sender_permission: bool = False) -> ResultCode:
     await load_from_file(group_id)
-    trigger_message, reply_message = (_str_msg_proprecess(trigger_message),
-                                      _str_msg_proprecess(reply_message))
+    trigger_message, reply_message = (
+        _str_msg_proprecess(trigger_message), _str_msg_proprecess(reply_message))
     if trigger_message not in main_dict[group_id]:
         return ResultCode.FORGET_FAILED
 
@@ -98,8 +112,7 @@ async def forget_autoreply(group_id: int, trigger_message: str, reply_message: s
     if reply_message not in reply_messages_dict:
         return ResultCode.FORGET_FAILED
 
-    if ((sender.role not in ['owner', 'admin'])
-            and (reply_messages_dict[reply_message]['role'] in ['owner', 'admin'])):
+    if (not sender_permission) and (reply_messages_dict[reply_message]['role'] in ['owner', 'admin']):
         return ResultCode.FORGET_NO_PERMISSION
 
     del reply_messages_dict[reply_message]
@@ -109,15 +122,18 @@ async def forget_autoreply(group_id: int, trigger_message: str, reply_message: s
     return ResultCode.FORGET_SUCCESS
 
 
-async def get_reply(group_id: int, raw_message: str) -> (str | None):
+async def forget_all_autoreply(group_id, raw_trigger_message) -> tuple[ResultCode, int]:
     await load_from_file(group_id)
-    message: str = _str_msg_proprecess(raw_message)
-    if message not in main_dict[group_id]:
-        return None
-    return random.choice(list(main_dict[group_id][message]))
+    trigger_message: str = _str_msg_proprecess(raw_trigger_message)
+    if trigger_message not in main_dict[group_id]:
+        return (ResultCode.FORGET_FAILED, 0)
+
+    num: int = len(main_dict[group_id][trigger_message])
+    del main_dict[group_id][trigger_message]
+    return (ResultCode.FORGET_SUCCESS, num)
 
 
-async def query_reply(group_id: int, raw_message: str) -> str | None:
+async def query_reply(group_id: int, raw_message: str) -> (str | None):
     await load_from_file(group_id)
     message: str = _str_msg_proprecess(raw_message)
     if message not in main_dict[group_id]:
@@ -127,5 +143,13 @@ async def query_reply(group_id: int, raw_message: str) -> str | None:
     reply_list: list[str] = [f'{message}的回复语（共{num}条）：']
     for i, (reply_message, sender_info) in enumerate(main_dict[group_id][message].items()):
         reply_list.append(
-            f"{i}. {reply_message}  # 由{sender_info['card']}({sender_info['qqid']}) 设置")
+            f"{i+1}. {reply_message}  # 由{sender_info['card'] or sender_info['nickname']} ({sender_info['qqid']}) 于{_strftime(sender_info['time'])}设置")  # type: ignore
     return '\n'.join(reply_list)
+
+
+async def get_reply(group_id: int, raw_message: str) -> (str | None):
+    await load_from_file(group_id)
+    message: str = _str_msg_proprecess(raw_message)
+    if message not in main_dict[group_id]:
+        return None
+    return random.choice(list(main_dict[group_id][message]))
