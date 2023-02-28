@@ -14,3 +14,4 @@ __pycache__
 /session.token
 /.env.dev
 /test*
+/restart.sh
