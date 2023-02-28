@@ -175,7 +175,10 @@ async def query_func(bot: Bot, event: Event, message: Message = CommandArg()) ->
 
 @query_all.handle()
 async def query_all_func(bot: Bot, event: Event, message: Message = CommandArg()) -> None:
-    ...
+    if not isinstance(event, GroupMessageEvent):
+        await query.finish(not_group_text)
+
+    await query_all.finish(repr(autoreply.main_dict[event.group_id]))
 
 
 @reply.handle()

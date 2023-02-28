@@ -24,9 +24,11 @@ else:
 
 
 async def b23tv2bv(b23tv: str) -> str:
+    logger.debug(repr(b23tv))
     async with httpx.AsyncClient() as client:
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
-        r = await client.get(b23tv, headers=headers)
+        r = await client.get('https://'+b23tv, headers=headers)
+        logger.debug(repr(r.next_request.url))
     return re.findall("[Bb][Vv]1[A-Za-z0-9]{2}4.1.7[A-Za-z0-9]{2}", str(r.next_request.url))[0]
 
 
@@ -92,7 +94,7 @@ async def get_top_comments(av: str) -> str:  # type: ignore
 
 
 async def get_av_data(av_list: list[str]) -> list[str]:
-    msg_list: list[str] = []
+    msg_list = []
     for avcode in av_list:
         try:
             if avcode[0:2].upper() == "BV":
@@ -139,6 +141,7 @@ async def get_av_data(av_list: list[str]) -> list[str]:
                 msg += await get_top_comments(avcode)
 
         except Exception:
+            # raise
             msg = "输入错误或该视频不存在"
 
         msg_list.append(msg)

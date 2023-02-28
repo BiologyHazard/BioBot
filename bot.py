@@ -24,6 +24,8 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.maimai')
     nonebot.load_plugin('src.plugins.boardgame')
     nonebot.load_plugin('src.plugins.text2sound')
+    nonebot.load_plugin('src.plugins.memes')
+    nonebot.load_plugin('src.plugins.petpet')
     # nonebot.load_plugin('src.plugins.permission')
     # nonebot.load_plugin('src.plugins.wordcloud')
 
