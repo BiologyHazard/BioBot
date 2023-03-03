@@ -24,11 +24,11 @@ async def get_music() -> None:
     bot启动时开始获取所有数据
     """
     await mai.get_music()
-help = on_command('help')
+help = on_command('help maimai')
 
 
 @help.handle()
-async def _(bot: Bot, event: Event, state: T_State) -> None:
+async def _(bot: Bot, event: Event, state: T_State, message: Message = CommandArg()) -> None:
     help_str: str = '''可用命令如下：
 今日舞萌 查看今天的舞萌运势
 XXXmaimaiXXX什么 随机一首歌

@@ -64,12 +64,12 @@ async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me
     return bool(command_start) or to_me
 
 
-learn: type[Matcher] = on_command('学习', rule=with_command_start_or_to_me)
-forget: type[Matcher] = on_command('忘记', aliases={'删除'}, rule=with_command_start_or_to_me)
-forget_all: type[Matcher] = on_command('忘记全部', rule=with_command_start_or_to_me)
-query: type[Matcher] = on_command('查询', rule=with_command_start_or_to_me)
-query_all: type[Matcher] = on_command('查询全部', rule=with_command_start_or_to_me)
-reply: type[Matcher] = on_message(block=False, rule=is_group_message)
+learn: type[Matcher] = on_command('学习', rule=with_command_start_or_to_me, priority=5)
+forget: type[Matcher] = on_command('忘记', aliases={'删除'}, rule=with_command_start_or_to_me, priority=5)
+forget_all: type[Matcher] = on_command('忘记全部', rule=with_command_start_or_to_me, priority=5)
+query: type[Matcher] = on_command('查询', rule=with_command_start_or_to_me, priority=5)
+query_all: type[Matcher] = on_command('查询全部', rule=with_command_start_or_to_me, priority=5)
+reply: type[Matcher] = on_message(block=False, rule=is_group_message, priority=15)
 
 
 driver: Driver = get_driver()
@@ -178,7 +178,10 @@ async def query_all_func(bot: Bot, event: Event, message: Message = CommandArg()
     if not isinstance(event, GroupMessageEvent):
         await query.finish(not_group_text)
 
-    await query_all.finish(repr(autoreply.main_dict[event.group_id]))
+    if not await (GROUP_OWNER | GROUP_ADMIN | SUPERUSER)(bot, event):
+        await query.finish(query_no_permission_text, at_sender=True)
+
+    await query_all.finish(Message(await autoreply.query_all_reply(event.group_id)), at_sender=True)
 
 
 @reply.handle()

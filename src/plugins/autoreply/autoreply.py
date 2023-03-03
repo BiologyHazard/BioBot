@@ -130,6 +130,7 @@ async def forget_all_autoreply(group_id, raw_trigger_message) -> tuple[ResultCod
 
     num: int = len(main_dict[group_id][trigger_message])
     del main_dict[group_id][trigger_message]
+    await _save_to_file(group_id)
     return (ResultCode.FORGET_SUCCESS, num)
 
 
@@ -145,6 +146,16 @@ async def query_reply(group_id: int, raw_message: str) -> (str | None):
         reply_list.append(
             f"{i+1}. {reply_message}  # 由{sender_info['card'] or sender_info['nickname']} ({sender_info['qqid']}) 于{_strftime(sender_info['time'])}设置")  # type: ignore
     return '\n'.join(reply_list)
+
+
+async def query_all_reply(group_id: int) -> str:
+    await load_from_file(group_id)
+    if not main_dict[group_id]:
+        return '本群未设置自动回复！'
+    else:
+        return (f'本群的全部回复语（共{len(main_dict[group_id])}条）\n'
+                + '\n'.join(f'{i+1}. {trigger_message}'
+                            for i, trigger_message in enumerate(main_dict[group_id])))
 
 
 async def get_reply(group_id: int, raw_message: str) -> (str | None):
