@@ -1,99 +1,94 @@
+import random
 from fractions import Fraction
-from functools import cache
 from itertools import combinations
-from typing import Sequence, Generator
+from typing import Sequence
+
+from .expression import Expression, number_T
 
 
-class XXIV_Solver:
-    __len: int = 4
-    __log: bool = False
-    __target: Fraction = Fraction(24)
-
-    def __init__(self,
-                 target: int | Fraction | str | None = None,
-                 log_flag: bool = False) -> None:
-
-        if target is not None:
-            self.target = target
-        if log_flag:
-            self.__log = True
+class XXIVSolver:
+    def __init__(self, target: number_T = 24, nums: (Sequence[number_T] | None) = None) -> None:
+        self.target: Fraction = Fraction(target)
+        self.nums = nums
 
     @property
-    def target(self) -> Fraction:
-        return self.__target
+    def nums(self) -> list[Fraction] | None:
+        return self.__nums
 
-    @target.setter
-    def target(self, val: int | Fraction | str) -> None:
-        if isinstance(val, (int, Fraction, str)):
-            self.__target = Fraction(val)
-        else:
-            msg = f"Requires an int | Fraction | str, given {type(val)}"
-            raise ValueError(msg)
+    @nums.setter
+    def nums(self, nums: (Sequence[number_T] | None)) -> None:
+        self.__nums: list[Fraction] | None
+        if nums is None:
+            self.__nums = None
+            return
 
-    def solve_with_record(
-        self,
-        nums: Sequence[int | Fraction | str],
-    ) -> tuple[bool, str | None]:
+        self.__nums = [Fraction(num) for num in nums]
 
-        def fr_str(x: Fraction) -> str:
-            tmp = int(x)
-            if x == tmp:
-                return str(tmp)
-            return f'{float(x):.3f}'
-        nums_fr: tuple[Fraction, ...] = tuple(map(lambda x: Fraction(x), nums))
-        nums_fr_str = tuple((x, fr_str(x))for x in nums_fr)
-        self.__len = len(nums)
-        result = self.__dfs_with_record(nums_fr_str, self.__target)
-        if result:
-            return True, f"{result} = {self.__target}"
-        return False, None
+    # @property
+    # def target(self) -> Fraction:
+    #     return self.__target
 
-    def __dfs_with_record(
-        self,
-        nums_and_strnums: tuple[tuple[Fraction, str], ...],
-        target: Fraction,
-    ) -> str | None:
+    # @target.setter
+    # def target(self, target: number_T | None) -> None:
+    #     if target is None:
+    #         self.__target = 24
+    #     elif isinstance(target, Fraction):
+    #         self.__target = target
+    #     else:
+    #         self.__target
 
-        def combine(x: tuple[Fraction, str], y: tuple[Fraction, str]) -> Generator[tuple[Fraction, str], None, None]:
-            numx, strx = x
-            numy, stry = y
-            yield numx+numy, f'({strx} + {stry})'
-            yield numx-numy, f'({strx} - {stry})'
-            yield numy-numx, f'({stry} - {strx})'
-            yield numx*numy, f'({strx} * {stry})'
-            if numy != 0:
-                yield numx/numy, f'({strx} / {stry})'
-            if numx != 0:
-                yield numy/numx, f'({stry} / {strx})'
+    def solve(self) -> Expression | None:
+        if self.nums is None:
+            raise ValueError("'num' attr has not been initialized.")
 
-        n: int = len(nums_and_strnums)
+        return self._dfs([Expression(num) for num in self.nums])
 
-        if self.__log:
-            if n <= self.__len - 1:
-                print("           " * (self.__len - 1 - n) + "        └->", end="")
-            for i, _ in nums_and_strnums:
-                print("{:10.3f}".format(float(i)), end=" ")
-            print()
-
+    def _dfs(self, nums: list[Expression]) -> Expression | None:
+        n: int = len(nums)
         if n == 1:
-            if nums_and_strnums[0][0] != target:
-                return None
-            return nums_and_strnums[0][1]
+            return nums[0] if nums[0].value == self.target else None
 
         for i, j in combinations(range(n), 2):
-            tmp: list[tuple[Fraction, str]] = [item for k,
-                                               item in enumerate(nums_and_strnums) if k != i and k != j]
+            x: Expression = nums[i]
+            y: Expression = nums[j]
+            new_nums: list[Expression] = [num for k, num in enumerate(nums) if k != i and k != j]
+            if (tmp := self._dfs(new_nums + [x+y])) is not None:
+                return tmp
+            if x.value >= y.value and (tmp := self._dfs(new_nums + [x-y])) is not None:
+                return tmp
+            if x.value < y.value and (tmp := self._dfs(new_nums + [y-x])) is not None:
+                return tmp
+            if (tmp := self._dfs(new_nums + [x*y])) is not None:
+                return tmp
+            if y.value != 0 and (tmp := self._dfs(new_nums + [x/y])) is not None:
+                return tmp
+            if x.value != 0 and (tmp := self._dfs(new_nums + [y/x])) is not None:
+                return tmp
 
-            x: tuple[Fraction, str] = nums_and_strnums[i]
-            y: tuple[Fraction, str] = nums_and_strnums[j]
-            for combxy in combine(x, y):
-                msg: str | None = self.__dfs_with_record(tuple([combxy]+tmp), target)
-                if msg:
-                    return msg
+        return None
+
+    @classmethod
+    def generate(cls,
+                 n: int = 4,
+                 target: int = 4,
+                 max_num: int = 13,
+                 min_num: int = 1,
+                 ensure_solvable: bool = False,
+                 max_trials: int | None = 16
+                 ) -> tuple[list[int] | None, Expression | None]:
+        if not ensure_solvable:
+            return [random.randint(min_num, max_num) for _ in range(n)], None
+        trial = 0
+        while True:
+            trial += 1
+            nums: list[int] = [random.randint(min_num, max_num) for _ in range(n)]
+            if (solution := cls(target, nums).solve()) is not None:
+                return nums, solution
+            if (max_trials is not None) and (trial >= max_trials):
+                return None, None
 
 
-def solve_problem(nums: Sequence[int | Fraction | str],
-                  target: int | Fraction | str,
-                  default_solver: XXIV_Solver = XXIV_Solver()) -> tuple[bool, str | None]:
-    default_solver.target = target
-    return default_solver.solve_with_record(nums)
+if __name__ == '__main__':
+    print(*XXIVSolver.generate(4, 100, 6), sep='\n')
+    # print(str(XXIVSolver(24, [1, 1, 4, 5, 1, 4]).solve()))
+    # print(repr(Expression(Expression(Fraction(10)))))
