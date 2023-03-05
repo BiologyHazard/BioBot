@@ -28,6 +28,7 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.memes')
     nonebot.load_plugin('src.plugins.petpet')
     nonebot.load_plugin('src.plugins.xxivgame')
+    nonebot.load_plugin('src.plugins.homo')
 
     # nonebot.load_plugin('src.plugins.wordcloud')
     # nonebot.load_plugins('src/plugins')]

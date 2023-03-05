@@ -1,7 +1,7 @@
-import re
 import math
+import re
 
-Nums = {
+Nums: dict[int | str, str] = {
     114514: "114514",
     58596: "114*514",
     49654: "11*4514",
@@ -526,11 +526,12 @@ Nums = {
 
 
 def homo(num):
-    def getMinDiv(nm):
+    def getMinDiv(nm) -> int:
         for i in Nums:
-            if type(i) == int:
+            if isinstance(i, int):
                 if nm > i:
                     return i
+        return 0
 
     def demolish(nm):
 
@@ -540,10 +541,10 @@ def homo(num):
         if type(nm) != int:
             nm = float(f"{nm:.16f}")
             # print("pos1", str(nm))
-            nm_str = str(nm)
+            nm_str: str = str(nm)
             if nm == int(nm):
                 return demolish(int(nm))
-            n = len(re.search(r"\.(\d+?)0*$", nm_str).group())
+            n: int = len(re.search(r"\.(\d+?)0*$", nm_str).group())
             return f"({demolish(nm * math.pow(10, n))}) / (10) ^ ({n})"
 
         if nm in Nums:
@@ -568,6 +569,7 @@ def homo(num):
             return x
         return str(x)
 
+    # return demolish(num)
     return re.sub(r"\d+|⑨", rep, demolish(num)).replace("^", "**")
 
 
@@ -580,4 +582,7 @@ def generate_homo(num):
     else:
         return homo(num)
 
+
 # print(generate_homo("1594565"))
+if __name__ == '__main__':
+    print(homo(1.5))
