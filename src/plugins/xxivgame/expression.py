@@ -26,18 +26,6 @@ OPERATOR_CHARS: dict[Operator, str] = {
 }
 
 
-# class _Fraction(Fraction_):
-#     def __new__(cls, /, *args, **kwargs) -> Fraction_:
-#         if len(args) == 1:
-#             expr = args[0]
-#             if isinstance(expr, Expression):
-#                 return expr.value
-#         return super().__new__(cls, *args, **kwargs)
-
-
-# Fraction = _Fraction
-
-
 class Expression:
     def __init__(self,
                  expr0: 'Expression | number_T',
@@ -86,9 +74,9 @@ class Expression:
         str_expr0: str = str(self.__expr0)
         str_expr1: str = str(self.__expr1)
         str_op: str = OPERATOR_CHARS[self.__op]
-        if (self.__op in (MUL, DIV)) and (self.__expr0.__op in [ADD, SUB]):  # (x ± y) */ z
+        if (self.__op in (MUL, DIV)) and (self.__expr0.__op in (ADD, SUB)):  # (x ± y) * z or (x ± y) / z
             str_expr0 = f'({str_expr0})'
-        if (self.__op in (MUL, DIV)) and (self.__expr1.__op in [ADD, SUB]):  # x * (y ± z) or x / (y ± z)
+        if (self.__op in (MUL, DIV)) and (self.__expr1.__op in (ADD, SUB)):  # x * (y ± z) or x / (y ± z)
             str_expr1 = f'({str_expr1})'
         if (self.__op == SUB) and (self.__expr1.__op in (ADD, SUB)):  # x - (y ± z)
             str_expr1 = f'({str_expr1})'
