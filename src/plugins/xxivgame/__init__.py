@@ -6,27 +6,11 @@ from nonebot.params import CommandArg, CommandStart, EventToMe, EventMessage
 from typing import NoReturn, Final
 
 from .xxivcalculator import XXIVSolver, Expression
+from .expression import replace_dict
 
 last_problem: dict[int, list[int]] = dict()
 last_solution: dict[int, Expression] = dict()
-replace_dict: dict[str, str] = {
-    ' ': '',
-    '＋': '+',
-    '－': '-',
-    '＊': '*',
-    '×': '*',
-    'x': '*',
-    '／': '/',
-    '÷': '/',
-    '[': '(',
-    ']': ')',
-    '{': '(',
-    '}': ')',
-    '（': '(',
-    '）': ')',
-    '【': '(',
-    '】': ')',
-}
+
 
 MAX_LENGTH: Final[int] = 64
 
@@ -46,7 +30,7 @@ async def start_game_func(bot: Bot, event: GroupMessageEvent, message: Message =
         parameters: list[str] = str(message).split()
         if len(parameters) >= 3:
             target = int(parameters[0])
-            nums: list[int] = list(map(int, parameters[1:]))
+            nums: list[int] = [int(para) for para in parameters[1:]]
             await start_game.finish(str(XXIVSolver(target, nums).solve()))
         n: int = 4
         target: int = 24
@@ -56,14 +40,18 @@ async def start_game_func(bot: Bot, event: GroupMessageEvent, message: Message =
             n, target = int(parameters[0]), int(parameters[1])
 
     except ValueError:
-        await start_game.finish('无法解析命令参数。')
+        await start_game.finish('无法解析命令参数喵~')
 
-    max_trials: int | None = 16
+    if n > 8:
+        await start_game.finish('数字太多了，不想出题喵~')
+    if target > 128:
+        await start_game.finish('数字太大了，不想出题喵~')
+
+    max_trials: int | None = 8
     problem, solution = XXIVSolver.generate(n=n, target=target, ensure_solvable=True, max_trials=max_trials)
-    if problem is None:
+    if (problem is None) or (solution is None):
         await start_game.finish(f'非常抱歉，尝试了{max_trials}次后未找到有解的题目。')
 
-    assert solution is not None
     last_problem[event.group_id], last_solution[event.group_id] = problem, solution
     await start_game.finish(f'用四则运算计算{target}\n' + '   '.join(str(x) for x in problem))
 
@@ -77,7 +65,7 @@ async def look_answer_func(bot: Bot, event: GroupMessageEvent, message: Message 
 
 
 @check_answer.handle()
-async def check_answer_func(bot: Bot, event: GroupMessageEvent, raw_message: Message = EventMessage()):
+async def check_answer_func(bot: Bot, event: GroupMessageEvent, raw_message: Message = EventMessage()) -> None:
     # if event.group_id not in last_solution:
     #     return
 
@@ -92,7 +80,7 @@ async def check_answer_func(bot: Bot, event: GroupMessageEvent, raw_message: Mes
             try:
                 result: float = round(eval(message, {}, {}), 1)
             except (SyntaxError, ZeroDivisionError):
-                raise
+                return
             else:
                 message = message.replace('+', ' + ').replace('-', ' - ').replace('*', ' × ').replace('/', ' ÷ ')
                 await check_answer.finish(f'{message} = {result}')

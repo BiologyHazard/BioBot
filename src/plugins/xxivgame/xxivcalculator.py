@@ -41,9 +41,12 @@ class XXIVSolver:
         if self.nums is None:
             raise ValueError("'num' attr has not been initialized.")
 
-        return self._dfs([Expression(num) for num in self.nums])
+        expressions: list[Expression] = [Expression(num) for num in self.nums]
+        if (result := self._dfs(expressions, divide=False)) is not None:
+            return result
+        return self._dfs(expressions, divide=True)
 
-    def _dfs(self, nums: list[Expression]) -> Expression | None:
+    def _dfs(self, nums: list[Expression], divide: bool = True) -> Expression | None:
         n: int = len(nums)
         if n == 1:
             return nums[0] if nums[0].value == self.target else None
@@ -52,18 +55,19 @@ class XXIVSolver:
             x: Expression = nums[i]
             y: Expression = nums[j]
             new_nums: list[Expression] = [num for k, num in enumerate(nums) if k != i and k != j]
-            if (tmp := self._dfs(new_nums + [x+y])) is not None:
-                return tmp
-            if x.value >= y.value and (tmp := self._dfs(new_nums + [x-y])) is not None:
-                return tmp
-            if x.value < y.value and (tmp := self._dfs(new_nums + [y-x])) is not None:
-                return tmp
-            if (tmp := self._dfs(new_nums + [x*y])) is not None:
-                return tmp
-            if y.value != 0 and (tmp := self._dfs(new_nums + [x/y])) is not None:
-                return tmp
-            if x.value != 0 and (tmp := self._dfs(new_nums + [y/x])) is not None:
-                return tmp
+            if (result := self._dfs(new_nums + [x+y], divide)) is not None:
+                return result
+            if x.value >= y.value and (result := self._dfs(new_nums + [x-y], divide)) is not None:
+                return result
+            if x.value < y.value and (result := self._dfs(new_nums + [y-x], divide)) is not None:
+                return result
+            if (result := self._dfs(new_nums + [x*y], divide)) is not None:
+                return result
+            if divide:
+                if y.value != 0 and (result := self._dfs(new_nums + [x/y], divide)) is not None:
+                    return result
+                if x.value != 0 and (result := self._dfs(new_nums + [y/x], divide)) is not None:
+                    return result
 
         return None
 
@@ -78,7 +82,7 @@ class XXIVSolver:
                  ) -> tuple[list[int] | None, Expression | None]:
         if not ensure_solvable:
             return [random.randint(min_num, max_num) for _ in range(n)], None
-        trial = 0
+        trial: int = 0
         while True:
             trial += 1
             nums: list[int] = [random.randint(min_num, max_num) for _ in range(n)]
