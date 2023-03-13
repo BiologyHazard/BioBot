@@ -9,7 +9,7 @@ from .xxivcalculator import XXIVSolver, Expression
 from .expression import replace_dict
 
 # last_problem: dict[int, list[int]] = dict()
-last_solution: dict[int, Expression] = dict()
+last_solution: dict[int, Expression | None] = dict()
 
 
 MAX_LENGTH: Final[int] = 64
@@ -54,7 +54,7 @@ async def start_game_func(bot: Bot, event: GroupMessageEvent, message: Message =
 
     max_trials: int | None = 8
     problem, solution = XXIVSolver.generate(n=n, target=target, solvable_probability=solvable_probability, max_trials=max_trials)
-    if (problem is None) or (solution is None):
+    if (problem is None):
         await start_game.finish(f'非常抱歉，尝试了{max_trials}次后未找到有解的题目。')
 
     # last_problem[event.group_id], last_solution[event.group_id] = problem, solution
@@ -67,7 +67,10 @@ async def look_answer_func(bot: Bot, event: GroupMessageEvent, message: Message 
     if event.group_id not in last_solution:
         await look_answer.finish('当前没有题目，发送“#24点”生成题目。')
 
-    await look_answer.finish(f'{str(last_solution[event.group_id])} = {last_solution[event.group_id].value}')
+    solution: Expression | None = last_solution[event.group_id]
+    if solution is None:
+        await start_game.finish('无解')
+    await look_answer.finish(f'{str(solution)} = {solution.value}')
 
 
 @check_answer.handle()
