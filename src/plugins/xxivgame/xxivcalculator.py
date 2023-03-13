@@ -77,16 +77,20 @@ class XXIVSolver:
                  target: int = 4,
                  max_num: int = 13,
                  min_num: int = 1,
-                 ensure_solvable: bool = False,
+                 solvable_probability: float | None = None,
                  max_trials: int | None = 16
                  ) -> tuple[list[int] | None, Expression | None]:
-        if not ensure_solvable:
-            return [random.randint(min_num, max_num) for _ in range(n)], None
+        if solvable_probability is None:
+            nums: list[int] = [random.randint(min_num, max_num) for _ in range(n)]
+            solution: Expression | None = cls(target, nums).solve()
+            return nums, solution
+        solvable: bool = random.random() < solvable_probability
         trial: int = 0
         while True:
             trial += 1
             nums: list[int] = [random.randint(min_num, max_num) for _ in range(n)]
-            if (solution := cls(target, nums).solve()) is not None:
+            solution = cls(target, nums).solve()
+            if (solvable and solution is not None) or (not solvable and solution is None):
                 return nums, solution
             if (max_trials is not None) and (trial >= max_trials):
                 return None, None

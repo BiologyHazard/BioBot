@@ -4,15 +4,16 @@ from nonebot.internal.matcher import Matcher
 from nonebot.internal.rule import Rule
 from nonebot.params import CommandArg, CommandStart, EventToMe, EventMessage
 from typing import NoReturn, Final
-
+import math
 from .xxivcalculator import XXIVSolver, Expression
 from .expression import replace_dict
 
-last_problem: dict[int, list[int]] = dict()
+# last_problem: dict[int, list[int]] = dict()
 last_solution: dict[int, Expression] = dict()
 
 
 MAX_LENGTH: Final[int] = 64
+solvable_probability: float = 1.0
 
 
 @Rule
@@ -21,6 +22,7 @@ async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me
 
 start_game: type[Matcher] = on_command('24点', rule=with_command_start_or_to_me, priority=5)
 look_answer: type[Matcher] = on_command('查看答案', rule=with_command_start_or_to_me, priority=5)
+set_solvable_probability: type[Matcher] = on_command('有解概率', rule=with_command_start_or_to_me, priority=5)
 check_answer: type[Matcher] = on_message(priority=15)
 
 
@@ -51,11 +53,12 @@ async def start_game_func(bot: Bot, event: GroupMessageEvent, message: Message =
         await start_game.finish('数字太大了，不想出题喵~')
 
     max_trials: int | None = 8
-    problem, solution = XXIVSolver.generate(n=n, target=target, ensure_solvable=True, max_trials=max_trials)
+    problem, solution = XXIVSolver.generate(n=n, target=target, solvable_probability=solvable_probability, max_trials=max_trials)
     if (problem is None) or (solution is None):
         await start_game.finish(f'非常抱歉，尝试了{max_trials}次后未找到有解的题目。')
 
-    last_problem[event.group_id], last_solution[event.group_id] = problem, solution
+    # last_problem[event.group_id], last_solution[event.group_id] = problem, solution
+    last_solution[event.group_id] = solution
     await start_game.finish(f'用四则运算计算{target}\n' + '   '.join(str(x) for x in problem))
 
 
@@ -87,3 +90,16 @@ async def check_answer_func(bot: Bot, event: GroupMessageEvent, raw_message: Mes
             else:
                 message = message.replace('+', ' + ').replace('-', ' - ').replace('*', ' × ').replace('/', ' ÷ ')
                 await check_answer.finish(f'{message} = {result}')
+
+
+@set_solvable_probability.handle()
+async def set_solvable_probability_func(bot: Bot, event: GroupMessageEvent, message: Message = CommandArg()) -> NoReturn:
+    try:
+        probability: float = float(str(message).strip())
+    except ValueError:
+        await set_solvable_probability.finish('无法解析命令参数喵~')
+    else:
+        if not math.isnan(probability) and not math.isinf(probability) and 0 <= probability <= 1:
+            global solvable_probability
+            solvable_probability = probability
+        await set_solvable_probability.finish(f'有解概率已经调整为{solvable_probability}')
