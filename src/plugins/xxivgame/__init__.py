@@ -31,7 +31,10 @@ async def start_game_func(bot: Bot, event: GroupMessageEvent, message: Message =
         if len(parameters) >= 3:
             target = int(parameters[0])
             nums: list[int] = [int(para) for para in parameters[1:]]
-            await start_game.finish(str(XXIVSolver(target, nums).solve()))
+            solution: Expression | None = XXIVSolver(target, nums).solve()
+            if solution is None:
+                await start_game.finish('无解')
+            await start_game.finish(str(solution))
         n: int = 4
         target: int = 24
         if len(parameters) == 1:
