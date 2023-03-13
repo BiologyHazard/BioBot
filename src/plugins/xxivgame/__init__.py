@@ -105,4 +105,6 @@ async def set_solvable_probability_func(bot: Bot, event: GroupMessageEvent, mess
         if not math.isnan(probability) and not math.isinf(probability) and 0 <= probability <= 1:
             global solvable_probability
             solvable_probability = probability
-        await set_solvable_probability.finish(f'有解概率已经调整为{solvable_probability}')
+            await set_solvable_probability.finish(f'有解概率已经调整为{solvable_probability}')
+        else:
+            await set_solvable_probability.finish('概率必须在0~1之间')
