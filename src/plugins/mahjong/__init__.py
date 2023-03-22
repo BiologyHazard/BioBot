@@ -29,6 +29,8 @@ async def shanten_func(bot: Bot, event: MessageEvent, message: Message = Command
     # await generate.finish(generate_homo(str(message)))
     try:
         theory: Theory = Theory(str(message).strip())
+        if theory.tiles.total() % 3 != 2 or theory.tiles.total() > 14:
+            raise
         await shanten.send(f'{theory.tiles_with_dora}的向听数是{theory.shanten()}')
     except Exception:
         await shanten.send(f'出现未知错误')
@@ -39,6 +41,8 @@ async def heqie_func(bot: Bot, event: MessageEvent, message: Message = CommandAr
     # await generate.finish(generate_homo(str(message)))
     try:
         theory: Theory = Theory(str(message).strip())
+        if theory.tiles.total() % 3 != 2 or theory.tiles.total() > 14:
+            raise
         await shanten.send(f'{theory.tiles_with_dora}的切牌选择是\n{theory.何切()}')
     except Exception:
         await shanten.send(f'出现未知错误')
