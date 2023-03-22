@@ -1,7 +1,7 @@
 from enum import Enum
 from fractions import Fraction
 from operator import add, mul, sub, truediv
-from typing import Callable, Final, TypeAlias, Literal
+from typing import Callable, Final, TypeAlias, Literal, Sequence
 
 number_T: TypeAlias = (int | Fraction)
 
@@ -11,8 +11,11 @@ class Operator(Enum):
     SUB: Final = sub
     MUL: Final = mul
     DIV: Final = truediv
-    LEFT_BRACKET: Final = None
-    RIGHT_BRACKET: Final = None
+    LEFT_BRACKET: Final = '('
+    RIGHT_BRACKET: Final = ')'
+
+    def __str__(self) -> str:
+        return OPERATOR_CHARS[self]
 
 
 ADD: Final[Operator] = Operator.ADD
@@ -40,6 +43,15 @@ CHAR_TO_OPERATOR: dict[str, Operator] = {
     '(': LEFT_BRACKET,
     ')': RIGHT_BRACKET
 }
+
+# PRIORITY: dict[Operator, int] = {
+#     LEFT_BRACKET: 0,
+#     MUL: 1,
+#     DIV: 1,
+#     ADD: 2,
+#     SUB: 2,
+#     RIGHT_BRACKET: 3
+# }
 
 replace_dict: dict[str, str] = {
     ' ': '',
@@ -202,8 +214,6 @@ class Expression:
         如果想比较两个表达式的值是否相同，请使用`self.value == other.value`'''
         if not isinstance(other, Expression):
             return False
-        # if not isinstance(self.__expr0, Expression):
-        #     return (not isinstance(other.__expr0, Expression)) and (self.__expr0 == other.__expr0)
         return (self.__expr0 == other.__expr0
                 and self.__expr1 == other.__expr1
                 and self.__op == other.__op)
@@ -212,95 +222,94 @@ class Expression:
         return bool(self.value)
 
 
-class Infix:
-    def __init__(self, str_expr: str) -> None:
-        self.data: list[Fraction | Operator] = []
-        for k, v in replace_dict.items():
-            str_expr = str_expr.replace(k, v)
-        pt: int = 0
-        for i, char in enumerate(str_expr):
-            if char in CHAR_TO_OPERATOR:
-                if pt < i:
-                    self.data.append(Fraction(str_expr[pt:i]))
-                self.data.append(CHAR_TO_OPERATOR[char])
-                pt = i + 1
-        if pt < len(str_expr):
-            self.data.append(Fraction(str_expr[pt:]))
+class Infix(list[Fraction | Operator]):
+    def __init__(self, expr: str | Sequence) -> None:
+        if isinstance(expr, str):
+            for k, v in replace_dict.items():
+                expr = expr.replace(k, v)
+            pt: int = 0
+            for i, char in enumerate(expr):
+                if char in CHAR_TO_OPERATOR:
+                    if pt < i:
+                        self.append(Fraction(expr[pt:i]))
+                    self.append(CHAR_TO_OPERATOR[char])
+                    pt = i + 1
+            if pt < len(expr):
+                self.append(Fraction(expr[pt:]))
+        else:
+            ...
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}({repr(self.data)})'
+        return f'{self.__class__.__name__}({super().__repr__()})'
+
+    def __str__(self) -> str:
+        # l: list[str] = []
+        # for x in self:
+        #     if isinstance(x, Operator):
+        #         l.append(OPERATOR_CHARS)
+        return ' '.join(str(x) for x in self)
+
+    def to_suffix(self) -> 'Suffix':
+        return Suffix(self)
 
 
-class Suffix:
+class Suffix(list[Fraction | Operator]):
     def __init__(self, expr: str | Infix) -> None:
         if isinstance(expr, str):
             expr = Infix(expr)
+        self.data: list[Fraction | Operator] = []
+        self.load_from_infix(expr)
+
+    _should_push_to_stack_dict: dict[Operator, dict[Operator, bool]] = {
+        ADD:           {ADD: False, SUB: False, MUL: False, DIV: False, LEFT_BRACKET: True},
+        SUB:           {ADD: False, SUB: False, MUL: False, DIV: False, LEFT_BRACKET: True},
+        MUL:           {ADD: True,  SUB: True,  MUL: False, DIV: False, LEFT_BRACKET: True},
+        DIV:           {ADD: True,  SUB: True,  MUL: False, DIV: False, LEFT_BRACKET: True},
+        LEFT_BRACKET:  {ADD: True,  SUB: True,  MUL: True,  DIV: True,  LEFT_BRACKET: True},
+        RIGHT_BRACKET: {ADD: False, SUB: False, MUL: False, DIV: False, LEFT_BRACKET: False},
+    }
+
+    @staticmethod
+    def should_push_to_stack(next_operator: Operator, stack_top_operator: Operator) -> bool:
+        '''`True`代表应该进栈'''
+        return Suffix._should_push_to_stack_dict[next_operator][stack_top_operator]
+
+    def load_from_infix(self, infix: Infix) -> None:
+        stack: list[Operator] = []
+        for x in infix:
+            if not isinstance(x, Operator):  # 如果x是数
+                self.append(x)
+            else:
+                while stack and not Suffix.should_push_to_stack(x, stack[-1]):
+                    top_item: Operator = stack.pop()
+                    if top_item != LEFT_BRACKET:
+                        self.append(top_item)
+                if x != RIGHT_BRACKET:
+                    stack.append(x)
+        if LEFT_BRACKET in stack:
+            raise ValueError('Brackets not paired.')
+        self.extend(reversed(stack))
+
+    def calculate(self) -> Fraction:
+        # result = 0
+        stack: list[Fraction] = []
+        for x in self:
+            if not isinstance(x, Operator):
+                stack.append(x)
+            else:
+                a: Fraction = stack.pop()
+                b: Fraction = stack.pop()
+                stack.append(x.value(b, a))
+        return stack.pop()
+
+    def __str__(self) -> str:
+        return ' '.join(str(x) for x in self)
 
 
 if __name__ == '__main__':
-    # print(Infix('(1+2)*5'))
-
-    # def infix2suffix(s: str) -> list[int | str]:
-    #     l: list[int | str] = []
-    #     out: list[int | str] = []
-    #     i: int = 0
-    #     while i < len(s):
-    #         if s[i].isdigit():
-    #             temp_i: int = i
-    #             while i < len(s) and s[i].isdigit():
-    #                 i += 1
-    #             out.append(int(s[temp_i:i]))
-    #             i -= 1
-    #             if i == len(s)-1:
-    #                 for t in l[::-1]:
-    #                     out.append(t)
-    #                 break
-    #         else:
-    #             if i == len(s)-1:
-    #                 for t in l[::-1]:
-    #                     out.append(t)
-    #                 break
-    #             if s[i] == '(':
-    #                 l.append('(')
-    #             elif s[i] == ')':
-    #                 while True:
-    #                     p: int | str = l.pop()
-    #                     if p == '(':
-    #                         break
-    #                     else:
-    #                         out.append(p)
-    #             elif s[i] in '*/':
-    #                 if len(l) == 0:
-    #                     l.append(s[i])
-    #                 else:
-    #                     while True:
-    #                         if len(l) == 0:
-    #                             break
-    #                         p = l.pop()
-    #                         if p in '(+-':
-    #                             l.append(p)
-    #                             break
-    #                         else:
-    #                             out.append(p)
-    #                     l.append(s[i])
-    #             elif s[i] in '+-':
-    #                 if len(l) == 0:
-    #                     l.append(s[i])
-    #                 else:
-    #                     while True:
-    #                         if len(l) == 0:
-    #                             break
-    #                         p = l.pop()
-    #                         if p == '(':
-    #                             l.append(p)
-    #                             break
-    #                         else:
-    #                             out.append(p)
-    #                     l.append(s[i])
-    #         i += 1
-    #     if '(' in out:
-    #         out.remove('(')
-    #     return out
+    print(Suffix('+-1'))
+    # print(repr(LEFT_BRACKET))
+    # print(str(ADD))
 
     # def suffix2result(lst):
     #     l: list[int | str] = []
@@ -323,4 +332,3 @@ if __name__ == '__main__':
     # l = infix2suffix('(2+3)*(5+7)+9/3-((8/4)-6)')
     # print(l)
     # print(suffix2result(l))
-    ...
