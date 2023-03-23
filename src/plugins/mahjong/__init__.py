@@ -6,7 +6,7 @@ from nonebot.internal.matcher import Matcher
 from nonebot.internal.rule import Rule
 from nonebot.params import CommandArg, CommandStart, EventToMe
 
-from .theory import Theory
+from .theory import Theory, Tiles, Tile
 
 
 @Rule
@@ -29,11 +29,18 @@ async def shanten_func(bot: Bot, event: MessageEvent, message: Message = Command
     # await generate.finish(generate_homo(str(message)))
     try:
         theory: Theory = Theory(str(message).strip())
-        if theory.tiles.total() % 3 != 2 or theory.tiles.total() > 14:
-            raise
-        await shanten.send(f'{theory.tiles_with_dora}的向听数是{theory.shanten()}')
+    except ValueError:
+        await shanten.finish(f'无法解析命令参数')
+    else:
+        if theory.tiles.total() > 14:
+            await shanten.finish('最多可以计算14张牌')
+        if theory.tiles.total() % 3 != 2:
+            await shanten.finish('3n+1张牌的计算正在锐意开发中')
+
+    try:
+        await shanten.finish(f'{theory.tiles_with_dora}的向听数是{theory.shanten()}')
     except Exception:
-        await shanten.send(f'出现未知错误')
+        await shanten.finish(f'出现未知错误')
 
 
 @heqie.handle()
@@ -43,6 +50,10 @@ async def heqie_func(bot: Bot, event: MessageEvent, message: Message = CommandAr
         theory: Theory = Theory(str(message).strip())
         if theory.tiles.total() % 3 != 2 or theory.tiles.total() > 14:
             raise
-        await shanten.send(f'{theory.tiles_with_dora}的切牌选择是\n{theory.何切()}')
+        ans: list[tuple[int, list[int]]] = theory.何切()
+        output: list[str] = [f'{theory.tiles_with_dora}的切牌选择是']
+        for i, (qiepai, jinzhang) in enumerate(ans):
+            output.append(f"{i+1}. 切{Tile(qiepai)}, 摸{', '.join(str(Tile(i)) for i in jinzhang)}")
+        await shanten.send('\n'.join(output))
     except Exception:
         await shanten.send(f'出现未知错误')

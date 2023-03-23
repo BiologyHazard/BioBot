@@ -2,8 +2,20 @@ from collections import Counter
 from typing import Iterable, Final, Generator
 
 
+class Tile(int):
+    def __init__(self, tile: int) -> None:
+        self = tile
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({super().__repr__()})'
+
+    def __str__(self) -> str:
+        return f'{self % 10}{Tiles.CHARS[self // 10 * 10]}'
+
+
 class Tiles(Counter[int]):
     BEGINS: Final[dict[str, int]] = {'m': 0, 's': 10, 'p': 20, 'z': 30}
+    CHARS: Final[dict[int, str]] = {0: 'm', 10: 's', 20: 'p', 30: 'z'}
     ALLOW_KEYS: Final[list[int]] = [i for i in range(38)]
 
     WAN_TILES: tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8, 9)
@@ -247,5 +259,6 @@ if __name__ == '__main__':
     #     ans[xts] += 1
     #     # print(f'{str(tiles):16} {Theory(tiles).向听数()}')
     # print(sorted(ans.items()))
-    c: Theory = Theory('1233m245689s124z7m')
-    print(c.何切())
+    # c: Theory = Theory('1233m245689s124z7m')
+    # print(c.何切())
+    print(Theory('1').tiles)
