@@ -1,19 +1,22 @@
+import math
+from collections import defaultdict
+from typing import Final, NoReturn
+
 from nonebot import on_command, on_message
-from nonebot.adapters.onebot.v11 import Message, Bot, GroupMessageEvent
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
 from nonebot.internal.matcher import Matcher
 from nonebot.internal.rule import Rule
-from nonebot.params import CommandArg, CommandStart, EventToMe, EventMessage
-from typing import NoReturn, Final
-import math
-from .xxivcalculator import XXIVSolver, Expression
+from nonebot.params import CommandArg, CommandStart, EventMessage, EventToMe
+
 from .expression import replace_dict
+from .xxivcalculator import Expression, XXIVSolver
 
 # last_problem: dict[int, list[int]] = dict()
 last_solution: dict[int, Expression | None] = dict()
+solvable_probability: defaultdict[int, float] = defaultdict(lambda: 1)
 
 
 MAX_LENGTH: Final[int] = 64
-solvable_probability: float = 1.0
 
 
 @Rule
@@ -53,7 +56,11 @@ async def start_game_func(bot: Bot, event: GroupMessageEvent, message: Message =
         await start_game.finish('数字太大了，不想出题喵~')
 
     max_trials: int | None = 8
-    problem, solution = XXIVSolver.generate(n=n, target=target, solvable_probability=solvable_probability, max_trials=max_trials)
+    problem, solution = XXIVSolver.generate(
+        n=n,
+        target=target,
+        solvable_probability=solvable_probability[event.group_id],
+        max_trials=max_trials)
     if (problem is None):
         await start_game.finish(f'非常抱歉，尝试了{max_trials}次后未找到有解的题目。')
 
@@ -75,9 +82,6 @@ async def look_answer_func(bot: Bot, event: GroupMessageEvent, message: Message 
 
 @check_answer.handle()
 async def check_answer_func(bot: Bot, event: GroupMessageEvent, raw_message: Message = EventMessage()) -> None:
-    # if event.group_id not in last_solution:
-    #     return
-
     message: str = str(raw_message)
     if len(message) > MAX_LENGTH:
         return
@@ -86,10 +90,15 @@ async def check_answer_func(bot: Bot, event: GroupMessageEvent, raw_message: Mes
         message = message.replace(k, v)
     if all(char in '0123456789()+-*/' for char in message):
         if message.find('**') == -1 and message.find('//') == -1:
+            if all(operator not in message.lstrip('+-') for operator in '+-*/'):
+                # 如果message是（带符号的）纯数字，没有+-*/，则忽略
+                return
             try:
                 result: float = round(eval(message, {}, {}), 1)
-            except (SyntaxError, ZeroDivisionError):
+            except SyntaxError:
                 return
+            except ZeroDivisionError:
+                await check_answer.finish('除数不能为0！')
             else:
                 message = message.replace('+', ' + ').replace('-', ' - ').replace('*', ' × ').replace('/', ' ÷ ')
                 await check_answer.finish(f'{message} = {result}')
@@ -102,9 +111,8 @@ async def set_solvable_probability_func(bot: Bot, event: GroupMessageEvent, mess
     except ValueError:
         await set_solvable_probability.finish('无法解析命令参数喵~')
     else:
-        if not math.isnan(probability) and not math.isinf(probability) and 0 <= probability <= 1:
-            global solvable_probability
-            solvable_probability = probability
+        if 0 <= probability <= 1:
+            solvable_probability[event.group_id] = probability
             await set_solvable_probability.finish(f'有解概率已经调整为{solvable_probability}')
         else:
             await set_solvable_probability.finish('概率必须在0~1之间')

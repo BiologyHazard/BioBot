@@ -1,5 +1,5 @@
-from collections import Counter
-from typing import Iterable, Final, Generator
+from collections import Counter, defaultdict
+from typing import Final, Iterable
 
 
 class Tile(int):
@@ -18,18 +18,19 @@ class Tiles(Counter[int]):
     CHARS: Final[dict[int, str]] = {0: 'm', 10: 's', 20: 'p', 30: 'z'}
     ALLOW_KEYS: Final[list[int]] = [i for i in range(38)]
 
-    WAN_TILES: tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8, 9)
-    SUO_TILES: tuple[int, ...] = (11, 12, 13, 14, 15, 16, 17, 18, 19)
-    TONG_TILES: tuple[int, ...] = (21, 22, 23, 24, 25, 26, 27, 28, 29)
-    KANJI_TILES: tuple[int, ...] = (31, 32, 33, 34, 35, 36, 37)
-    DORA_TILES: tuple[int, ...] = (0, 10, 20)
-    WAN_TILES_WITH_DORA: tuple[int, ...] = (1, 2, 3, 4, 0, 5, 6, 7, 8, 9)
-    SUO_TILES_WITH_DORA: tuple[int, ...] = (11, 12, 13, 14, 10, 15, 16, 17, 18, 19)
-    TONG_TILES_WITH_DORA: tuple[int, ...] = (21, 22, 23, 24, 20, 25, 26, 27, 28, 29)
+    万牌: tuple[int, ...] = (1, 2, 3, 4, 5, 6, 7, 8, 9)
+    索牌: tuple[int, ...] = (11, 12, 13, 14, 15, 16, 17, 18, 19)
+    筒牌: tuple[int, ...] = (21, 22, 23, 24, 25, 26, 27, 28, 29)
+    字牌: tuple[int, ...] = (31, 32, 33, 34, 35, 36, 37)
+    赤宝牌: tuple[int, ...] = (0, 10, 20)
+    万牌含赤: tuple[int, ...] = (1, 2, 3, 4, 0, 5, 6, 7, 8, 9)
+    索牌含赤: tuple[int, ...] = (11, 12, 13, 14, 10, 15, 16, 17, 18, 19)
+    筒牌含赤: tuple[int, ...] = (21, 22, 23, 24, 20, 25, 26, 27, 28, 29)
 
-    NUMBER_TILES: tuple[int, ...] = WAN_TILES + SUO_TILES + TONG_TILES
-    TILES: tuple[int, ...] = WAN_TILES + SUO_TILES + TONG_TILES + KANJI_TILES
-    TILES_WITH_DORA: tuple[int, ...] = WAN_TILES_WITH_DORA + SUO_TILES_WITH_DORA + TONG_TILES_WITH_DORA + KANJI_TILES
+    数牌: tuple[int, ...] = 万牌 + 索牌 + 筒牌
+    数牌含赤: tuple[int, ...] = 万牌含赤 + 索牌含赤 + 筒牌含赤
+    所有牌不含赤: tuple[int, ...] = 万牌 + 索牌 + 筒牌 + 字牌
+    所有牌含赤: tuple[int, ...] = 万牌含赤 + 索牌含赤 + 筒牌含赤 + 字牌
 
     def __init__(self, iterable: Iterable | None = None, /, **kwargs) -> None:
         if isinstance(iterable, str):
@@ -49,7 +50,7 @@ class Tiles(Counter[int]):
 
     def __str__(self) -> str:
         l: list[str] = []
-        for tiles, char in ((Tiles.WAN_TILES_WITH_DORA, 'm'), (Tiles.SUO_TILES_WITH_DORA, 's'), (Tiles.TONG_TILES_WITH_DORA, 'p'), (Tiles.KANJI_TILES, 'z')):
+        for tiles, char in ((Tiles.万牌含赤, 'm'), (Tiles.索牌含赤, 's'), (Tiles.筒牌含赤, 'p'), (Tiles.字牌, 'z')):
             flag: bool = False
             for tile in tiles:
                 if self[tile] > 0:
@@ -64,9 +65,9 @@ class Tiles(Counter[int]):
             return NotImplemented
         result: Tiles = Tiles()
         for elem, count in self.items():
-            newcount: int = count + other[elem]
-            if newcount > 0:
-                result[elem] = newcount
+            new_count: int = count + other[elem]
+            if new_count > 0:
+                result[elem] = new_count
         for elem, count in other.items():
             if elem not in self and count > 0:
                 result[elem] = count
@@ -78,9 +79,9 @@ class Tiles(Counter[int]):
             return NotImplemented
         result: Tiles = Tiles()
         for elem, count in self.items():
-            newcount: int = count - other[elem]
-            if newcount > 0:
-                result[elem] = newcount
+            new_count: int = count - other[elem]
+            if new_count > 0:
+                result[elem] = new_count
         for elem, count in other.items():
             if elem not in self and count < 0:
                 result[elem] = 0 - count
@@ -91,9 +92,9 @@ class Theory:
     def __init__(self, tiles: Tiles | str | Counter[int] | Iterable) -> None:
         self.tiles_with_dora: Tiles = Tiles(tiles)
         self.tiles: Tiles = Tiles()
-        for tile in Tiles.TILES:
+        for tile in Tiles.所有牌不含赤:
             self.tiles[tile] = self.tiles_with_dora[tile]
-        for tile in Tiles.DORA_TILES:
+        for tile in Tiles.赤宝牌:
             self.tiles[tile+5] += self.tiles_with_dora[tile]
 
     def can_ting(self) -> list[int]: ...
@@ -102,7 +103,7 @@ class Theory:
         if self.tiles_with_dora.total() % 3 != 2:
             raise ValueError
         flag: bool = False
-        for tile in Tiles.TILES:
+        for tile in Tiles.所有牌不含赤:
             if self.tiles[tile] >= 2:
                 if self.wu_quetou_hu():
                     flag = True
@@ -113,10 +114,10 @@ class Theory:
     def analyze(self): ...
 
     @staticmethod
-    def _shanten(tiles: Tiles) -> int:
+    def _向听数(tiles: Tiles) -> int:
         def 取雀头(tiles: Tiles, crem: int) -> None:
             # print(f'取雀头，{str(tiles):20}, crem={crem}, shanten={shanten}, mutc={max_use_tile_count}')
-            for tile in Tiles.TILES:
+            for tile in Tiles.所有牌不含赤:
                 if tiles[tile] >= 2:
                     # print(f'取出雀头{Tiles({tile: 2})}')
                     取面子(tiles - Tiles({tile: 2}), 0, crem-2, 1, 0)
@@ -125,9 +126,10 @@ class Theory:
             取面子(tiles, 0, crem, 0, 0)
 
         def 取面子(tiles: Tiles, i: int, crem: int, quetou: int, mianzi: int) -> None:
-            # print(f'取面子，{str(tiles):20}, i={i}, crem={crem}, quetou={quetou}, mianzi={mianzi}, shanten={shanten}, mutc={max_use_tile_count}')
+            # print(f'取面子，{str(tiles):20}, i={i}, crem={crem}, quetou={quetou}, mianzi={mianzi}, shanten={shanten},
+            # mutc={max_use_tile_count}')
             while i <= 37:
-                if i in Tiles.TILES:
+                if i in Tiles.所有牌不含赤:
                     if tiles[i] >= 1:
                         break
                 i += 1
@@ -147,7 +149,8 @@ class Theory:
 
         def 取搭子(tiles: Tiles, i: int, crem: int, quetou: int, mianzi: int, dazi: int) -> None:
             nonlocal shanten, max_use_tile_count
-            # print(f'取搭子，{str(tiles):20}, i={i}, crem={crem}, quetou={quetou}, mianzi={mianzi}, dazi={dazi}, shanten={shanten}, mutc={max_use_tile_count}')
+            # print(f'取搭子，{str(tiles):20}, i={i}, crem={crem}, quetou={quetou}, mianzi={mianzi}, dazi={dazi},
+            # shanten={shanten}, mutc={max_use_tile_count}')
             if shanten == -1:
                 return
             if mianzi + dazi > groups:
@@ -161,7 +164,7 @@ class Theory:
                 return
 
             while i <= 37:
-                if i in Tiles.TILES:
+                if i in Tiles.所有牌不含赤:
                     if tiles[i] >= 1:
                         break
                 i += 1
@@ -173,8 +176,8 @@ class Theory:
             if (1 <= i <= 7 or 11 <= i <= 17 or 21 <= i <= 27) and tiles[i] >= 1 and tiles[i+2] >= 1:
                 取搭子(tiles - Tiles({i: 1, i+2: 1}), i, crem-2, quetou, mianzi, dazi+1)
 
-            取搭子(tiles - Tiles({i: tiles[i]}), i+1, crem - tiles[i], quetou, mianzi, dazi)
-            # 取搭子(tiles, i+1, crem - tiles[i], quetou, mianzi, dazi)
+            # 取搭子(tiles - Tiles({i: tiles[i]}), i+1, crem - tiles[i], quetou, mianzi, dazi)
+            取搭子(tiles, i+1, crem - tiles[i], quetou, mianzi, dazi)
 
         shanten: int = 8
         max_use_tile_count: int = 0
@@ -182,31 +185,33 @@ class Theory:
         取雀头(tiles, tiles.total())
         return shanten
 
-    def shanten(self) -> int:
-        return Theory._shanten(self.tiles)
+    def 向听数(self) -> int:
+        return Theory._向听数(self.tiles)
 
     def 何切(self) -> list[tuple[int, list[int]]]:
-        shanten: int = self.shanten()
-        possible_jinzhang: set[int] = set()
-        jinzhang_set: set[int] = set()
-        print(repr(self.tiles))
+        向听数: int = self.向听数()
+        可能的进张: set[int] = set()
+        进张集合: set[int] = set()
         for tile in self.tiles:
             if self.tiles[tile] >= 1:
-                possible_jinzhang |= {tile-2, tile-1, tile, tile+1, tile+2}
-        possible_jinzhang &= set(Tiles.TILES)
-        for tile in possible_jinzhang:
-            if (tmp := Theory._shanten(self.tiles - Tiles({tile: -1}))) < shanten:
-                assert tmp == shanten - 1
-                jinzhang_set.add(tile)
+                可能的进张.add(tile)
+            if 2 <= tile <= 8 or 12 <= tile <= 18 or 22 <= tile <= 28:
+                可能的进张 |= {tile-1, tile+1}
+                if 3 <= tile <= 7 or 13 <= tile <= 17 or 23 <= tile <= 27:
+                    可能的进张 |= {tile-2, tile+2}
 
-        from collections import defaultdict
+        for tile in 可能的进张:
+            if (tmp := Theory._向听数(self.tiles - Tiles({tile: -1}))) < 向听数:
+                assert tmp == 向听数 - 1
+                进张集合.add(tile)
+
         ans: defaultdict[int, list[int]] = defaultdict(list)
-        for jinzhang in jinzhang_set:
-            for qiepai in self.tiles:
-                if self.tiles[qiepai] >= 1:
-                    if (tmp := Theory._shanten(self.tiles - Tiles({qiepai: 1}) + Tiles({jinzhang: 1}))) < shanten:
-                        assert tmp == shanten - 1
-                        ans[qiepai].append(jinzhang)
+        for 进张 in 进张集合:
+            for 切的牌 in self.tiles:
+                if self.tiles[切的牌] >= 1:
+                    if (tmp := Theory._向听数(self.tiles - Tiles({切的牌: 1}) + Tiles({进张: 1}))) < 向听数:
+                        assert tmp == 向听数 - 1
+                        ans[切的牌].append(进张)
 
         return [(key, sorted(ans[key])) for key in sorted(ans)]
 
@@ -261,4 +266,4 @@ if __name__ == '__main__':
     # print(sorted(ans.items()))
     # c: Theory = Theory('1233m245689s124z7m')
     # print(c.何切())
-    print(Theory('1').tiles)
+    print(Theory('1112345678999m1z').何切())
