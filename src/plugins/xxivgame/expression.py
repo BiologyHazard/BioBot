@@ -307,28 +307,4 @@ class Suffix(list[Fraction | Operator]):
 
 
 if __name__ == '__main__':
-    print(Suffix('+-1'))
-    # print(repr(LEFT_BRACKET))
-    # print(str(ADD))
-
-    # def suffix2result(lst):
-    #     l: list[int | str] = []
-    #     for i in lst:
-    #         if isinstance(i, int):
-    #             l.append(i)
-    #         else:
-    #             a = l.pop()
-    #             b = l.pop()
-    #             if i == '+':
-    #                 l.append(b+a)
-    #             elif i == '-':
-    #                 l.append(b-a)
-    #             elif i == '*':
-    #                 l.append(b*a)
-    #             else:
-    #                 l.append(b//a)
-    #     return l.pop()
-
-    # l = infix2suffix('(2+3)*(5+7)+9/3-((8/4)-6)')
-    # print(l)
-    # print(suffix2result(l))
+    print(Suffix('11+((1+2)*(345/2345))'))

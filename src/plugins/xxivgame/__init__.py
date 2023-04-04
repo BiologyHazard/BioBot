@@ -1,17 +1,15 @@
-import math
 from collections import defaultdict
 from typing import Final, NoReturn
 
 from nonebot import on_command, on_message
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
-from nonebot.internal.matcher import Matcher
-from nonebot.internal.rule import Rule
+from nonebot.matcher import Matcher
+from nonebot.rule import Rule
 from nonebot.params import CommandArg, CommandStart, EventMessage, EventToMe
 
 from .expression import replace_dict
 from .xxivcalculator import Expression, XXIVSolver
 
-# last_problem: dict[int, list[int]] = dict()
 last_solution: dict[int, Expression | None] = dict()
 solvable_probability: defaultdict[int, float] = defaultdict(lambda: 1)
 
@@ -64,7 +62,6 @@ async def start_game_func(bot: Bot, event: GroupMessageEvent, message: Message =
     if (problem is None):
         await start_game.finish(f'非常抱歉，尝试了{max_trials}次后未找到有解的题目。')
 
-    # last_problem[event.group_id], last_solution[event.group_id] = problem, solution
     last_solution[event.group_id] = solution
     await start_game.finish(f'用四则运算计算{target}\n' + '   '.join(str(x) for x in problem))
 
@@ -110,9 +107,9 @@ async def set_solvable_probability_func(bot: Bot, event: GroupMessageEvent, mess
         probability: float = float(str(message).strip())
     except ValueError:
         await set_solvable_probability.finish('无法解析命令参数喵~')
+
+    if 0 <= probability <= 1:
+        solvable_probability[event.group_id] = probability
+        await set_solvable_probability.finish(f'有解概率已经调整为{probability}')
     else:
-        if 0 <= probability <= 1:
-            solvable_probability[event.group_id] = probability
-            await set_solvable_probability.finish(f'有解概率已经调整为{probability}')
-        else:
-            await set_solvable_probability.finish('概率必须在0~1之间')
+        await set_solvable_probability.finish('概率必须在0~1之间')

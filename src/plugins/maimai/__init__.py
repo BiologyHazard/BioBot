@@ -310,11 +310,16 @@ best_40_pic = on_command('b40')
 
 @best_40_pic.handle()
 async def _(event: Event, message: Message = CommandArg()):
-    username = str(message).strip()
-    if username == "":
-        payload = {'qq': str(event.get_user_id())}
+    username: str = str(message).strip()
+    if username == '':
+        payload: dict[str, str] = {'qq': str(event.get_user_id())}
     else:
-        payload = {'username': username}
+        if username.isdigit():
+            payload = {'qq': username}
+        elif message[0].type == 'at':
+            payload = {'qq': str(message[0].data['qq'])}
+        else:
+            payload = {'username': username}
     img, success = await generate(payload)
     if success == 400:
         await best_40_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
@@ -332,11 +337,16 @@ best_50_pic = on_command('b50')
 
 @best_50_pic.handle()
 async def _(event: Event, message: Message = CommandArg()):
-    username = str(message).strip()
-    if username == "":
-        payload = {'qq': str(event.get_user_id()), 'b50': True}
+    username: str = str(message).strip()
+    if username == '':
+        payload: dict[str, str] = {'qq': str(event.get_user_id())}
     else:
-        payload = {'username': username, 'b50':  True}
+        if username.isdigit():
+            payload = {'qq': username}
+        elif message[0].type == 'at':
+            payload = {'qq': str(message[0].data['qq'])}
+        else:
+            payload = {'username': username}
     img, success = await generate50(payload)
     if success == 400:
         await best_50_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
