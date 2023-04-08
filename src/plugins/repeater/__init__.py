@@ -1,53 +1,54 @@
-import re
-
-from nonebot import on_message, logger
-from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent
+from nonebot import logger, on_message
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
+from nonebot.params import EventMessage
+from nonebot.rule import Rule
+from typing import Literal
 
 from . import config
 
-repeater_group = config.repeater_group
-shortest = config.shortest_length
-blacklist = config.blacklist
-
-m = on_message(priority=10, block=False)
-
-last_message = {}
-message_times = {}
+repeater_group: Literal['all'] | list[int] = config.repeater_group
+shortest: int = config.shortest_length
+blacklist: list[str] = config.blacklist
 
 
-# 消息预处理
-def message_preprocess(message: str):
-    raw_message = message
-    contained_images = {}
-    images = re.findall(r'\[CQ:image.*?]', message)
-    for i in images:
-        contained_images.update({i: [re.findall(
-            r'url=(.*?)[,\]]', i)[0][0], re.findall(r'file=(.*?)[,\]]', i)[0][0]]})
-    for i in contained_images:
-        message = message.replace(i, f'[{contained_images[i][1]}]')
-    return message, raw_message
+last_message: dict[int, Message] = {}
+message_times: dict[int, int] = {}
 
 
-@m.handle()
-async def repeater(bot: Bot, event: GroupMessageEvent):
-    # 检查是否在黑名单中
-    if event.raw_message in blacklist:
-        logger.debug(f'[复读姬] 检测到黑名单消息: {event.raw_message}')
-        return
-    gid = str(event.group_id)
-    if gid in repeater_group or "all" in repeater_group:
-        global last_message, message_times
-        message, raw_message = message_preprocess(str(event.message))
-        logger.debug(f'[复读姬] 这一次消息: {message}')
-        logger.debug(f'[复读姬] 上一次消息: {last_message.get(gid)}')
-        if last_message.get(gid) != message:
-            message_times[gid] = 1
-        else:
-            message_times[gid] += 1
-        logger.debug(
-            f'[复读姬] 已重复次数: {message_times.get(gid)}/{config.shortest_times}')
-        if message_times.get(gid) == config.shortest_times:
-            logger.debug(f'[复读姬] 原始的消息: {str(event.message)}')
-            logger.debug(f"[复读姬] 欲发送信息: {raw_message}")
-            await bot.send_group_msg(group_id=event.group_id, message=raw_message, auto_escape=False)
-        last_message[gid] = message
+def _message_preprocess(message: Message) -> Message:
+    '''预处理message, 对于`CQ:image`仅保留`file`字段'''
+    for message_segment in message:
+        if message_segment.type == 'image':
+            message_segment.data = {'file': message_segment.data['file']}
+    return message
+
+
+@Rule
+async def in_repeater_group(event: GroupMessageEvent) -> bool:
+    return repeater_group == 'all' or event.group_id in repeater_group
+
+
+@Rule
+async def not_in_blacklist(raw_message: Message = EventMessage()) -> bool:
+    return raw_message not in blacklist
+
+
+repeat = on_message(rule=in_repeater_group & not_in_blacklist, priority=10, block=False)
+
+
+@repeat.handle()
+async def repeat_func(bot: Bot, event: GroupMessageEvent, raw_message: Message = EventMessage()) -> None:
+    message: Message = _message_preprocess(raw_message)
+    logger.debug(f'[复读姬] 这一次消息: {message}')
+    logger.debug(f'[复读姬] 上一次消息: {last_message.get(event.group_id)}')
+    if last_message.get(event.group_id) != message:
+        message_times[event.group_id] = 1
+    else:
+        message_times[event.group_id] += 1
+    logger.debug(
+        f'[复读姬] 已重复次数: {message_times.get(event.group_id)}/{config.shortest_times}')
+    if message_times.get(event.group_id) == config.shortest_times:
+        logger.debug(f'[复读姬] 原始的消息: {str(event.message)}')
+        logger.debug(f"[复读姬] 欲发送信息: {raw_message}")
+        await bot.send_group_msg(group_id=event.group_id, message=raw_message, auto_escape=False)
+    last_message[event.group_id] = message

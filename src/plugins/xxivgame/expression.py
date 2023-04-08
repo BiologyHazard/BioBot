@@ -254,6 +254,8 @@ class Infix(list[Fraction | Operator]):
 
 
 class Suffix(list[Fraction | Operator]):
+    '''有bug'''
+
     def __init__(self, expr: str | Infix) -> None:
         if isinstance(expr, str):
             expr = Infix(expr)

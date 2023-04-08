@@ -4,8 +4,8 @@ from typing import Final, NoReturn
 from nonebot import on_command, on_message
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
 from nonebot.matcher import Matcher
-from nonebot.rule import Rule
 from nonebot.params import CommandArg, CommandStart, EventMessage, EventToMe
+from nonebot.rule import Rule
 
 from .expression import replace_dict
 from .xxivcalculator import Expression, XXIVSolver
@@ -21,14 +21,37 @@ MAX_LENGTH: Final[int] = 64
 async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
     return bool(command_start) or to_me
 
+
+@Rule
+async def is_valid_expression(raw_message: Message = EventMessage()) -> bool:
+    message: str = str(raw_message)
+    if len(message) > MAX_LENGTH:
+        return False
+
+    for k, v in replace_dict.items():
+        message = message.replace(k, v)
+
+    if not all(char in '0123456789()+-*/' for char in message):
+        return False
+
+    if message.find('**') != -1 or message.find('//') != -1:
+        # 如果有**或//，则忽略
+        return False
+
+    if all(operator not in message.lstrip('+-') for operator in '+-*/'):
+        # 如果message是（带符号或括号的）纯数字，没有二元运算符，则忽略
+        return False
+
+    return True
+
 start_game: type[Matcher] = on_command('24点', rule=with_command_start_or_to_me, priority=5)
 look_answer: type[Matcher] = on_command('查看答案', rule=with_command_start_or_to_me, priority=5)
 set_solvable_probability: type[Matcher] = on_command('有解概率', rule=with_command_start_or_to_me, priority=5)
-check_answer: type[Matcher] = on_message(priority=15)
+check_answer: type[Matcher] = on_message(rule=is_valid_expression, priority=15)
 
 
 @start_game.handle()
-async def start_game_func(bot: Bot, event: GroupMessageEvent, message: Message = CommandArg()) -> NoReturn:
+async def start_game_func(event: GroupMessageEvent, message: Message = CommandArg()) -> NoReturn:
     try:
         parameters: list[str] = str(message).split()
         if len(parameters) >= 3:
@@ -54,12 +77,11 @@ async def start_game_func(bot: Bot, event: GroupMessageEvent, message: Message =
         await start_game.finish('数字太大了，不想出题喵~')
 
     max_trials: int | None = 8
-    problem, solution = XXIVSolver.generate(
-        n=n,
-        target=target,
-        solvable_probability=solvable_probability[event.group_id],
-        max_trials=max_trials)
-    if (problem is None):
+    problem, solution = XXIVSolver.generate(n=n,
+                                            target=target,
+                                            solvable_probability=solvable_probability[event.group_id],
+                                            max_trials=max_trials)
+    if problem is None:
         await start_game.finish(f'非常抱歉，尝试了{max_trials}次后未找到有解的题目。')
 
     last_solution[event.group_id] = solution
@@ -67,7 +89,7 @@ async def start_game_func(bot: Bot, event: GroupMessageEvent, message: Message =
 
 
 @look_answer.handle()
-async def look_answer_func(bot: Bot, event: GroupMessageEvent, message: Message = CommandArg()) -> NoReturn:
+async def look_answer_func(event: GroupMessageEvent) -> NoReturn:
     if event.group_id not in last_solution:
         await look_answer.finish('当前没有题目，发送“#24点”生成题目。')
 
@@ -78,27 +100,17 @@ async def look_answer_func(bot: Bot, event: GroupMessageEvent, message: Message 
 
 
 @check_answer.handle()
-async def check_answer_func(bot: Bot, event: GroupMessageEvent, raw_message: Message = EventMessage()) -> None:
+async def check_answer_func(raw_message: Message = EventMessage()) -> None:
     message: str = str(raw_message)
-    if len(message) > MAX_LENGTH:
+    try:
+        result: float = round(eval(message, {}, {}), 2)
+    except SyntaxError:
         return
-
-    for k, v in replace_dict.items():
-        message = message.replace(k, v)
-    if all(char in '0123456789()+-*/' for char in message):
-        if message.find('**') == -1 and message.find('//') == -1:
-            if all(operator not in message.lstrip('+-') for operator in '+-*/'):
-                # 如果message是（带符号的）纯数字，没有+-*/，则忽略
-                return
-            try:
-                result: float = round(eval(message, {}, {}), 1)
-            except SyntaxError:
-                return
-            except ZeroDivisionError:
-                await check_answer.finish('除数不能为0！')
-            else:
-                message = message.replace('+', ' + ').replace('-', ' - ').replace('*', ' × ').replace('/', ' ÷ ')
-                await check_answer.finish(f'{message} = {result}')
+    except ZeroDivisionError:
+        await check_answer.finish('除数不能为0')
+    else:
+        message = message.replace('+', ' + ').replace('-', ' - ').replace('*', ' × ').replace('/', ' ÷ ')
+        await check_answer.finish(f'{message} = {result}')
 
 
 @set_solvable_probability.handle()
