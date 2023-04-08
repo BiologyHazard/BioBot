@@ -75,7 +75,7 @@ async def load_from_file(group_id: int) -> None:
 async def _save_to_file(group_id: int) -> None:
     file_path: str = os.path.join(data_path, f'{group_id}.json')
     async with aiofiles.open(file_path, 'w', encoding='utf-8') as file:
-        await file.write(json.dumps(main_dict[group_id], ensure_ascii=False, indent=4))
+        await file.write(json.dumps(main_dict[group_id], ensure_ascii=False))
 
 
 async def learn_autoreply(group_id: int,

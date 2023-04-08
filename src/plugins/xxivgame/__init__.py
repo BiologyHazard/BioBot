@@ -2,7 +2,8 @@ from collections import defaultdict
 from typing import Final, NoReturn
 
 from nonebot import on_command, on_message
-from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
+from nonebot.adapters.onebot.v11 import (Bot, GroupMessageEvent, Message,
+                                         MessageEvent, PrivateMessageEvent)
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg, CommandStart, EventMessage, EventToMe
 from nonebot.rule import Rule
@@ -10,11 +11,20 @@ from nonebot.rule import Rule
 from .expression import replace_dict
 from .xxivcalculator import Expression, XXIVSolver
 
-last_solution: dict[int, Expression | None] = dict()
-solvable_probability: defaultdict[int, float] = defaultdict(lambda: 1)
-
-
 MAX_LENGTH: Final[int] = 64
+DEFAULT_SOLVABLE_PROBABILITY = 1.0
+
+last_solution: dict[str, Expression | None] = dict()
+solvable_probability: defaultdict[str, float] = defaultdict(lambda: DEFAULT_SOLVABLE_PROBABILITY)
+
+
+def event_to_dict_key(event: MessageEvent) -> str:
+    if isinstance(event, GroupMessageEvent):
+        return f'group_{event.group_id}'
+    elif isinstance(event, PrivateMessageEvent):
+        return f'private_{event.user_id}'
+    else:
+        raise TypeError
 
 
 @Rule
@@ -51,7 +61,7 @@ check_answer: type[Matcher] = on_message(rule=is_valid_expression, priority=15)
 
 
 @start_game.handle()
-async def start_game_func(event: GroupMessageEvent, message: Message = CommandArg()) -> NoReturn:
+async def start_game_func(event: MessageEvent, message: Message = CommandArg()) -> NoReturn:
     try:
         parameters: list[str] = str(message).split()
         if len(parameters) >= 3:
@@ -77,23 +87,24 @@ async def start_game_func(event: GroupMessageEvent, message: Message = CommandAr
         await start_game.finish('数字太大了，不想出题喵~')
 
     max_trials: int | None = 8
-    problem, solution = XXIVSolver.generate(n=n,
-                                            target=target,
-                                            solvable_probability=solvable_probability[event.group_id],
-                                            max_trials=max_trials)
+    problem, solution = XXIVSolver.generate(
+        n=n,
+        target=target,
+        solvable_probability=solvable_probability[event_to_dict_key(event)],
+        max_trials=max_trials)
     if problem is None:
         await start_game.finish(f'非常抱歉，尝试了{max_trials}次后未找到有解的题目。')
 
-    last_solution[event.group_id] = solution
+    last_solution[event_to_dict_key(event)] = solution
     await start_game.finish(f'用四则运算计算{target}\n' + '   '.join(str(x) for x in problem))
 
 
 @look_answer.handle()
-async def look_answer_func(event: GroupMessageEvent) -> NoReturn:
-    if event.group_id not in last_solution:
+async def look_answer_func(event: MessageEvent) -> NoReturn:
+    if event_to_dict_key(event) not in last_solution:
         await look_answer.finish('当前没有题目，发送“#24点”生成题目。')
 
-    solution: Expression | None = last_solution[event.group_id]
+    solution: Expression | None = last_solution[event_to_dict_key(event)]
     if solution is None:
         await start_game.finish('无解')
     await look_answer.finish(f'{str(solution)} = {solution.value}')
@@ -114,14 +125,14 @@ async def check_answer_func(raw_message: Message = EventMessage()) -> None:
 
 
 @set_solvable_probability.handle()
-async def set_solvable_probability_func(bot: Bot, event: GroupMessageEvent, message: Message = CommandArg()) -> NoReturn:
+async def set_solvable_probability_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> NoReturn:
     try:
         probability: float = float(str(message).strip())
     except ValueError:
         await set_solvable_probability.finish('无法解析命令参数喵~')
 
     if 0 <= probability <= 1:
-        solvable_probability[event.group_id] = probability
+        solvable_probability[event_to_dict_key(event)] = probability
         await set_solvable_probability.finish(f'有解概率已经调整为{probability}')
     else:
         await set_solvable_probability.finish('概率必须在0~1之间')

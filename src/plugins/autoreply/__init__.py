@@ -55,29 +55,28 @@ async def is_valid_command(event: MessageEvent, raw_command: str = RawCommand())
 
 
 @Rule
-async def is_group_message(event: Event) -> bool:
-    return isinstance(event, GroupMessageEvent)
-
-
-@Rule
 async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
     return bool(command_start) or to_me
 
 
-learn: type[Matcher] = on_command('学习', rule=with_command_start_or_to_me, priority=5)
+# @Rule
+# async def in_reply_dict(event: GroupMessageEvent, message: Message = EventMessage())->bool:
+
+
+learn: type[Matcher] = on_command('学习', rule=with_command_start_or_to_me, force_whitespace=True, priority=5)
 forget: type[Matcher] = on_command('忘记', aliases={'删除'}, rule=with_command_start_or_to_me, priority=5)
 forget_all: type[Matcher] = on_command('忘记全部', rule=with_command_start_or_to_me, priority=5)
 query: type[Matcher] = on_command('查询', rule=with_command_start_or_to_me, priority=5)
 query_all: type[Matcher] = on_command('查询全部', rule=with_command_start_or_to_me, priority=5)
-reply: type[Matcher] = on_message(block=False, rule=is_group_message, priority=15)
+reply: type[Matcher] = on_message(block=False, priority=15)
 
 
 driver: Driver = get_driver()
 
 
 @driver.on_bot_connect
-# bot连接成功时运行
 async def on_bot_connect_func(bot: Bot) -> None:
+    '''bot连接成功时运行，获取群自动回复列表'''
     group_list: list[dict] = await bot.get_group_list()
     for group_dict in group_list:
         await autoreply.load_from_file(group_dict['group_id'])
@@ -174,7 +173,7 @@ async def query_func(bot: Bot, event: Event, message: Message = CommandArg()) ->
 
 
 @query_all.handle()
-async def query_all_func(bot: Bot, event: Event, message: Message = CommandArg()) -> None:
+async def query_all_func(bot: Bot, event: Event) -> None:
     if not isinstance(event, GroupMessageEvent):
         await query.finish(not_group_text)
 
