@@ -1,14 +1,19 @@
 from nonebot import on_notice
 from nonebot.adapters.onebot.v11 import Message, Bot, MessageSegment, PokeNotifyEvent
 from typing import NoReturn
+# from nonebot.rule import Rule
 
 
-async def _poke(bot: Bot, event: PokeNotifyEvent) -> bool:
-    return event.target_id == int(bot.self_id)
+# @Rule
+# async def poke_rule(bot: Bot, event: PokeNotifyEvent) -> bool:
+#     return event.target_id == int(bot.self_id)
 
-poke = on_notice(rule=_poke, priority=10, block=True)
+poke = on_notice(priority=10, block=False)
 
 
 @poke.handle()
-async def poke_func(event: PokeNotifyEvent) -> NoReturn:
-    await poke.finish(Message([MessageSegment("poke", {"qq": f"{event.user_id}"})]))
+async def poke_func(bot: Bot, event: PokeNotifyEvent) -> NoReturn:
+    if event.target_id == int(bot.self_id):
+        await poke.finish(MessageSegment('poke', {'qq': event.user_id}))
+    else:
+        await poke.finish(MessageSegment('poke', {'qq': event.target_id}))

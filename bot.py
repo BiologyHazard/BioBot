@@ -1,9 +1,11 @@
 import nonebot
+from nonebot.log import logger, default_filter, default_format, logger_id
 from nonebot.adapters.onebot.v11 import Adapter as OneBotV11Adapter
 from nonebot.internal.driver import Driver
 
 
 def main() -> None:
+    logger.add('logs/bot_{time:YYYY-MM-DD}.log', level=0, format=default_format, filter=default_filter)
     nonebot.init()
 
     # app = nonebot.get_asgi()
