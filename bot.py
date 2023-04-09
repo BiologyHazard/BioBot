@@ -1,7 +1,7 @@
 import nonebot
-from nonebot.log import logger, default_filter, default_format, logger_id
 from nonebot.adapters.onebot.v11 import Adapter as OneBotV11Adapter
 from nonebot.internal.driver import Driver
+from nonebot.log import default_filter, default_format, logger
 
 
 def main() -> None:
@@ -40,8 +40,8 @@ def main() -> None:
     nonebot.load_plugin('nonebot_plugin_emojimix')
     nonebot.load_plugin('nonebot_plugin_abstract')
     nonebot.load_plugin('nonebot_plugin_makemidi')
+    nonebot.load_plugin('nonebot_plugin_wordcloud')
 
-    # nonebot.load_plugin('nonebot_plugin_wordcloud')
     # nonebot.load_plugin('nonebot_plugin_memes')
     # nonebot.load_plugin('nonebot_plugin_petpet')
     # nonebot.load_plugin('nonebot_plugin_txt2img')
