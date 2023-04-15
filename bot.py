@@ -32,16 +32,16 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.xxivgame')
     nonebot.load_plugin('src.plugins.homo')
     nonebot.load_plugin('src.plugins.mahjong')
+    nonebot.load_plugin('src.plugins.wordcloud')
 
-    # nonebot.load_plugin('src.plugins.wordcloud')
     # nonebot.load_plugins('src/plugins')]
 
     # nonebot.load_plugin('nonebot_plugin_help')
     nonebot.load_plugin('nonebot_plugin_emojimix')
     nonebot.load_plugin('nonebot_plugin_abstract')
     nonebot.load_plugin('nonebot_plugin_makemidi')
-    nonebot.load_plugin('nonebot_plugin_wordcloud')
 
+    # nonebot.load_plugin('nonebot_plugin_wordcloud')
     # nonebot.load_plugin('nonebot_plugin_memes')
     # nonebot.load_plugin('nonebot_plugin_petpet')
     # nonebot.load_plugin('nonebot_plugin_txt2img')

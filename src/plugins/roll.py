@@ -14,8 +14,6 @@ roll = on_command('roll')
 @roll.handle()
 async def roll_func(message: Message = CommandArg()) -> None:
     split_chars: list[str] = ['~', '-', ' ']
-    start: int
-    end: int
     try:
         for split_char in split_chars:
             if split_char in str(message).strip():
@@ -23,12 +21,13 @@ async def roll_func(message: Message = CommandArg()) -> None:
                 break
         else:
             start, end = 1, int(str(message).strip())
-        roll_res: int = random.randint(start, end)
-        await roll.send(f'roll {start}~{end}: {roll_res}')
     except Exception:
         await roll.send('使用方法：\n'
                         '1. roll <上限>\n'
                         '2. roll <下限>~<上限>')
+    else:
+        roll_res: int = random.randint(start, end)
+        await roll.send(f'roll {start}~{end}: {roll_res}')
 
 
 dice_regex: str = r'^(扔|投|骰).*?面?(骰|色)子'
@@ -43,7 +42,7 @@ dice = on_regex(dice_regex)
 async def dice_func(message: Message = EventMessage()) -> None:
     def find_end(message: Message) -> int:
         match: Match[str] | None = re.match(dice_regex, str(message).strip())
-        assert match
+        assert match is not None
         string: str = match.group()[1:-2]
         if string.endswith('面'):
             string = string[:-1]

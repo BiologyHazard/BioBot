@@ -14,6 +14,10 @@ class Operator(Enum):
     LEFT_BRACKET: Final = '('
     RIGHT_BRACKET: Final = ')'
 
+    @classmethod
+    def from_char(cls, char) -> 'Operator':
+        return CHAR_TO_OPERATOR[char]
+
     def __str__(self) -> str:
         return OPERATOR_CHARS[self]
 
@@ -120,7 +124,6 @@ class Expression:
         assert isinstance(self.__expr1, Expression) and isinstance(self.__op, Operator)
         str_expr0: str = str(self.__expr0)
         str_expr1: str = str(self.__expr1)
-        str_op: str = OPERATOR_CHARS[self.__op]
         if (self.__op in (MUL, DIV)) and (self.__expr0.__op in (ADD, SUB)):  # (x ± y) * z or (x ± y) / z
             str_expr0 = f'({str_expr0})'
         if (self.__op in (MUL, DIV)) and (self.__expr1.__op in (ADD, SUB)):  # x * (y ± z) or x / (y ± z)
@@ -129,7 +132,7 @@ class Expression:
             str_expr1 = f'({str_expr1})'
         if (self.__op == DIV) and (self.__expr1.__op in (MUL, DIV)):  # x / (y * z) or x / (y / z)
             str_expr1 = f'({str_expr1})'
-        return f'{str_expr0} {str_op} {str_expr1}'
+        return f'{str_expr0} {self.__op} {str_expr1}'
 
     @staticmethod
     def operator_fallbacks(operator: Callable) -> tuple[Callable, Callable]:
@@ -149,22 +152,22 @@ class Expression:
 
     @staticmethod
     def __add(a: 'Expression', b: 'Expression') -> 'Expression':
-        '''Expression(a, b, ADD)'''
+        '''`Expression(a, b, ADD)`'''
         return Expression(a, b, ADD)
 
     @staticmethod
     def __sub(a: 'Expression', b: 'Expression') -> 'Expression':
-        '''Expression(a, b, SUB)'''
+        '''`Expression(a, b, SUB)`'''
         return Expression(a, b, SUB)
 
     @staticmethod
     def __mul(a: 'Expression', b: 'Expression') -> 'Expression':
-        '''Expression(a, b, MUL)'''
+        '''`Expression(a, b, MUL)`'''
         return Expression(a, b, MUL)
 
     @staticmethod
     def __div(a: 'Expression', b: 'Expression') -> 'Expression':
-        '''Expression(a, b, DIV)'''
+        '''`Expression(a, b, DIV)`'''
         return Expression(a, b, DIV)
 
     @staticmethod
@@ -219,6 +222,7 @@ class Expression:
                 and self.__op == other.__op)
 
     def __bool__(self) -> bool:
+        '''`bool(self.value)`'''
         return bool(self.value)
 
 
@@ -237,63 +241,68 @@ class Infix(list[Fraction | Operator]):
             if pt < len(expr):
                 self.append(Fraction(expr[pt:]))
         else:
-            ...
+            super().__init__(x if isinstance(x, Operator) else Fraction(x) for x in expr)
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({super().__repr__()})'
 
     def __str__(self) -> str:
-        # l: list[str] = []
-        # for x in self:
-        #     if isinstance(x, Operator):
-        #         l.append(OPERATOR_CHARS)
         return ' '.join(str(x) for x in self)
 
     def to_suffix(self) -> 'Suffix':
         return Suffix(self)
 
 
-class Suffix(list[Fraction | Operator]):
-    '''有bug'''
+class Situation(Enum):
+    PUSH = 0
+    POP = 1
+    SKIP = 2
+    ERROR = 3
 
+
+PUSH = Situation.PUSH
+POP = Situation.POP
+SKIP = Situation.SKIP
+ERROR = Situation.ERROR
+
+
+class Suffix(list[Fraction | Operator]):
     def __init__(self, expr: str | Infix) -> None:
         if isinstance(expr, str):
             expr = Infix(expr)
         self.data: list[Fraction | Operator] = []
         self.load_from_infix(expr)
 
-    _should_push_to_stack_dict: dict[Operator, dict[Operator, bool]] = {
-        ADD:           {ADD: False, SUB: False, MUL: False, DIV: False, LEFT_BRACKET: True},
-        SUB:           {ADD: False, SUB: False, MUL: False, DIV: False, LEFT_BRACKET: True},
-        MUL:           {ADD: True,  SUB: True,  MUL: False, DIV: False, LEFT_BRACKET: True},
-        DIV:           {ADD: True,  SUB: True,  MUL: False, DIV: False, LEFT_BRACKET: True},
-        LEFT_BRACKET:  {ADD: True,  SUB: True,  MUL: True,  DIV: True,  LEFT_BRACKET: True},
-        RIGHT_BRACKET: {ADD: False, SUB: False, MUL: False, DIV: False, LEFT_BRACKET: False},
+    _situation_dict: dict[Operator | None, dict[Operator | None, Situation]] = {
+        ADD:           {ADD: POP,  SUB: POP,  MUL: POP,  DIV: POP,  LEFT_BRACKET: PUSH,  RIGHT_BRACKET: POP,   None: PUSH},
+        SUB:           {ADD: POP,  SUB: POP,  MUL: POP,  DIV: POP,  LEFT_BRACKET: PUSH,  RIGHT_BRACKET: POP,   None: PUSH},
+        MUL:           {ADD: PUSH, SUB: PUSH, MUL: POP,  DIV: POP,  LEFT_BRACKET: PUSH,  RIGHT_BRACKET: POP,   None: PUSH},
+        DIV:           {ADD: PUSH, SUB: PUSH, MUL: POP,  DIV: POP,  LEFT_BRACKET: PUSH,  RIGHT_BRACKET: POP,   None: PUSH},
+        LEFT_BRACKET:  {ADD: PUSH, SUB: PUSH, MUL: PUSH, DIV: PUSH, LEFT_BRACKET: PUSH,  RIGHT_BRACKET: ERROR, None: PUSH},
+        RIGHT_BRACKET: {ADD: POP,  SUB: POP,  MUL: POP,  DIV: POP,  LEFT_BRACKET: SKIP,  RIGHT_BRACKET: POP,   None: ERROR},
+        None:          {ADD: POP,  SUB: POP,  MUL: POP,  DIV: POP,  LEFT_BRACKET: ERROR, RIGHT_BRACKET: POP,   None: SKIP},
     }
 
-    @staticmethod
-    def should_push_to_stack(next_operator: Operator, stack_top_operator: Operator) -> bool:
-        '''`True`代表应该进栈'''
-        return Suffix._should_push_to_stack_dict[next_operator][stack_top_operator]
-
     def load_from_infix(self, infix: Infix) -> None:
-        stack: list[Operator] = []
-        for x in infix:
-            if not isinstance(x, Operator):  # 如果x是数
+        stack: list[Operator | None] = [None]
+        for x in infix + [None]:
+            if not isinstance(x, Operator) and x is not None:  # 如果x是数
                 self.append(x)
             else:
-                while stack and not Suffix.should_push_to_stack(x, stack[-1]):
-                    top_item: Operator = stack.pop()
-                    if top_item != LEFT_BRACKET:
-                        self.append(top_item)
-                if x != RIGHT_BRACKET:
+                while Suffix._situation_dict[x][stack[-1]] == POP:
+                    self.append(stack.pop())  # type: ignore
+                if (situation := Suffix._situation_dict[x][stack[-1]]) == PUSH:
                     stack.append(x)
-        if LEFT_BRACKET in stack:
-            raise ValueError('Brackets not paired.')
-        self.extend(reversed(stack))
+                elif situation == SKIP:
+                    stack.pop()
+                elif situation == ERROR:
+                    raise ValueError('Brackets Not Paired!')
+                else:
+                    raise ValueError
+            print(self, stack)
+        assert not stack
 
     def calculate(self) -> Fraction:
-        # result = 0
         stack: list[Fraction] = []
         for x in self:
             if not isinstance(x, Operator):
@@ -309,4 +318,4 @@ class Suffix(list[Fraction | Operator]):
 
 
 if __name__ == '__main__':
-    print(Suffix('11+((1+2)*(345/2345))'))
+    print(Suffix('1++2').calculate())

@@ -1,12 +1,14 @@
+from typing import NoReturn
+
 from nonebot import on_notice
 from nonebot.adapters.onebot.v11 import Bot, MessageSegment, PokeNotifyEvent
-from typing import NoReturn
 from nonebot.rule import Rule
 
 
 @Rule
 async def not_poked_by_self(event: PokeNotifyEvent) -> bool:
     return event.user_id != event.self_id
+
 
 poke = on_notice(rule=not_poked_by_self, priority=10, block=False)
 
