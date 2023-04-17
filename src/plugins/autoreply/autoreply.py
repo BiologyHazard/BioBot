@@ -154,7 +154,7 @@ async def query_all_reply(group_id: int) -> str:
         return '本群未设置自动回复！'
     else:
         return (f'本群的全部回复语（共{len(main_dict[group_id])}条）\n'
-                + '\n'.join(f'{i+1}. {trigger_message}'
+                + '\n'.join(f'{i+1}. {trigger_message}  # 共{len(main_dict[group_id][trigger_message])}条'
                             for i, trigger_message in enumerate(main_dict[group_id])))
 
 
