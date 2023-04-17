@@ -232,7 +232,7 @@ async def today_maimai_func(event: MessageEvent, message: Message = CommandArg()
             s += f'宜 {wm_list[i]}\n'
         elif wm_value[i] == 0:
             s += f'忌 {wm_list[i]}\n'
-    s += "千雪提醒您：打机时不要大力拍打或滑动哦\n今日推荐歌曲："
+    s += "Bio提醒您：打机时不要大力拍打或滑动哦\n今日推荐歌曲："
     music = total_list[hash_value % len(total_list)]
     await today_maimai.finish(Message([MessageSegment("text", {"text": s})] + song_txt(music)))
 
@@ -375,8 +375,8 @@ async def plate_process_func(bot: Bot, event: Event, message: Message = EventMes
             set(version for version in list(maimaidx_plate.plate_to_version.values())[:-5]))
     else:
         payload['version'] = [maimaidx_plate.plate_to_version[version_han]]
-    if not hasattr(mai, 'total_list'):
-        await mai.get_music()
+    # if not hasattr(mai, 'total_list'):
+    #     await mai.get_music()
     # logger.debug('\n'.join([repr(payload)]))
     data = await maimaidx_plate.player_plate_data(payload, match, nickname)
     await plate_process.send(data)

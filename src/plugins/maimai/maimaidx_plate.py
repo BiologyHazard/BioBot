@@ -134,7 +134,7 @@ async def player_plate_data(payload: dict, match: Match, nickname: Optional[str]
         music = total_list.by_id(str(song[0]))
         if music.ds[song[1]] > 13.6:
             song_remain_difficult.append(
-                [music.id, music.title, diffs[song[1]], music.ds[song[1]], music.stats[song[1]].difficulty, song[1]])
+                [music.id, music.title, diffs[song[1]], music.ds[song[1]], f'{music.stats[song[1]].fit_diff:.2f}', song[1]])
 
     appellation = nickname if nickname else '您'
 
@@ -170,12 +170,12 @@ Master剩余{len(song_remain_master)}首
                         if data['verlist'][record_index]['fs']:
                             self_record = syncRank[sync_rank.index(
                                 data['verlist'][record_index]['fs'])].upper()
+                # logger.info(repr(s))
                 msg += f'No.{i + 1} {s[0]}. {s[1]} {s[2]} {s[3]} {s[4]} {self_record}'.strip() + \
                     '\n'
             if len(song_remain_difficult) > 10:
                 msg = MessageSegment("image", {
                     "file": f"base64://{str(image_to_base64(text_to_image(msg.strip())), encoding='utf-8')}"})
-                # pass
         else:
             msg += f'还有{len(song_remain_difficult)}首大于13.6定数的曲目，加油推分哦！\n'
     elif len(song_remain) > 0:
@@ -201,7 +201,7 @@ Master剩余{len(song_remain_master)}首
                         if data['verlist'][record_index]['fs']:
                             self_record = syncRank[sync_rank.index(
                                 data['verlist'][record_index]['fs'])].upper()
-                msg += f'No.{i + 1} {m.id}. {m.title} {diffs[s[1]]} {m.ds[s[1]]} {m.stats[s[1]].difficulty} {self_record}'.strip(
+                msg += f'No.{i + 1} {m.id}. {m.title} {diffs[s[1]]} {m.ds[s[1]]} {m.stats[s[1]].fit_diff:.2f} {self_record}'.strip(
                 ) + '\n'
             if len(song_remain) > 10:
                 msg = MessageSegment("image", {

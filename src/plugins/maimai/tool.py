@@ -3,7 +3,7 @@ import hashlib
 
 
 def get_hash_value(id: int) -> int:
-    encryptor = hashlib.sha256(usedforsecurity=False)
+    encryptor = hashlib.sha256()
     encryptor.update(str(datetime.date.today()).encode())
-    encryptor.update(bytes(id))
+    encryptor.update(str(id).encode())
     return int.from_bytes(encryptor.digest())
