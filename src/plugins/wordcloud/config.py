@@ -35,9 +35,10 @@ class Config(BaseModel, extra=Extra.ignore):
     @root_validator(pre=True, allow_reuse=True)
     def set_default_values(cls, values):
         if not values.get("wordcloud_font_path"):
-            values["wordcloud_font_path"] = str(
-                Path(__file__).parent / "SourceHanSans.otf"
-            )
+            # values["wordcloud_font_path"] = str(
+            #     Path(__file__).parent / "SourceHanSans.otf"
+            # )
+            values["wordcloud_font_path"] = "data/wordcloud/fonts/SourceHanSans.otf"
 
         if wordcloud_default_schedule_time := values.get(
             "wordcloud_default_schedule_time"
