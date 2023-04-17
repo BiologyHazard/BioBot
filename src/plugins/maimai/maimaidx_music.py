@@ -1,4 +1,5 @@
 # import json
+from nonebot import get_driver
 import random
 import aiohttp
 import os
@@ -183,19 +184,21 @@ class MusicList(list[Music]):
         return new_list
 
 
-@retry(stop_max_attempt_number=3)
-async def get_music():
-    async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
-        assert obj.status == 200
-        data = await obj.json()
-    async with aiohttp.request("GET", 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
-        assert obj.status == 200
-        stats = await obj.json()
-    global total_list
-    total_list: MusicList = MusicList(data)
-    for i in range(len(total_list)):
-        total_list[i] = Music(total_list[i])
-        total_list[i]['stats'] = stats[total_list[i].id]
-        for j in range(len(total_list[i].charts)):
-            total_list[i].charts[j] = Chart(total_list[i].charts[j])
-            total_list[i].stats[j] = Stats(total_list[i].stats[j])
+# @retry(stop_max_attempt_number=3)
+# async def get_all_music():
+    # global total_list
+# async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
+with requests.get('https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
+    # assert obj.status == 200
+    data = obj.json()
+# async with aiohttp.request("GET", 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
+with requests.get('https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
+    # assert obj.status == 200
+    stats = obj.json()
+total_list: MusicList = MusicList(data)
+for i in range(len(total_list)):
+    total_list[i] = Music(total_list[i])
+    total_list[i]['stats'] = stats['charts'][total_list[i].id]
+    for j in range(len(total_list[i].charts)):
+        total_list[i].charts[j] = Chart(total_list[i].charts[j])
+        total_list[i].stats[j] = Stats(total_list[i].stats[j])

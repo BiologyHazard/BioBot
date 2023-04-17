@@ -16,15 +16,15 @@ from .maimai_best_50 import generate50
 from .maimaidx_music import Music, get_cover_len4_id, total_list
 from .tool import get_hash_value
 
-driver: Driver = get_driver()
+# driver: Driver = get_driver()
 
 
-@driver.on_startup
-async def get_music() -> None:
-    '''
-    bot启动时开始获取所有数据
-    '''
-    await mai.get_music()
+# @driver.on_startup
+# async def get_music() -> None:
+#     '''
+#     bot启动时开始获取所有数据
+#     '''
+#     await get_all_music()
 
 GLOBAL_PRIORITY: Final[int] = 3
 GLOBAL_BLOCK: Final[bool] = False
