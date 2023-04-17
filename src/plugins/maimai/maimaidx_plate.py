@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw
 from .image import *
 from .maimai_best_50 import diffs
 from .maimaidx_api_data import get_player_data
-from .maimaidx_music import MusicList, get_cover_len4_id, mai
+from .maimaidx_music import MusicList, get_cover_len4_id, total_list
 
 plate_to_version = {
     '初': 'maimai',
@@ -111,7 +111,7 @@ async def player_plate_data(payload: dict, match: Match, nickname: Optional[str]
             if match.group(1) == '舞' and song['level_index'] == 4 and song['fc'] not in ['ap', 'app']:
                 song_remain_re_master.append([song['id'], song['level_index']])
             song_played.append([song['id'], song['level_index']])
-    for music in mai.total_list:
+    for music in total_list:
         if music.version in payload['version']:
             if [int(music.id), 0] not in song_played:
                 song_remain_basic.append([int(music.id), 0])
@@ -131,7 +131,7 @@ async def player_plate_data(payload: dict, match: Match, nickname: Optional[str]
     song_remain_re_master = sorted(
         song_remain_re_master, key=lambda i: int(i[0]))
     for song in song_remain_basic + song_remain_advanced + song_remain_expert + song_remain_master + song_remain_re_master:
-        music = mai.total_list.by_id(str(song[0]))
+        music = total_list.by_id(str(song[0]))
         if music.ds[song[1]] > 13.6:
             song_remain_difficult.append(
                 [music.id, music.title, diffs[song[1]], music.ds[song[1]], music.stats[song[1]].difficulty, song[1]])
@@ -180,13 +180,13 @@ Master剩余{len(song_remain_master)}首
             msg += f'还有{len(song_remain_difficult)}首大于13.6定数的曲目，加油推分哦！\n'
     elif len(song_remain) > 0:
         for i, s in enumerate(song_remain):
-            m = mai.total_list.by_id(str(s[0]))
+            m = total_list.by_id(str(s[0]))
             ds = m.ds[s[1]]
             song_remain[i].append(ds)
         if len(song_remain) < 60:
             msg += '剩余曲目：\n'
             for i, s in enumerate(sorted(song_remain, key=lambda i: i[2])):
-                m = mai.total_list.by_id(str(s[0]))
+                m = total_list.by_id(str(s[0]))
                 self_record = ''
                 if [int(s[0]), s[-1]] in song_record:
                     record_index = song_record.index([int(s[0]), s[-1]])

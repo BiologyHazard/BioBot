@@ -11,7 +11,7 @@ import requests
 
 def get_cover_len4_id(mid) -> str:
     mid = int(mid)
-    if 10001 <= mid:
+    if mid > 10000:
         mid -= 10000
     return f'{mid:04d}'
 
@@ -58,7 +58,7 @@ def in_or_equal(checker: Any, elem: Optional[Union[Any, List[Any]]]):
         return checker == elem
 
 
-class Stats(Dict):
+class Stats(dict):
     count: Optional[int] = None
     avg: Optional[float] = None
     sss_count: Optional[int] = None
@@ -83,7 +83,7 @@ class Stats(Dict):
             return 'Unknown'
 
 
-class Chart(Dict):
+class Chart(dict):
     tap: Optional[int] = None
     slide: Optional[int] = None
     hold: Optional[int] = None
@@ -107,7 +107,7 @@ class Chart(Dict):
         return super().__getattribute__(item)
 
 
-class Music(Dict):
+class Music(dict):
     id: Optional[str] = None
     title: Optional[str] = None
     ds: Optional[List[float]] = None
@@ -132,7 +132,7 @@ class Music(Dict):
         return super().__getattribute__(item)
 
 
-class MusicList(List[Music]):
+class MusicList(list[Music]):
     def by_id(self, music_id: str) -> Optional[Music]:
         for music in self:
             if music.id == music_id:
@@ -183,32 +183,15 @@ class MusicList(List[Music]):
         return new_list
 
 
-obj = requests.get(
-    'https://www.diving-fish.com/api/maimaidxprober/music_data').json()
-total_list: MusicList = MusicList(obj)
-for __i in range(len(total_list)):
-    total_list[__i] = Music(total_list[__i])
-    for __j in range(len(total_list[__i].charts)):
-        total_list[__i].charts[__j] = Chart(total_list[__i].charts[__j])
-
-
 @retry(stop_max_attempt_number=3)
-# async def get_music_list() -> MusicList:
-async def get_music_list() -> MusicList:
-    """
-    获取所有数据
-    """
-    async with aiohttp.request("GET", 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj_data:
-        if obj_data.status != 200:
-            raise aiohttp.ClientResponseError('maimaiDX曲目数据获取失败，请检查网络环境')
-        else:
-            data = await obj_data.json()
-    async with aiohttp.request("GET", 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj_stats:
-        if obj_stats.status != 200:
-            raise aiohttp.ClientResponseError('maimaiDX数据获取错误，请检查网络环境')
-        else:
-            stats = await obj_stats.json()
-
+async def get_music():
+    async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
+        assert obj.status == 200
+        data = await obj.json()
+    async with aiohttp.request("GET", 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
+        assert obj.status == 200
+        stats = await obj.json()
+    global total_list
     total_list: MusicList = MusicList(data)
     for i in range(len(total_list)):
         total_list[i] = Music(total_list[i])
@@ -216,54 +199,3 @@ async def get_music_list() -> MusicList:
         for j in range(len(total_list[i].charts)):
             total_list[i].charts[j] = Chart(total_list[i].charts[j])
             total_list[i].stats[j] = Stats(total_list[i].stats[j])
-    return total_list
-
-
-class MaiMusic:
-
-    total_list: Optional[MusicList]
-
-    def __init__(self) -> None:
-        """
-        封装所有曲目信息以及猜歌数据，便于更新
-        """
-
-    async def get_music(self) -> None:
-        """
-        获取所有曲目数据
-        """
-        self.total_list = await get_music_list()
-
-    # def aliases(self):
-    #     """
-    #     初始化所有别名数据
-    #     """
-    #     self.music_aliases, self.music_aliases_reverse, self.music_aliases_lines = self.__music_aliases__()
-
-    # def __music_aliases__(self):
-    #     _music_aliases = defaultdict(list)
-    #     _music_aliases_reverse = defaultdict(list)
-    #     with open(os.path.join(static, 'aliases.csv'), 'r', encoding='utf-8') as f:
-    #         _music_aliases_lines = f.readlines()
-    #     for l in _music_aliases_lines:
-    #         arr = l.strip().split('\t')
-    #         for i in range(len(arr)):
-    #             if arr[i] != '':
-    #                 _music_aliases[arr[i].lower()].append(arr[0])
-    #                 _music_aliases_reverse[arr[0]].append(arr[i].lower())
-    #     return _music_aliases, _music_aliases_reverse, _music_aliases_lines
-
-    # def save_aliases(self, data: str):
-    #     with open(aliases_csv, 'w', encoding='utf-8') as f:
-    #         f.write(data)
-    #     self.aliases()
-
-    # def guess(self):
-    #     """
-    #     初始化猜歌数据
-    #     """
-    #     self.guess_data = list(
-    #         filter(lambda x: x['id'] in hot_music_ids, mai.total_list))
-
-
-mai = MaiMusic()
