@@ -2,12 +2,13 @@
 让Bot学习消息并自动回复 | Made by BioHazard
 '''
 
+from functools import partial
+
 from nonebot import get_driver, logger, on_command, on_message
 from nonebot.adapters.onebot.v11 import (GROUP_ADMIN, GROUP_OWNER, Bot, Event,
                                          GroupMessageEvent, Message,
                                          MessageEvent)
 from nonebot.drivers import Driver
-from nonebot.matcher import Matcher
 from nonebot.params import (CommandArg, CommandStart, EventMessage, EventToMe,
                             RawCommand)
 from nonebot.permission import SUPERUSER
@@ -62,13 +63,13 @@ async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me
 # @Rule
 # async def in_reply_dict(event: GroupMessageEvent, message: Message = EventMessage())->bool:
 
-
-learn: type[Matcher] = on_command('学习', rule=with_command_start_or_to_me, force_whitespace=True, priority=5)
-forget: type[Matcher] = on_command('忘记', aliases={'删除'}, rule=with_command_start_or_to_me, priority=5)
-forget_all: type[Matcher] = on_command('忘记全部', rule=with_command_start_or_to_me, priority=5)
-query: type[Matcher] = on_command('查询', rule=with_command_start_or_to_me, priority=5)
-query_all: type[Matcher] = on_command('查询全部', rule=with_command_start_or_to_me, priority=5)
-reply: type[Matcher] = on_message(block=False, priority=15)
+partial_on_command = partial(on_command, rule=with_command_start_or_to_me, force_whitespace=True, block=False, priority=5)
+learn = partial_on_command('学习')
+forget = partial_on_command('忘记', aliases={'删除'})
+forget_all = partial_on_command('忘记全部')
+query = partial_on_command('查询')
+query_all = partial_on_command('查询全部')
+reply = on_message(block=False, priority=15)
 
 
 driver: Driver = get_driver()

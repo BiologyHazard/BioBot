@@ -122,7 +122,7 @@ async def forget_autoreply(group_id: int,
     return ResultCode.FORGET_SUCCESS
 
 
-async def forget_all_autoreply(group_id, raw_trigger_message) -> tuple[ResultCode, int]:
+async def forget_all_autoreply(group_id: int, raw_trigger_message: str) -> tuple[ResultCode, int]:
     await load_from_file(group_id)
     trigger_message: str = _str_msg_proprecess(raw_trigger_message)
     if trigger_message not in main_dict[group_id]:
