@@ -4,11 +4,12 @@
 
 from functools import partial
 
-from nonebot import get_driver, logger, on_command, on_message
+from nonebot import MatcherGroup, get_driver, logger, on_command, on_message
 from nonebot.adapters.onebot.v11 import (GROUP_ADMIN, GROUP_OWNER, Bot, Event,
                                          GroupMessageEvent, Message,
                                          MessageEvent)
 from nonebot.drivers import Driver
+from nonebot.matcher import Matcher
 from nonebot.params import (CommandArg, CommandStart, EventMessage, EventToMe,
                             RawCommand)
 from nonebot.permission import SUPERUSER
@@ -60,16 +61,13 @@ async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me
     return bool(command_start) or to_me
 
 
-# @Rule
-# async def in_reply_dict(event: GroupMessageEvent, message: Message = EventMessage())->bool:
-
-partial_on_command = partial(on_command, rule=with_command_start_or_to_me, force_whitespace=True, block=False, priority=5)
-learn = partial_on_command('学习')
-forget = partial_on_command('忘记', aliases={'删除'})
-forget_all = partial_on_command('忘记全部')
-query = partial_on_command('查询')
-query_all = partial_on_command('查询全部')
-reply = on_message(block=False, priority=15)
+autoreply_command_group = MatcherGroup(rule=with_command_start_or_to_me, block=False, priority=5)
+learn: type[Matcher] = autoreply_command_group.on_command('学习', force_whitespace=True)
+forget: type[Matcher] = autoreply_command_group.on_command('忘记', {'删除'}, force_whitespace=True)
+forget_all: type[Matcher] = autoreply_command_group.on_command('忘记全部', force_whitespace=True)
+query: type[Matcher] = autoreply_command_group.on_command('查询', force_whitespace=True)
+query_all: type[Matcher] = autoreply_command_group.on_command('查询全部', force_whitespace=True)
+reply: type[Matcher] = on_message(block=False, priority=15)
 
 
 driver: Driver = get_driver()
@@ -84,7 +82,7 @@ async def on_bot_connect_func(bot: Bot) -> None:
 
 
 @learn.handle()
-async def learn_func(bot: Bot, event: Event, message: Message = CommandArg()):
+async def learn_func(event: Event, message: Message = CommandArg()) -> None:
     if not isinstance(event, GroupMessageEvent):
         await learn.finish(not_group_text)
 
