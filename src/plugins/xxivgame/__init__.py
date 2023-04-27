@@ -1,18 +1,18 @@
 from collections import defaultdict
 from typing import Final, NoReturn
 
-from nonebot import on_command, on_message
-from nonebot.adapters.onebot.v11 import (Bot, GroupMessageEvent, Message,
+from nonebot import MatcherGroup, on_message
+from nonebot.adapters.onebot.v11 import (GroupMessageEvent, Message,
                                          MessageEvent, PrivateMessageEvent)
 from nonebot.matcher import Matcher
-from nonebot.params import CommandArg, CommandStart, EventMessage, EventToMe
+from nonebot.params import CommandArg, CommandStart, EventPlainText, EventToMe
 from nonebot.rule import Rule
 
 from .expression import replace_dict
 from .xxivcalculator import Expression, XXIVSolver
 
 MAX_LENGTH: Final[int] = 64
-DEFAULT_SOLVABLE_PROBABILITY = 1.0
+DEFAULT_SOLVABLE_PROBABILITY: Final[float] = 1.0
 
 last_solution: dict[str, Expression | None] = dict()
 solvable_probability: defaultdict[str, float] = defaultdict(lambda: DEFAULT_SOLVABLE_PROBABILITY)
@@ -33,8 +33,7 @@ async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me
 
 
 @Rule
-async def is_valid_expression(raw_message: Message = EventMessage()) -> bool:
-    message: str = str(raw_message)
+async def is_valid_expression(message: str = EventPlainText()) -> bool:
     if len(message) > MAX_LENGTH:
         return False
 
@@ -44,7 +43,7 @@ async def is_valid_expression(raw_message: Message = EventMessage()) -> bool:
     if not all(char in '0123456789()+-*/' for char in message):
         return False
 
-    if message.find('**') != -1 or message.find('//') != -1:
+    if ('**' in message) or ('//' in message):
         # 如果有**或//，则忽略
         return False
 
@@ -54,16 +53,18 @@ async def is_valid_expression(raw_message: Message = EventMessage()) -> bool:
 
     return True
 
-start_game: type[Matcher] = on_command('24点', rule=with_command_start_or_to_me, priority=5)
-look_answer: type[Matcher] = on_command('查看答案', rule=with_command_start_or_to_me, priority=5)
-set_solvable_probability: type[Matcher] = on_command('有解概率', rule=with_command_start_or_to_me, priority=5)
+
+xxivgame_group = MatcherGroup(rule=with_command_start_or_to_me, priority=5)
+start_game: type[Matcher] = xxivgame_group.on_command('24点')
+look_answer: type[Matcher] = xxivgame_group.on_command('查看答案')
+set_solvable_probability: type[Matcher] = xxivgame_group.on_command('有解概率')
 check_answer: type[Matcher] = on_message(rule=is_valid_expression, priority=15)
 
 
 @start_game.handle()
 async def start_game_func(event: MessageEvent, message: Message = CommandArg()) -> NoReturn:
     try:
-        parameters: list[str] = str(message).split()
+        parameters: list[str] = message.extract_plain_text().split()
         if len(parameters) >= 3:
             target = int(parameters[0])
             nums: list[int] = [int(para) for para in parameters[1:]]
@@ -111,8 +112,7 @@ async def look_answer_func(event: MessageEvent) -> NoReturn:
 
 
 @check_answer.handle()
-async def check_answer_func(raw_message: Message = EventMessage()) -> None:
-    message: str = str(raw_message)
+async def check_answer_func(message: str = EventPlainText()) -> None:
     try:
         result: float = round(eval(message, {}, {}), 2)
     except SyntaxError:
@@ -125,7 +125,7 @@ async def check_answer_func(raw_message: Message = EventMessage()) -> None:
 
 
 @set_solvable_probability.handle()
-async def set_solvable_probability_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> NoReturn:
+async def set_solvable_probability_func(event: MessageEvent, message: Message = CommandArg()) -> NoReturn:
     try:
         probability: float = float(str(message).strip())
     except ValueError:
