@@ -62,11 +62,11 @@ async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me
 
 
 autoreply_command_group = MatcherGroup(rule=with_command_start_or_to_me, block=False, priority=5)
-learn: type[Matcher] = autoreply_command_group.on_command('学习', force_whitespace=True)
-forget: type[Matcher] = autoreply_command_group.on_command('忘记', {'删除'}, force_whitespace=True)
-forget_all: type[Matcher] = autoreply_command_group.on_command('忘记全部', force_whitespace=True)
-query: type[Matcher] = autoreply_command_group.on_command('查询', force_whitespace=True)
-query_all: type[Matcher] = autoreply_command_group.on_command('查询全部', force_whitespace=True)
+learn: type[Matcher] = autoreply_command_group.on_command('学习')
+forget: type[Matcher] = autoreply_command_group.on_command('忘记', {'删除'})
+forget_all: type[Matcher] = autoreply_command_group.on_command('忘记全部')
+query: type[Matcher] = autoreply_command_group.on_command('查询')
+query_all: type[Matcher] = autoreply_command_group.on_command('查询全部')
 reply: type[Matcher] = on_message(block=False, priority=15)
 
 
