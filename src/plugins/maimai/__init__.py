@@ -224,7 +224,7 @@ wm_list: list[str] = ['拼机', '推分', '越级', '下埋', '夜勤', '练底�
 async def today_maimai_func(event: MessageEvent, message: Message = CommandArg()):
     qq: int = event.user_id
     hash_value: int = get_hash_value(qq)
-    luck: int = hash_value % 100
+    luck: int = hash_value % 101
     wm_value: list[int] = [(hash_value >> (i*2)) & 3 for i in range(len(wm_list))]
     s = f"今日人品值：{luck}\n"
     for i in range(len(wm_list)):
