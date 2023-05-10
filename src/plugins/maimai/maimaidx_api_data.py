@@ -1,6 +1,4 @@
-from typing import Union
 import aiohttp
-# import traceback
 
 
 player_error = '''未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。
@@ -8,7 +6,7 @@ player_error = '''未找到此玩家，请确保此玩家的用户名和查分�
 https://www.diving-fish.com/maimaidx/prober/'''
 
 
-async def get_player_data(project: str, payload: dict) -> Union[dict, str]:
+async def get_player_data(project: str, payload: dict) -> dict | str:
     """
     获取用户数据，获取失败时返回字符串
     - `project` : 项目
@@ -38,7 +36,7 @@ async def get_player_data(project: str, payload: dict) -> Union[dict, str]:
     return data
 
 
-async def get_rating_ranking_data() -> Union[dict, str]:
+async def get_rating_ranking_data() -> dict | str:
     """
     获取排名，获取失败时返回字符串
     """

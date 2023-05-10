@@ -6,7 +6,7 @@ from PIL.Image import Image as PILImage
 from PIL.ImageDraw import ImageDraw as PILImageDraw
 from PIL.ImageFont import FreeTypeFont
 
-fontpath = "data/maimai/msyh.ttc"
+fontpath = "data/maimai/fonts/SourceHanSans.otf"
 
 
 def draw_text(img_pil, text, offset_x) -> None:

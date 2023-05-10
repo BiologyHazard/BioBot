@@ -5,7 +5,7 @@ from typing import Literal
 
 import aiohttp
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-from .maimaidx_music import get_cover_len4_id, total_list
+from .maimai_music import get_cover_len4_id, Mai
 
 
 scoreRank = 'D C B BB BBB A AA AAA S S+ SS SS+ SSS SSS+'.split(' ')
@@ -44,7 +44,7 @@ class ChartInfo(object):
         fc = ['', 'fc', 'fcp', 'ap', 'app']
         fi = fc.index(data["fc"])
         return cls(
-            idNum=total_list.by_title(data["title"]).id,
+            idNum=Mai.music_list.by_title(data["title"]).id,
             title=data["title"],
             diff=data["level_index"],
             ra=data["ra"],
