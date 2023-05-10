@@ -1,8 +1,7 @@
 import re
-from functools import partial
-from typing import Any, Final
+from typing import Any
 
-from nonebot import get_driver, logger, on_command, on_regex
+from nonebot import MatcherGroup, get_driver, logger
 from nonebot.adapters.onebot.v11 import (Bot, Event, Message, MessageEvent,
                                          MessageSegment)
 from nonebot.drivers import Driver
@@ -10,67 +9,67 @@ from nonebot.params import CommandArg, EventMessage, RegexGroup
 from nonebot.typing import T_State
 
 from . import maimaidx_plate
-from .image import image_to_base64, text_to_image
+from .image import image_to_base64, text_to_image, text_to_image_base64_str
 from .maimai_best_40 import generate
 from .maimai_best_50 import generate50
-from .maimaidx_music import Music, get_cover_len4_id, total_list
-from .tool import get_hash_value
+from .maimaidx_music import (Music, MusicList, aliases_dict, get_aliases,
+                             get_cover_len4_id, get_music, total_list)
+from .utils import get_hash_value
 
-# driver: Driver = get_driver()
+driver: Driver = get_driver()
 
 
-# @driver.on_startup
-# async def get_music() -> None:
-#     '''
-#     bot启动时开始获取所有数据
-#     '''
-#     await get_all_music()
+@driver.on_startup
+async def on_startup_func() -> None:
+    '''
+    bot启动时开始获取所有数据
+    '''
+    await get_music()
+    await get_aliases()
 
-GLOBAL_PRIORITY: Final[int] = 3
-GLOBAL_BLOCK: Final[bool] = False
-on_command = partial(on_command, priority=GLOBAL_PRIORITY, block=GLOBAL_BLOCK)
-on_regex = partial(on_regex, priority=GLOBAL_PRIORITY, block=GLOBAL_BLOCK)
-help = on_command('help maimai')
-search_music_by_inner = on_command('定数查歌')
-today_maimai = on_command('今日舞萌', aliases={'今日mai'})
-spec_rand = on_regex(r"^随个(?:dx|sd|标准)?[绿黄红紫白]?[0-9]+\+?")
-maimai_what = on_regex(r".*maimai.*什么")
-query_chart = on_regex(r"^([绿黄红紫白]?)id([0-9]+)")
-search_music = on_regex(r"^查歌.+")
-query_score = on_command('分数线')
-best_40_pic = on_command('b40')
-best_50_pic = on_command('b50')
-query_music_name_by_alias = on_regex(r'.*是什么歌')
-add_alias = on_command('添加别名')
-delete_alias = on_command('删除别名')
+maimai_command_group = MatcherGroup(priority=3, block=False)
+help = maimai_command_group.on_command('help maimai')
+today_maimai = maimai_command_group.on_command('今日舞萌', aliases={'今日mai', 'jrwm'})
+search_music_by_inner = maimai_command_group.on_command('定数查歌')
+spec_rand = maimai_command_group.on_regex(r"(?i)随个(dx|sd|标准)?(绿|黄|红|紫|白)?([0-9]+\+?)")
+maimai_what = maimai_command_group.on_regex(r"(?i).*maimai.*什么")
+query_chart = maimai_command_group.on_regex(r"^([绿黄红紫白]?)id([0-9]+)")
+search_music = maimai_command_group.on_command('查歌')
+query_score = maimai_command_group.on_command('分数线')
+best_40_pic = maimai_command_group.on_command('b40')
+best_50_pic = maimai_command_group.on_command('b50')
+query_music_by_alias = maimai_command_group.on_regex(r'(.*)是什么歌')
+add_alias = maimai_command_group.on_command('添加别名')
+delete_alias = maimai_command_group.on_command('删除别名')
 plate_process_regex = r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽舞霸])([極极将舞神者]舞?)进度\s?(.+)?'
-plate_process = on_regex(plate_process_regex)
+plate_process = maimai_command_group.on_regex(plate_process_regex)
+
+help_str: str = '''
+可用命令如下：
+今日舞萌  # 查看今天的舞萌运势
+(b40|b50)[@某人|qq号|水鱼网昵称]  # 查询自己或别人的b40/b50
+[...]maimai[...]什么  # 随机一首歌
+随个[dx|标准][绿|黄|红|紫|白]<难度>  # 随机一首指定条件的乐曲
+查歌<乐曲标题的一部分>  # 查询符合条件的乐曲
+[绿|黄|红|紫|白]id<乐曲编号>  # 查询乐曲信息或谱面信息
+<乐曲别名>是什么歌  # 查询乐曲别名对应的乐曲
+(添加|删除)别名 <乐曲id> <乐曲别名>  # 添加/删除乐曲别名
+定数查歌 <定数>  # 查询定数对应的乐曲
+定数查歌 <定数下限> <定数上限>
+分数线 <难度+歌曲id> <分数线>  # 详情请输入“分数线 帮助”查看
+'''.strip()
 
 
 @help.handle()
 async def help_func() -> None:
-    help_str: str = '''
-可用命令如下：
-今日舞萌 #查看今天的舞萌运势
-(b40|b50) #查询b40/b50
-XXXmaimaiXXX什么 #随机一首歌
-随个[dx/标准][绿黄红紫白]<难度> #随机一首指定条件的乐曲
-查歌<乐曲标题的一部分> #查询符合条件的乐曲
-[绿黄红紫白]id<歌曲编号> #查询乐曲信息或谱面信息
-<歌曲别名>是什么歌 #查询乐曲别名对应的乐曲
-(添加|删除)别名 <歌曲id> <歌曲别名> #添加/删除歌曲别名
-定数查歌 <定数>  #查询定数对应的乐曲
-定数查歌 <定数下限> <定数上限>
-分数线 <难度+歌曲id> <分数线> #详情请输入“分数线 帮助”查看
-'''.strip()
-    await help.send(MessageSegment.image(f"base64://{str(image_to_base64(text_to_image(help_str)), encoding='utf-8')}"))
+    await help.finish(MessageSegment.image(text_to_image_base64_str(help_str)))
 
 
-def song_txt(music: Music):
+def song_txt(music: Music) -> Message:
     return Message([
-        MessageSegment("text", {"text": f"{music.id}. {music.title}\n"}),
-        MessageSegment("image", {"file": f"https://www.diving-fish.com/covers/{get_cover_len4_id(music.id)}.png"}),
-        MessageSegment("text", {"text": f"\n{'/'.join(music.level)}"})
+        MessageSegment.text(f"{music.id}. {music.title}\n"),
+        MessageSegment.image(f"https://www.diving-fish.com/covers/{get_cover_len4_id(music.id)}.png"),
+        MessageSegment.text(f"\n{'/'.join(music.level)}")
     ])
 
 
@@ -106,57 +105,53 @@ async def search_music_by_inner_func(event: Event, message: Message = CommandArg
 
 
 @spec_rand.handle()
-async def _(event: Event, message: Message = EventMessage()):
+async def _(event: MessageEvent, message: Message = EventMessage(), group: tuple = RegexGroup()):
     level_labels = ['绿', '黄', '红', '紫', '白']
     regex = "随个((?:dx|sd|标准))?([绿黄红紫白]?)([0-9]+\+?)"
     res = re.match(regex, str(message).lower())
     try:
-        if res.groups()[0] == "dx":
-            tp = ["DX"]
-        elif res.groups()[0] == "sd" or res.groups()[0] == "标准":
-            tp = ["SD"]
+        tp: str | None = None
+        if group[0] is not None:
+            if group[0].lower() == "dx":
+                tp = "DX"
+            elif group[0].lower() == "sd" or group[0] == "标准":
+                tp = "SD"
+        level = group[2]
+        if group[1] is None:
+            diff = None
         else:
-            tp = ["SD", "DX"]
-        level = res.groups()[2]
-        if res.groups()[1] == "":
-            music_data = total_list.filter(level=level, type=tp)
-        else:
-            music_data = total_list.filter(
-                level=level, diff=['绿黄红紫白'.index(res.groups()[1])], type=tp)
+            diff = ['绿黄红紫白'.index(group[1])]
+        music_data: MusicList = total_list.filter(level=level, diff=diff, type=tp)
         if len(music_data) == 0:
             rand_result = "没有这样的乐曲哦。"
         else:
             rand_result = song_txt(music_data.random())
         await spec_rand.send(rand_result)
     except Exception as e:
-        print(e)
+        logger.error(e)
         await spec_rand.finish("随机命令错误，请检查语法")
 
 
 @maimai_what.handle()
-async def maimai_what_func():
+async def maimai_what_func() -> None:
     await maimai_what.finish(song_txt(total_list.random()))
 
 
 @search_music.handle()
-async def search_music_func(event: Event, message: Message = EventMessage()):
-    regex = "查歌(.+)"
-    name = re.match(regex, str(message)).groups()[0].strip()
-    if name == "":
-        return
-    res = total_list.filter(title_search=name)
+async def search_music_func(event: Event, message: Message = CommandArg()):
+    name = str(message)
+    if not name:
+        await search_music.finish('请输入要查询的歌曲。')
+    res: MusicList = total_list.filter(title_search=name)
     if len(res) == 0:
         await search_music.send("没有找到这样的乐曲。")
     elif len(res) < 50:
         search_result = ""
         for music in sorted(res, key=lambda i: int(i['id'])):
             search_result += f"{music['id']}. {music['title']}\n"
-        await search_music.finish(Message([
-            MessageSegment("text", {
-                "text": search_result.strip()
-            })]))
+        await search_music.finish(search_result.strip())
     else:
-        await search_music.send(f"结果过多（{len(res)} 条），请缩小查询范围。")
+        await search_music.send(f"结果过多（{len(res)}条），请缩小查询范围。")
 
 
 @query_chart.handle()
@@ -288,7 +283,7 @@ BREAK 50落(一共{brk}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT
 
 
 @best_40_pic.handle()
-async def _(event: Event, message: Message = CommandArg()):
+async def best_40_pic_func(event: Event, message: Message = CommandArg()):
     username: str = str(message).strip()
     if username == '':
         payload: dict[str, str] = {'qq': str(event.get_user_id())}
@@ -313,7 +308,7 @@ async def _(event: Event, message: Message = CommandArg()):
 
 
 @best_50_pic.handle()
-async def _(event: Event, message: Message = CommandArg()):
+async def best_50_pic_func(event: Event, message: Message = CommandArg()):
     username: str = str(message).strip()
     if username == '':
         payload: dict[str, str] = {'qq': str(event.get_user_id())}
@@ -330,15 +325,13 @@ async def _(event: Event, message: Message = CommandArg()):
     elif success == 403:
         await best_50_pic.send("该用户禁止了其他人获取数据。")
     else:
-        await best_50_pic.send(Message([
-            MessageSegment("image", {
-                "file": f"base64://{str(image_to_base64(img), encoding='utf-8')}"
-            })
-        ]))
+        await best_50_pic.send(MessageSegment.image(f"base64://{str(image_to_base64(img), encoding='utf-8')}"))
 
 
-@query_music_name_by_alias.handle()
-async def query_music_name_by_alias_func(message: Message = EventMessage(), group: tuple[str] = RegexGroup()):
+@query_music_by_alias.handle()
+async def query_music_by_alias_func(message: Message = EventMessage(), group: tuple[str] = RegexGroup()):
+    (query_alias,) = group
+    aliases_dict.by_alias(query_alias)
     ...
 
 

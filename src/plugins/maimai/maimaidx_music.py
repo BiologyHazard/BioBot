@@ -1,13 +1,11 @@
-# import json
-from nonebot import get_driver
+import json
 import random
-import aiohttp
-import os
-from typing import Dict, List, Optional, Union, Tuple, Any
 from copy import deepcopy
+from typing import Any
+
+import aiofiles
+import aiohttp
 from retrying import retry
-from collections import defaultdict
-import requests
 
 
 def get_cover_len4_id(mid) -> str:
@@ -17,21 +15,21 @@ def get_cover_len4_id(mid) -> str:
     return f'{mid:04d}'
 
 
-def cross(checker: List[Any], elem: Optional[Union[Any, List[Any]]], diff):
+def cross(checker: list[Any], elem: Any | list[Any] | None, diff):
     ret = False
     diff_ret = []
-    if not elem or elem is Ellipsis:
+    if not elem or elem is None:
         return True, diff
-    if isinstance(elem, List):
-        for _j in (range(len(checker)) if diff is Ellipsis else diff):
+    if isinstance(elem, list):
+        for _j in (range(len(checker)) if diff is None else diff):
             if _j >= len(checker):
                 continue
             __e = checker[_j]
             if __e in elem:
                 diff_ret.append(_j)
                 ret = True
-    elif isinstance(elem, Tuple):
-        for _j in (range(len(checker)) if diff is Ellipsis else diff):
+    elif isinstance(elem, tuple):
+        for _j in (range(len(checker)) if diff is None else diff):
             if _j >= len(checker):
                 continue
             __e = checker[_j]
@@ -39,7 +37,7 @@ def cross(checker: List[Any], elem: Optional[Union[Any, List[Any]]], diff):
                 diff_ret.append(_j)
                 ret = True
     else:
-        for _j in (range(len(checker)) if diff is Ellipsis else diff):
+        for _j in (range(len(checker)) if diff is None else diff):
             if _j >= len(checker):
                 continue
             __e = checker[_j]
@@ -48,36 +46,30 @@ def cross(checker: List[Any], elem: Optional[Union[Any, List[Any]]], diff):
     return ret, diff_ret
 
 
-def in_or_equal(checker: Any, elem: Optional[Union[Any, List[Any]]]):
-    if elem is Ellipsis:
+def in_or_equal(checker: Any, elem: Any | list[Any] | None):
+    if elem is None:
         return True
-    if isinstance(elem, List):
+    if isinstance(elem, list):
         return checker in elem
-    elif isinstance(elem, Tuple):
+    elif isinstance(elem, tuple):
         return elem[0] <= checker <= elem[1]
     else:
         return checker == elem
 
 
 class Stats(dict):
-    count: Optional[int] = None
-    avg: Optional[float] = None
-    sss_count: Optional[int] = None
-    difficulty: Optional[str] = None
-    rank: Optional[int] = None
-    total: Optional[int] = None
+    cnt: int
+    diff: str
+    fit_diff: float
+    avg: float
+    avg_dx: float
+    std_dev: float
+    dist: list[int]
+    fc_dist: list[int]
 
     def __getattribute__(self, item):
         try:
-            if item == 'sss_count':
-                return self['sssp_count']
-            elif item == 'rank':
-                return self['v'] + 1
-            elif item == 'total':
-                return self['t']
-            elif item == 'difficulty':
-                return self['tag']
-            elif item in self:
+            if item in self:
                 return self[item]
             return super().__getattribute__(item)
         except KeyError:
@@ -85,12 +77,12 @@ class Stats(dict):
 
 
 class Chart(dict):
-    tap: Optional[int] = None
-    slide: Optional[int] = None
-    hold: Optional[int] = None
-    touch: Optional[int] = None
-    brk: Optional[int] = None
-    charter: Optional[int] = None
+    tap: int
+    slide: int
+    hold: int
+    touch: int
+    brk: int
+    charter: str
 
     def __getattribute__(self, item):
         if item == 'tap':
@@ -109,19 +101,20 @@ class Chart(dict):
 
 
 class Music(dict):
-    id: Optional[str] = None
-    title: Optional[str] = None
-    ds: Optional[List[float]] = None
-    level: Optional[List[str]] = None
-    genre: Optional[str] = None
-    type: Optional[str] = None
-    bpm: Optional[float] = None
-    version: Optional[str] = None
-    charts: Optional[Chart] = None
-    release_date: Optional[str] = None
-    artist: Optional[str] = None
+    id: str
+    title: str
+    type: str
+    ds: list[float]
+    level: list[str]
+    artist: str
+    genre: str
+    bpm: float
+    release_date: str
+    version: str
+    charts: Chart
+    stats: Stats
 
-    diff: List[int] = []
+    diff: list[int] = []
 
     def __getattribute__(self, item):
         if item in {'genre', 'artist', 'release_date', 'bpm', 'version'}:
@@ -134,37 +127,35 @@ class Music(dict):
 
 
 class MusicList(list[Music]):
-    def by_id(self, music_id: str) -> Optional[Music]:
+    def by_id(self, music_id: str) -> Music | None:
         for music in self:
             if music.id == music_id:
                 return music
         return None
 
-    def by_title(self, music_title: str) -> Optional[Music]:
+    def by_title(self, music_title: str) -> Music | None:
         for music in self:
             if music.title == music_title:
                 return music
         return None
 
-    def random(self):
+    def random(self) -> Music:
         return random.choice(self)
 
     def filter(self,
                *,
-               level: Optional[Union[str, List[str]]] = ...,
-               ds: Optional[Union[float, List[float],
-                                  Tuple[float, float]]] = ...,
-               title_search: Optional[str] = ...,
-               genre: Optional[Union[str, List[str]]] = ...,
-               bpm: Optional[Union[float, List[float],
-                                   Tuple[float, float]]] = ...,
-               type: Optional[Union[str, List[str]]] = ...,
-               diff: List[int] = ...,
-               ):
+               level: str | list[str] | None = None,
+               ds: float | list[float] | tuple[float, float] | None = None,
+               title_search: str | None = None,
+               genre: str | list[str] | None = None,
+               bpm: float | list[float] | tuple[float, float] | None = None,
+               type: str | list[str] | None = None,
+               diff: list[int] | None = None,
+               ) -> "MusicList":
         new_list = MusicList()
         for music in self:
-            diff2 = diff
-            music = deepcopy(music)
+            diff2: list[int] | None = diff
+            music: Music = deepcopy(music)
             ret, diff2 = cross(music.level, level, diff2)
             if not ret:
                 continue
@@ -177,28 +168,65 @@ class MusicList(list[Music]):
                 continue
             if not in_or_equal(music.bpm, bpm):
                 continue
-            if title_search is not Ellipsis and title_search.lower() not in music.title.lower():
+            if title_search is not None and title_search.lower() not in music.title.lower():
                 continue
             music.diff = diff2
             new_list.append(music)
         return new_list
 
 
-# @retry(stop_max_attempt_number=3)
-# async def get_all_music():
-    # global total_list
-# async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
-with requests.get('https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
-    # assert obj.status == 200
-    data = obj.json()
-# async with aiohttp.request("GET", 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
-with requests.get('https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
-    # assert obj.status == 200
-    stats = obj.json()
-total_list: MusicList = MusicList(data)
-for i in range(len(total_list)):
-    total_list[i] = Music(total_list[i])
-    total_list[i]['stats'] = stats['charts'][total_list[i].id]
-    for j in range(len(total_list[i].charts)):
-        total_list[i].charts[j] = Chart(total_list[i].charts[j])
-        total_list[i].stats[j] = Stats(total_list[i].stats[j])
+class Aliases(dict[str, Any]):
+
+    id: int
+    title: str
+    aliases: dict[str, dict]
+
+    def __getattribute__(self, item: str) -> Any:
+        if item in self:
+            return self[item]
+        return super().__getattribute__(item)
+
+
+class AliasList(dict[str, Aliases]):
+    def __init__(self) -> None:
+        super().__init__()
+        for k, v in self.items():
+            self[k] = Aliases(v)
+
+    def by_id(self, id: int): ...
+
+    def by_alias(self, query_alias: str) -> 'AliasList':
+        result = AliasList()
+        for id, aliases in self.items():
+            for alias in aliases.aliases:
+                if alias.lower() == query_alias.lower():
+                    result[id] = aliases
+        return result
+
+
+total_list = None
+aliases_dict = None
+
+
+@retry(stop_max_attempt_number=3)
+async def get_music() -> None:
+    global total_list
+    async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
+        assert obj.status == 200
+        music_data = await obj.json()
+    async with aiohttp.request("GET", 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
+        assert obj.status == 200
+        chart_stats = await obj.json()
+    total_list = MusicList(music_data)
+    for i in range(len(total_list)):
+        total_list[i] = Music(total_list[i])
+        total_list[i]['stats'] = chart_stats['charts'][total_list[i].id]
+        for j in range(len(total_list[i].charts)):
+            total_list[i].charts[j] = Chart(total_list[i].charts[j])
+            total_list[i].stats[j] = Stats(total_list[i].stats[j])
+
+
+async def get_aliases() -> None:
+    global aliases_dict
+    async with aiofiles.open('data/maimai/aliases.json', 'r', encoding='utf-8') as fp:
+        aliases_dict = AliasList(json.loads(await fp.read()))

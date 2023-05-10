@@ -1,8 +1,7 @@
 # Author: xyb, Diving_Fish
-import asyncio
 import os
 import math
-from typing import Optional, Dict, List
+from typing import Literal
 
 import aiohttp
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -439,7 +438,7 @@ def computeRa(ds: float, achievement: float) -> int:
     return math.floor(ds * (min(100.5, achievement) / 100) * baseRa)
 
 
-async def generate(payload: Dict):  # -> (Optional[Image.Image], bool):
+async def generate(payload: dict) -> tuple[None, Literal[400]] | tuple[None, Literal[403]] | tuple[Image.Image, Literal[0]]:
     async with aiohttp.request("POST", "https://www.diving-fish.com/api/maimaidxprober/query/player", json=payload) as resp:
         if resp.status == 400:
             return None, 400
@@ -448,8 +447,8 @@ async def generate(payload: Dict):  # -> (Optional[Image.Image], bool):
         sd_best = BestList(25)
         dx_best = BestList(15)
         obj = await resp.json()
-        dx: List[Dict] = obj["charts"]["dx"]
-        sd: List[Dict] = obj["charts"]["sd"]
+        dx: list[dict] = obj["charts"]["dx"]
+        sd: list[dict] = obj["charts"]["sd"]
         for c in sd:
             sd_best.push(ChartInfo.from_json(c))
         for c in dx:
