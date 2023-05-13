@@ -160,7 +160,7 @@ class MusicList(list[Music]):
                title_search: str | None = None,
                genre: str | list[str] | None = None,
                bpm: float | list[float] | tuple[float, float] | None = None,
-               type: str | list[str] | None = None,
+               type_: str | list[str] | None = None,
                diff: list[int] | None = None,
                ) -> "MusicList":
         new_list = MusicList()
@@ -175,7 +175,7 @@ class MusicList(list[Music]):
                 continue
             if not in_or_equal(music.genre, genre):
                 continue
-            if not in_or_equal(music.type, type):
+            if not in_or_equal(music.type, type_):
                 continue
             if not in_or_equal(music.bpm, bpm):
                 continue
@@ -190,7 +190,7 @@ class Mai:
     # music_list: MusicList
 
     @classmethod
-    @retry(stop_max_attempt_number=3)
+    # @retry(stop_max_attempt_number=3)
     async def get_music(cls) -> None:
         async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
             assert obj.status == 200
@@ -198,6 +198,11 @@ class Mai:
         async with aiohttp.request("GET", 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
             assert obj.status == 200
             chart_stats = await obj.json()
+        # import requests
+        # with requests.get('https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
+        #     music_data = obj.json()
+        # with requests.get('https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
+        #     chart_stats = obj.json()
         cls.music_list = MusicList(music_data)
         for i in range(len(cls.music_list)):
             cls.music_list[i] = Music(cls.music_list[i])

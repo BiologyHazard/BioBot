@@ -51,12 +51,6 @@ query_no_permission_text: str = f'只有管理员可以查询回复语！'
 
 
 @Rule
-async def is_valid_command(event: MessageEvent, raw_command: str = RawCommand()) -> bool:
-    command_arg: str = event.get_plaintext()[len(raw_command):]
-    return (not command_arg) or (command_arg != command_arg.lstrip())
-
-
-@Rule
 async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
     return bool(command_start) or to_me
 
