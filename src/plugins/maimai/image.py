@@ -1,6 +1,7 @@
 import base64
 from io import BytesIO
 
+import aiohttp
 from PIL import Image, ImageDraw, ImageFont
 from PIL.Image import Image as PILImage
 from PIL.ImageDraw import ImageDraw as PILImageDraw
@@ -53,3 +54,15 @@ def image_to_base64(img: PILImage, format='PNG') -> bytes:
 
 def text_to_image_base64_str(text: str) -> str:
     return 'base64://' + str(image_to_base64(text_to_image(text)), encoding='utf-8')
+
+
+def image_to_bytesio(img: PILImage, format_='PNG') -> BytesIO:
+    bytesio = BytesIO()
+    img.save(bytesio, format_)
+    bytesio.seek(0)
+    return bytesio
+
+
+async def get_user_logo(qq: int) -> PILImage:
+    async with aiohttp.request('GET', f'http://q1.qlogo.cn/g?b=qq&nk={qq}&s=100') as resp:
+        return Image.open(BytesIO(await resp.read()))

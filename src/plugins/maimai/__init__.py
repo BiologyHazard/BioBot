@@ -11,11 +11,11 @@ from nonebot.permission import SUPERUSER
 from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER
 from nonebot.drivers import Driver
 from nonebot.params import CommandArg, EventMessage, RegexGroup
+from nonebot.matcher import Matcher
 
 from . import maimaidx_plate
-from .image import image_to_base64, text_to_image, text_to_image_base64_str
-from .maimai_best_40 import generate
-from .maimai_best_50 import generate50
+from .image import text_to_image_base64_str, image_to_bytesio
+from .best_pic import generate
 from .maimai_consts import DIFFICULTY_NAME
 from .maimai_music import Chart, Mai, Music, MusicList, get_cover_len4_id
 from .utils import get_hash_value, strftime
@@ -42,8 +42,8 @@ spec_rand = maimai_command_group.on_regex(
 maimai_what = maimai_command_group.on_regex(r"maimai.*什么", flags=re.RegexFlag.IGNORECASE)
 query_chart = maimai_command_group.on_regex(r"^(绿|黄|红|紫|白)?\s*id\s*(\d+)")
 score_line = maimai_command_group.on_command('分数线')
-best_40_pic = maimai_command_group.on_command('b40')
-best_50_pic = maimai_command_group.on_command('b50')
+best_40 = maimai_command_group.on_command('b40', aliases={'best40'})
+best_50 = maimai_command_group.on_command('b50', aliases={'best50'})
 add_alias = maimai_command_group.on_command('添加别名', aliases={'添加别称', '增加别名', '增加别称'})
 delete_alias = maimai_command_group.on_command('删除别名', aliases={'删除别称'})
 query_alias = maimai_command_group.on_command('查询别名')
@@ -90,9 +90,10 @@ BREAK   5/12.5/25(外加200落)
 '''.strip()
 
 
-@help.handle()
-async def help_func() -> None:
-    await help.finish(MessageSegment.image(text_to_image_base64_str(help_str)))
+def get_at_qq(message: Message) -> int | None:
+    for message_segment in message:
+        if message_segment.type == 'at' and message_segment.data['qq'] != 'all':
+            return int(message_segment.data['qq'])
 
 
 def music_info(music: Music) -> Message:
@@ -136,7 +137,12 @@ def chart_info(music: Music, diff_index: int) -> Message:
         )])
 
 
-@ search_music_by_inner.handle()
+@help.handle()
+async def help_func() -> None:
+    await help.finish(MessageSegment.image(text_to_image_base64_str(help_str)))
+
+
+@search_music_by_inner.handle()
 async def search_music_by_inner_func(message: Message = CommandArg()):
     argv: list[str] = str(message).strip().split()
     try:
@@ -163,7 +169,7 @@ async def search_music_by_inner_func(message: Message = CommandArg()):
     await search_music_by_inner.finish(f"结果过多（{len(result)} 条），请缩小查询范围。")
 
 
-@ search_music_by_title.handle()
+@search_music_by_title.handle()
 async def search_music_by_title_func(message: Message = CommandArg()) -> None:
     name: str = message.extract_plain_text()
     if not name:
@@ -181,7 +187,7 @@ async def search_music_by_title_func(message: Message = CommandArg()) -> None:
     await search_music_by_title.finish(f"结果过多（{len(result)}条），请缩小查询范围。")
 
 
-@ search_music_by_alias.handle()
+@search_music_by_alias.handle()
 async def search_music_by_alias_func(group: tuple[str] = RegexGroup()):
     (alias, ) = group
     result: MusicList = Mai.music_list.by_alias(alias)
@@ -196,7 +202,7 @@ async def search_music_by_alias_func(group: tuple[str] = RegexGroup()):
     await search_music_by_alias.finish(f'结果过多（{len(result)}条），请缩小查询范围。')
 
 
-@ add_alias.handle()
+@add_alias.handle()
 async def add_alias_func(event: GroupMessageEvent, message: Message = CommandArg()) -> None:
     id, alias = message.extract_plain_text().split()
     music: Music | None = Mai.music_list.by_id(id)
@@ -362,50 +368,34 @@ async def score_line_func(message: Message = CommandArg()):
             await query_chart.finish("格式错误，输入“分数线 帮助”以查看帮助信息")
 
 
-@best_40_pic.handle()
-async def best_40_pic_func(event: MessageEvent, message: Message = CommandArg()):
-    username: str = str(message).strip()
-    if username == '':
-        payload: dict[str, str] = {'qq': str(event.get_user_id())}
-    else:
-        if username.isdigit():
-            payload = {'qq': username}
-        elif message[0].type == 'at':
-            payload = {'qq': str(message[0].data['qq'])}
-        else:
-            payload = {'username': username}
-    img, success = await generate(payload)
-    if success == 400:
-        await best_40_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
-    elif success == 403:
-        await best_40_pic.send("该用户禁止了其他人获取数据。")
-    else:
-        await best_40_pic.send(MessageSegment.image(f"base64://{str(image_to_base64(img), encoding='utf-8')}"))
+@best_40.handle()
+@best_50.handle()
+async def best_pic_func(event: MessageEvent, matcher: Matcher, arg: Message = CommandArg()) -> None:
 
+    if not arg:  # b40
+        payload = {'qq': event.user_id}
+    else:
+        specific_qq: int | None = get_at_qq(arg)
+        if specific_qq is None:  # b40 name
+            username: str = arg.extract_plain_text().strip()
+            if username.isdigit():
+                payload: dict[str, Any] = {'qq': int(username)}
+            else:
+                payload = {'username': username}
+        else:  # b40 @xxxx
+            payload = {'qq': specific_qq}
 
-@best_50_pic.handle()
-async def best_50_pic_func(event: MessageEvent, message: Message = CommandArg()):
-    username: str = str(message).strip()
-    if username == '':
-        payload: dict[str, str] = {'qq': str(event.get_user_id())}
-    else:
-        if username.isdigit():
-            payload = {'qq': username}
-        elif message[0].type == 'at':
-            payload = {'qq': str(message[0].data['qq'])}
-        else:
-            payload = {'username': username}
-    img, success = await generate50(payload)
-    if success == 400:
-        await best_50_pic.send("未找到此玩家，请确保此玩家的用户名和查分器中的用户名相同。")
-    elif success == 403:
-        await best_50_pic.send("该用户禁止了其他人获取数据。")
-    else:
-        await best_50_pic.send(MessageSegment.image(f"base64://{str(image_to_base64(img), encoding='utf-8')}"))
+    if type(matcher) is best_50:
+        payload['b50'] = True
+
+    result = await generate(payload)
+    if isinstance(result, str):
+        await matcher.finish(result)
+    await matcher.finish(MessageSegment.image(image_to_bytesio(result)))
 
 
 @plate_process.handle()
-async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()):
+async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()) -> None:
     plate_name_han, nickname = group
     version_han, target_han = plate_name_han[0], plate_name_han[1]
 
