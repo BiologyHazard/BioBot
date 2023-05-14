@@ -1,15 +1,14 @@
 import math
 import os
-from typing import Dict, List, Optional, Tuple, Union
-from io import BytesIO
+from typing import Dict, List, Literal, Optional, Tuple, Union, overload
 
-# from nonebot.adapters.onebot.v11 import MessageSegment
 from PIL import Image, ImageDraw, ImageFont
 
-from .image import get_user_logo, image_to_bytesio
-from .maimai_consts import *
-from .maimai_music import Mai, get_cover_len4_id
-from .maimaidx_api_data import get_player_data
+from .image import get_user_logo
+from .consts import *
+from .music import Mai, get_cover_len4_id
+from .api_data import get_player_data
+
 
 static = 'data/maimai'
 
@@ -240,6 +239,8 @@ class DrawBest:
                 elif n == (len(ra) - 1) and self.addRating >= v:
                     return f'UI_CMN_MatchLevel_{n + 1:02d}.png'
 
+        raise ValueError
+
     def whiledraw(self, data: BestList, type: bool, b50: bool = False) -> Image.Image:
         # y为第一排纵向坐标，dy为各排间距
         if b50:
@@ -351,6 +352,16 @@ class DrawBest:
         self.whiledraw(self.dxBest, False, self.b50)
 
         return self._im
+
+
+@overload
+def computeRa(ds: float, achievement: float, spp: bool = False, israte: Literal[False] = False) -> int:
+    ...
+
+
+@overload
+def computeRa(ds: float, achievement: float, spp: bool = False, israte: Literal[True] = ...) -> tuple[int, str]:
+    ...
 
 
 def computeRa(ds: float, achievement: float, spp: bool = False, israte: bool = False) -> Union[int, Tuple[int, str]]:

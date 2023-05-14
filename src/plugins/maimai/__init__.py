@@ -1,23 +1,23 @@
+import json
 import math
 import re
-from typing import Any, Literal
-import aiofiles
-import json
+from typing import Any
 
-from nonebot import MatcherGroup, get_driver, logger
-from nonebot.adapters.onebot.v11 import (Bot, Event, GroupMessageEvent,
-                                         Message, MessageEvent, MessageSegment)
-from nonebot.permission import SUPERUSER
+import aiofiles
+from nonebot import MatcherGroup, get_driver
+from nonebot.adapters.onebot.v11 import (Bot, GroupMessageEvent, Message,
+                                         MessageEvent, MessageSegment)
 from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER
 from nonebot.drivers import Driver
-from nonebot.params import CommandArg, EventMessage, RegexGroup
 from nonebot.matcher import Matcher
+from nonebot.params import CommandArg, EventMessage, RegexGroup
+from nonebot.permission import SUPERUSER
 
-from . import maimaidx_plate
-from .image import text_to_image_base64_str, image_to_bytesio
+from . import plate
 from .best_pic import generate
-from .maimai_consts import DIFFICULTY_NAME
-from .maimai_music import Chart, Mai, Music, MusicList, get_cover_len4_id
+from .consts import DIFFICULTY_NAME
+from .image import image_to_bytesio, text_to_image_base64_str
+from .music import Chart, Mai, Music, MusicList, get_cover_len4_id
 from .utils import get_hash_value, strftime
 
 driver: Driver = get_driver()
@@ -160,13 +160,14 @@ async def search_music_by_inner_func(message: Message = CommandArg()):
     result: MusicList = Mai.music_list.filter(ds=ds)
     if not result:
         await search_music_by_inner.finish('没有找到这样的乐曲。')
-    if len(result) <= 48:
-        # len(result) 并不是结果的数量，待修改
+
+    length_of_result: int = sum(len(music.diff) for music in result)
+    if length_of_result <= 48:
         result.sort(key=lambda music: int(music.id))
-        await search_music_by_inner.finish(f'查询到{len(result)}首乐曲：\n'
+        await search_music_by_inner.finish(f'查询到{length_of_result}首乐曲：\n'
                                            + '\n'.join(music_info_with_diff_compact(music, diff)
                                                        for music in result for diff in music.diff))
-    await search_music_by_inner.finish(f"结果过多（{len(result)} 条），请缩小查询范围。")
+    await search_music_by_inner.finish(f"结果过多（{length_of_result} 条），请缩小查询范围。")
 
 
 @search_music_by_title.handle()
@@ -422,8 +423,8 @@ async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = E
         nickname = (await bot.get_stranger_info(user_id=int(qqid)))['nickname']
 
     if version_han in {'霸', '舞'}:
-        payload['version'] = list(set(version for version in list(maimaidx_plate.plate_to_version.values())[:-5]))
+        payload['version'] = list(set(version for version in list(plate.plate_to_version.values())[:-5]))
     else:
-        payload['version'] = [maimaidx_plate.plate_to_version[version_han]]
-    data = await maimaidx_plate.player_plate_data(payload, version_han, target_han, nickname)
+        payload['version'] = [plate.plate_to_version[version_han]]
+    data = await plate.player_plate_data(payload, version_han, target_han, nickname)
     await plate_process.send(data)

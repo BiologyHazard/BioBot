@@ -1,15 +1,12 @@
 from math import ceil
-from re import Match
-from typing import Optional, Union
 
 from nonebot import logger
-from nonebot.adapters.onebot.v11 import Message, MessageSegment
-from PIL import Image, ImageDraw
+from nonebot.adapters.onebot.v11 import MessageSegment
 
-from .image import *
-from .maimai_best_50 import diffs
-from .maimaidx_api_data import get_player_data
-from .maimai_music import MusicList, get_cover_len4_id, Mai, Music
+from .image import image_to_base64, text_to_image
+from .consts import DIFFICULTY_NAME
+from .api_data import get_player_data
+from .music import Mai, Music
 
 plate_to_version = {
     '初': 'maimai',
@@ -44,7 +41,7 @@ syncRank = ['fs', 'fs+', 'fdx', 'fdx+']
 sync_rank = ['fs', 'fsp', 'fsd', 'fsdp']
 
 
-async def player_plate_data(payload: dict, version_han: str, target_han: str, nickname: Optional[str]) -> Union[MessageSegment, str]:
+async def player_plate_data(payload: dict, version_han: str, target_han: str, nickname: str | None) -> MessageSegment | str:
     song_played = []
     song_remain_basic = []
     song_remain_advanced = []
@@ -135,7 +132,7 @@ async def player_plate_data(payload: dict, version_han: str, target_han: str, ni
         assert music is not None
         if music.ds[song[1]] > 13.6:
             song_remain_difficult.append(
-                [music.id, music.title, diffs[song[1]], music.ds[song[1]], f'{music.stats[song[1]].fit_diff:.2f}', song[1]])
+                [music.id, music.title, DIFFICULTY_NAME[song[1]], music.ds[song[1]], f'{music.stats[song[1]].fit_diff:.2f}', song[1]])
 
     appellation = nickname if nickname else '您'
 
@@ -202,7 +199,7 @@ Master剩余{len(song_remain_master)}首
                         if data['verlist'][record_index]['fs']:
                             self_record = syncRank[sync_rank.index(
                                 data['verlist'][record_index]['fs'])].upper()
-                msg += f'No.{i + 1} {m.id}. {m.title} {diffs[s[1]]} {m.ds[s[1]]} {m.stats[s[1]].fit_diff:.2f} {self_record}'.strip(
+                msg += f'No.{i + 1} {m.id}. {m.title} {DIFFICULTY_NAME[s[1]]} {m.ds[s[1]]} {m.stats[s[1]].fit_diff:.2f} {self_record}'.strip(
                 ) + '\n'
             if len(song_remain) > 10:
                 msg = MessageSegment("image", {
