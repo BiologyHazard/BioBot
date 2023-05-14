@@ -5,7 +5,8 @@ from nonebot.log import default_filter, default_format, logger
 
 
 def main() -> None:
-    logger.add('logs/bot_{time:YYYY-MM-DD}.log', level=0, format=default_format, filter=default_filter)
+    logger.add('logs/bot_{time:YYYY-MM-DD}.log',
+               level=0, rotation='00:00', format=default_format, filter=default_filter)
     nonebot.init()
 
     # app = nonebot.get_asgi()
@@ -55,17 +56,5 @@ def main() -> None:
     nonebot.run()
 
 
-def test_module() -> None:
-    logger.add('logs/bot_{time:YYYY-MM-DD}.log', level=0, format=default_format, filter=default_filter)
-    nonebot.init()
-    driver: Driver = nonebot.get_driver()
-    driver.register_adapter(OneBotV11Adapter)
-
-    nonebot.load_plugin('src.plugins.maimai')
-
-    nonebot.run()
-
-
 if __name__ == '__main__':
     main()
-    # test_module()
