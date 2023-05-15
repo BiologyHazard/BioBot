@@ -131,7 +131,7 @@ def chart_info(music: Music, diff_index: int) -> Message:
             f'TAP: {chart.tap}\n'
             f'HOLD: {chart.hold}\n'
             f'SLIDE: {chart.slide}\n' +
-            f'TOUCH: {chart.touch}\n' if len(chart['notes']) == 4 else '' +
+            (f'TOUCH: {chart.touch}\n' if len(chart['notes']) == 5 else '') +
             f'BREAK: {chart.break_}\n'
             f'谱师: {chart.charter}'
         )])

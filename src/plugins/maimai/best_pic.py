@@ -241,7 +241,7 @@ class DrawBest:
 
         raise ValueError
 
-    def whiledraw(self, data: BestList, type: bool, b50: bool = False) -> Image.Image:
+    def whiledraw(self, data: BestList, type: bool, b50: bool = False) -> None:
         # y为第一排纵向坐标，dy为各排间距
         if b50:
             y = 430 if type else 1670
@@ -355,7 +355,7 @@ class DrawBest:
 
 
 @overload
-def computeRa(ds: float, achievement: float, spp: bool = False, israte: Literal[False] = False) -> int:
+def computeRa(ds: float, achievement: float, spp: bool = False, israte: Literal[False] = ...) -> int:
     ...
 
 
