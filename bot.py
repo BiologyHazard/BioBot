@@ -35,6 +35,7 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.answersbook')
     nonebot.load_plugin('src.plugins.tygj')
     nonebot.load_plugin('src.plugins.revoke')
+    nonebot.load_plugin('src.plugins.ncm')
     # nonebot.load_plugin('src.plugins.wordcloud')
 
     nonebot.load_plugin('nonebot_plugin_emojimix')
