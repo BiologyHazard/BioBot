@@ -1,50 +1,49 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
-import zipfile
-from pathlib import Path
-from datetime import datetime
-from typing import Union
 import re
-
-import qrcode
 import time
-from aiofile import async_open
+import zipfile
+from datetime import datetime
+from pathlib import Path
+from typing import Union
 
 import httpx
 import nonebot
-from nonebot.utils import run_sync
-
-from pyncm import apis, Session, GetCurrentSession, DumpSessionAsString, LoadSessionFromString, SetCurrentSession
-from pyncm.apis.cloudsearch import SONG, USER, PLAYLIST
-
+import qrcode
+from aiofile import async_open
+from nonebot.adapters.onebot.v11 import (ActionFailed, Bot, GroupMessageEvent,
+                                         Message, MessageSegment, NetworkError,
+                                         PrivateMessageEvent)
 from nonebot.log import logger
-from nonebot.adapters.onebot.v11 import (MessageSegment, Message,
-                                         ActionFailed, NetworkError, Bot,
-                                         GroupMessageEvent, PrivateMessageEvent)
+from nonebot.utils import run_sync
+from pyncm import (DumpSessionAsString, GetCurrentSession,
+                   LoadSessionFromString, Session, SetCurrentSession, apis)
+from pyncm.apis.cloudsearch import PLAYLIST, SONG, USER
+from tinydb import Query, TinyDB
 
 from .config import ncm_config
-from tinydb import TinyDB, Query
 
 # ============数据库导入=============
-dbPath = Path("db")
-musicPath = Path("music")
+dbPath = Path("data/ncm/db")
+musicPath = Path("data/ncm/music")
 
 if not musicPath.is_dir():
-    musicPath.mkdir()
+    musicPath.mkdir(parents=True)
     logger.success("ncm音乐库创建成功")
 if not dbPath.is_dir():
-    dbPath.mkdir()
+    dbPath.mkdir(parents=True)
     logger.success("ncm数据库目录创建成功")
-music = TinyDB("./db/ncm_musics.json")
-setting = TinyDB("./db/ncm_setting.json")
-ncm_user_cache = TinyDB("./db/ncm_cache.json")
-ncm_check_cache = TinyDB("./db/ncm_check_cache.json")
+music = TinyDB("./data/ncm/db/ncm_musics.json")
+setting = TinyDB("./data/ncm/db/ncm_setting.json")
+ncm_user_cache = TinyDB("./data/ncm/db/ncm_cache.json")
+ncm_check_cache = TinyDB("./data/ncm/db/ncm_check_cache.json")
 Q = Query()
 cmd = list(nonebot.get_driver().config.command_start)[0]
 
 
-class NcmLoginFailedException(Exception): pass
+class NcmLoginFailedException(Exception):
+    pass
 
 
 # ============主类=============

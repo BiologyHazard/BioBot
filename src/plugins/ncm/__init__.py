@@ -25,7 +25,7 @@ __plugin_meta__ = nonebot.plugin.PluginMetadata(
         '指令：\n'
         f'开启下载：{cmd}ncm t\n'
         f'关闭下载：{cmd}ncm f\n'
-        f'点歌：{cmd}点歌 歌名'
+        # f'点歌：{cmd}点歌 歌名'
     ),
     extra={'version': '1.5.0'}
 )
@@ -106,32 +106,32 @@ music_reply = on_message(priority=2,
                          rule=Rule(music_reply_rule),
                          block=False)
 '''回复下载'''
-search = on_command("点歌",
-                    rule=Rule(check_search),
-                    priority=2, block=False)
-'''点歌'''
+# search = on_command("点歌",
+#                     rule=Rule(check_search),
+#                     priority=2, block=False)
+# '''点歌'''
 
 
-@search.handle()
-async def search_receive(matcher: Matcher, args: Message = CommandArg()):
-    if args:
-        matcher.set_arg("song", args)  # 如果用户发送了参数则直接赋值
+# @search.handle()
+# async def search_receive(matcher: Matcher, args: Message = CommandArg()):
+#     if args:
+#         matcher.set_arg("song", args)  # 如果用户发送了参数则直接赋值
 
 
-@search.got("song", prompt="要点什么歌捏?")
-async def receive_song(bot: Bot,
-                       event: Union[GroupMessageEvent, PrivateMessageEvent],
-                       song: Message = Arg(),
-                       ):
-    nncm.get_session(bot, event)
-    _id = await nncm.search_song(keyword=str(song), limit=1)
-    message_id = await bot.send(event=event, message=Message(MessageSegment.music(type_="163", id_=_id)))
-    nncm.get_song(message_id=message_id["message_id"], nid=_id)
-    # try:
+# @search.got("song", prompt="要点什么歌捏?")
+# async def receive_song(bot: Bot,
+#                        event: Union[GroupMessageEvent, PrivateMessageEvent],
+#                        song: Message = Arg(),
+#                        ):
+#     nncm.get_session(bot, event)
+#     _id = await nncm.search_song(keyword=str(song), limit=1)
+#     message_id = await bot.send(event=event, message=Message(MessageSegment.music(type_="163", id_=_id)))
+#     nncm.get_song(message_id=message_id["message_id"], nid=_id)
+#     # try:
 
-    # except ActionFailed as e:
-    #    logger.error(e.info)
-    #    await search.finish(event=event, message=f"[WARNING]: 网易云卡片消息发送失败: 账号可能被风控")
+#     # except ActionFailed as e:
+#     #    logger.error(e.info)
+#     #    await search.finish(event=event, message=f"[WARNING]: 网易云卡片消息发送失败: 账号可能被风控")
 
 
 @music_regex.handle()
