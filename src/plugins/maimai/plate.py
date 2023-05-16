@@ -3,7 +3,7 @@ from math import ceil
 from nonebot import logger
 from nonebot.adapters.onebot.v11 import MessageSegment
 
-from .image import image_to_base64, text_to_image
+from .image import text_to_image, image_to_bytesio
 from .consts import DIFFICULTY_NAME
 from .api_data import get_player_data
 from .music import Mai, Music
@@ -172,8 +172,7 @@ Master剩余{len(song_remain_master)}首
                 msg += f'No.{i + 1} {s[0]}. {s[1]} {s[2]} {s[3]} {s[4]} {self_record}'.strip() + \
                     '\n'
             if len(song_remain_difficult) > 10:
-                msg = MessageSegment("image", {
-                    "file": f"base64://{str(image_to_base64(text_to_image(msg.strip())), encoding='utf-8')}"})
+                msg = MessageSegment.image(image_to_bytesio(text_to_image(msg.strip())))
         else:
             msg += f'还有{len(song_remain_difficult)}大于13.6定数的曲目，加油推分哦！\n'
     elif len(song_remain) > 0:
@@ -202,8 +201,7 @@ Master剩余{len(song_remain_master)}首
                 msg += f'No.{i + 1} {m.id}. {m.title} {DIFFICULTY_NAME[s[1]]} {m.ds[s[1]]} {m.stats[s[1]].fit_diff:.2f} {self_record}'.strip(
                 ) + '\n'
             if len(song_remain) > 10:
-                msg = MessageSegment("image", {
-                    "file": f"base64://{str(image_to_base64(text_to_image(msg.strip())), encoding='utf-8')}"})
+                msg = MessageSegment.image(image_to_bytesio(text_to_image(msg.strip())))
         else:
             msg += '已经没有定数大于13.6的曲目了,加油清谱哦！\n'
     else:

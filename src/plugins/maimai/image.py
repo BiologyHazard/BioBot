@@ -46,16 +46,6 @@ def text_to_image(text: str) -> PILImage:
     return i
 
 
-def image_to_base64(img: PILImage, format='PNG') -> bytes:
-    output_buffer = BytesIO()
-    img.save(output_buffer, format)
-    return base64.b64encode(output_buffer.getvalue())
-
-
-def text_to_image_base64_str(text: str) -> str:
-    return 'base64://' + str(image_to_base64(text_to_image(text)), encoding='utf-8')
-
-
 def image_to_bytesio(img: PILImage, format_='PNG') -> BytesIO:
     bytesio = BytesIO()
     img.save(bytesio, format_)

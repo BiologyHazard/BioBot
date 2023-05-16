@@ -4,7 +4,7 @@ import re
 from typing import Any
 
 import aiofiles
-from nonebot import MatcherGroup, get_driver
+from nonebot import MatcherGroup, get_driver, logger
 from nonebot.adapters.onebot.v11 import (Bot, GroupMessageEvent, Message,
                                          MessageEvent, MessageSegment)
 from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER
@@ -16,7 +16,7 @@ from nonebot.permission import SUPERUSER
 from . import plate
 from .best_pic import generate
 from .consts import DIFFICULTY_NAME
-from .image import image_to_bytesio, text_to_image_base64_str
+from .image import image_to_bytesio, text_to_image
 from .music import Chart, Mai, Music, MusicList, get_cover_len4_id
 from .utils import get_hash_value, strftime
 
@@ -26,42 +26,45 @@ driver: Driver = get_driver()
 @driver.on_startup
 async def on_startup_func() -> None:
     '''
-    bot启动时开始获取所有数据
+    bot启动时获取曲目信息和别名信息
     '''
+    logger.info('正在获取乐曲信息...')
     await Mai.get_music()
+    logger.info('正在获取别名信息...')
     await Mai.get_aliases()
 
 maimai_command_group = MatcherGroup(priority=3, block=False)
 help = maimai_command_group.on_command('help maimai')
 today_maimai = maimai_command_group.on_command('今日舞萌', aliases={'今日mai', 'jrwm', '今日乌蒙'})
+maimai_what = maimai_command_group.on_regex(r"maimai.*什么", flags=re.RegexFlag.IGNORECASE)
+spec_rand = maimai_command_group.on_regex(
+    r"[随来给]个(dx|sd|标准)?(绿|黄|红|紫|白)?(?:(\d{1,2}\.\d)|(\d{1,2}\+?))", flags=re.RegexFlag.IGNORECASE)
+best_40 = maimai_command_group.on_command('b40', aliases={'best40'})
+best_50 = maimai_command_group.on_command('b50', aliases={'best50'})
 search_music_by_inner = maimai_command_group.on_command('定数查歌')
 search_music_by_title = maimai_command_group.on_command('查歌')
 search_music_by_alias = maimai_command_group.on_regex(r'(.*)(?:是什么歌|是啥歌)')
-spec_rand = maimai_command_group.on_regex(
-    r"[随来给]个(dx|sd|标准)?(绿|黄|红|紫|白)?(?:(\d{1,2}\.\d)|(\d{1,2}\+?))", flags=re.RegexFlag.IGNORECASE)
-maimai_what = maimai_command_group.on_regex(r"maimai.*什么", flags=re.RegexFlag.IGNORECASE)
 query_chart = maimai_command_group.on_regex(r"^(绿|黄|红|紫|白)?\s*id\s*(\d+)")
 score_line = maimai_command_group.on_command('分数线')
-best_40 = maimai_command_group.on_command('b40', aliases={'best40'})
-best_50 = maimai_command_group.on_command('b50', aliases={'best50'})
 add_alias = maimai_command_group.on_command('添加别名', aliases={'添加别称', '增加别名', '增加别称'})
 delete_alias = maimai_command_group.on_command('删除别名', aliases={'删除别称'})
 query_alias = maimai_command_group.on_command('查询别名')
-query_alias = maimai_command_group.on_regex('查询别名')
+# query_alias = maimai_command_group.on_regex(r'(.*)有什么别名')
 plate_process = maimai_command_group.on_regex(
     r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽舞](?:[極极将神舞]|舞舞)|霸者)进度\s*(.*)')
 
 help_str: str = '''
 欢迎使用BioBot的maimai模块！
-本模块魔改自Diving-Fish/mai-bot
+本模块魔改自Diving-Fish/mai-bot和Yuri-YuzuChaN/maimaiDX
 maimai模块可用命令如下：
+· help maimai  # 查看本帮助
 · (今日舞萌|今日mai)  # 查看今天的舞萌运势
-· (b40|b50)[<@某人>|<qq号>|<水鱼网昵称>]  # 查询自己或别人的b40/b50
 · [...]maimai[...]什么  # 随机一首歌
 · 随个[dx|sd|标准][绿|黄|红|紫|白]<难度>  # 随机一首指定条件的乐曲
+· (b40|b50)[<@某人>|<qq号>|<水鱼网昵称>]  # 查询自己或别人的b40/b50
 · 查歌 <乐曲标题的一部分>  # 通过标题查询乐曲
-· [绿|黄|红|紫|白]id<乐曲编号>  # 通过查询乐曲或谱面
-· <乐曲别名>是什么歌  # 查询乐曲别名对应的乐曲
+· [绿|黄|红|紫|白]id<乐曲编号>  # 通过id查询乐曲或谱面
+· <乐曲别名>是什么歌  # 通过别名查询乐曲
 · (添加|删除)别名 <乐曲id> <乐曲别名>  # 添加/删除乐曲别名
 · 查询别名 <乐曲id>  # 查询乐曲别名
 · 定数查歌 <定数>  # 查询定数对应的乐曲
@@ -71,8 +74,8 @@ maimai模块可用命令如下：
 
 search_music_by_inner_help_str: str = '''
 命令格式为
-1. 定数查歌 <定数>
-2. 定数查歌 <定数下限> <定数上限>
+· 定数查歌 <定数>  # 查询定数对应的乐曲
+· 定数查歌 <定数下限> <定数上限>  # 查询定数对应的乐曲
 '''.strip()
 
 query_score_help_str: str = '''
@@ -139,7 +142,7 @@ def chart_info(music: Music, diff_index: int) -> Message:
 
 @help.handle()
 async def help_func() -> None:
-    await help.finish(MessageSegment.image(text_to_image_base64_str(help_str)))
+    await help.finish(MessageSegment.image(image_to_bytesio(text_to_image(help_str))))
 
 
 @search_music_by_inner.handle()
@@ -205,7 +208,10 @@ async def search_music_by_alias_func(group: tuple[str] = RegexGroup()):
 
 @add_alias.handle()
 async def add_alias_func(event: GroupMessageEvent, message: Message = CommandArg()) -> None:
-    id, alias = message.extract_plain_text().split()
+    try:
+        id, alias = message.extract_plain_text().split()
+    except ValueError:
+        await add_alias.finish('命令格式：\n添加别名 <乐曲id> <乐曲别名>')
     music: Music | None = Mai.music_list.by_id(id)
     if music is None:
         await add_alias.finish(f'没有id为{id}的乐曲。')
@@ -225,12 +231,15 @@ async def add_alias_func(event: GroupMessageEvent, message: Message = CommandArg
     aliases[id]['aliases'][alias] = info
     async with aiofiles.open('data/maimai/aliases.json', 'w', encoding='utf-8') as fp:
         await fp.write(json.dumps(aliases, ensure_ascii=False, indent=4))
-    await add_alias.finish('别名添加成功。')
+    await add_alias.finish(f'已为 {id}. {music.name} 添加别名“{alias}”')
 
 
 @delete_alias.handle()
 async def delete_alias_func(bot: Bot, event: GroupMessageEvent, message: Message = CommandArg()) -> None:
-    id, alias = message.extract_plain_text().split()
+    try:
+        id, alias = message.extract_plain_text().split()
+    except ValueError:
+        await add_alias.finish('命令格式：\n删除别名 <乐曲id> <乐曲别名>')
     music: Music | None = Mai.music_list.by_id(id)
     if music is None:
         await delete_alias.finish(f'没有id为{id}的乐曲。')
@@ -248,7 +257,7 @@ async def delete_alias_func(bot: Bot, event: GroupMessageEvent, message: Message
     del aliases[id]['aliases'][alias]
     async with aiofiles.open('data/maimai/aliases.json', 'w', encoding='utf-8') as fp:
         await fp.write(json.dumps(aliases, ensure_ascii=False, indent=4))
-    await delete_alias.finish('别名删除成功。')
+    await delete_alias.finish(f'已删除 {id}. {music.name} 的别名“{alias}”')
 
 
 @query_alias.handle()
@@ -335,7 +344,7 @@ async def score_line_func(message: Message = CommandArg()):
     regex = r'(绿|黄|红|紫|白)(id)?([0-9]+)'
     argv: list[str] = message.extract_plain_text().strip().split()
     if len(argv) == 1 and argv[0] == '帮助':
-        await score_line.send(MessageSegment.image(text_to_image_base64_str(query_score_help_str)))
+        await score_line.send(MessageSegment.image(image_to_bytesio(text_to_image(query_score_help_str))))
     elif len(argv) == 2:
         try:
             match = re.match(regex, argv[0], flags=re.RegexFlag.IGNORECASE)

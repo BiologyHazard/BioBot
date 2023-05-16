@@ -195,7 +195,7 @@ class Mai:
         async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
             assert obj.status == 200
             music_data = await obj.json()
-        async with aiohttp.request("GET", 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
+        async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
             assert obj.status == 200
             chart_stats = await obj.json()
         # import requests
