@@ -27,8 +27,6 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.maimai')
     nonebot.load_plugin('src.plugins.boardgame')
     nonebot.load_plugin('src.plugins.text2sound')
-    nonebot.load_plugin('src.plugins.memes')
-    nonebot.load_plugin('src.plugins.petpet')
     nonebot.load_plugin('src.plugins.xxivgame')
     nonebot.load_plugin('src.plugins.homo')
     nonebot.load_plugin('src.plugins.mahjong')
@@ -38,6 +36,9 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.ncm')
     nonebot.load_plugin('src.plugins.abbreply')
     nonebot.load_plugin('src.plugins.kfccrazythu')
+    nonebot.load_plugin('src.plugins.wordle')
+    nonebot.load_plugin('src.plugins.memes')
+    nonebot.load_plugin('src.plugins.petpet')
     # nonebot.load_plugin('src.plugins.wordcloud')
 
     nonebot.load_plugin('nonebot_plugin_emojimix')
