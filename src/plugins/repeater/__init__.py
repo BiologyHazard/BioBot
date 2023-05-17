@@ -1,10 +1,20 @@
+from typing import Literal
+
 from nonebot import logger, on_message
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
 from nonebot.params import EventMessage
+from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
-from typing import Literal
 
 from . import config
+
+__plugin_meta__ = PluginMetadata(
+    name='复读机',
+    description='',
+    usage=(
+        ''
+    )
+)
 
 repeater_group: Literal['all'] | list[int] = config.repeater_group
 shortest: int = config.shortest_length

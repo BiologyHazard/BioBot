@@ -5,9 +5,18 @@ from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
 from nonebot.params import RegexGroup
+from nonebot.plugin import PluginMetadata
 
 from .config import data_path
 from .tygj import Tygj, strftime, strftimedelta
+
+__plugin_meta__ = PluginMetadata(
+    name='tygj',
+    description='',
+    usage=(
+        ''
+    )
+)
 
 tyg_query: type[Matcher] = on_fullmatch('tygj')
 tyg_change: type[Matcher] = on_regex(r'^tyg([-+]?)(\d{1,16})$')

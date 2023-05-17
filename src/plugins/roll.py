@@ -5,6 +5,15 @@ from re import Match
 from nonebot import on_command, on_regex
 from nonebot.adapters.onebot.v11 import Message
 from nonebot.params import CommandArg, EventMessage
+from nonebot.plugin import PluginMetadata
+
+__plugin_meta__ = PluginMetadata(
+    name='roll',
+    description='',
+    usage=(
+        ''
+    )
+)
 
 # roll_regex = r"^roll [0-9]+(-|~)[0-9]+"
 # roll = on_regex(roll_regex)

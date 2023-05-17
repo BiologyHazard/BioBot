@@ -20,19 +20,15 @@ from nonebot.adapters.onebot.v12 import MessageEvent as V12MEvent
 from nonebot.adapters.onebot.v12 import MessageSegment as V12MsgSeg
 from nonebot.exception import ParserExit
 from nonebot.matcher import Matcher
-from nonebot.params import (
-    CommandArg,
-    CommandStart,
-    EventPlainText,
-    EventToMe,
-    ShellCommandArgv,
-)
+from nonebot.params import (CommandArg, CommandStart, EventPlainText,
+                            EventToMe, ShellCommandArgv)
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import ArgumentParser, Rule
 from nonebot.typing import T_State
 
 from .data_source import GuessResult, Wordle
 from .utils import dic_list, random_word
+from .wordleai import WordleAI, calc_hint
 
 __plugin_meta__ = PluginMetadata(
     name="猜单词",
@@ -47,6 +43,7 @@ __plugin_meta__ = PluginMetadata(
         "发送“结束”结束游戏；发送“提示”查看提示；\n"
         "可使用 -l/--length 指定单词长度，默认为5；\n"
         "可使用 -d/--dic 指定词典，默认为CET4\n"
+        '发送“获取建议”获取猜测建议\n'
         f"支持的词典：{'、'.join(dic_list)}"
     ),
     extra={
@@ -63,6 +60,7 @@ parser.add_argument("-l", "--length", type=int, default=5, help="单词长度")
 parser.add_argument("-d", "--dic", default="CET4", help="词典")
 parser.add_argument("--hint", action="store_true", help="提示")
 parser.add_argument("--stop", action="store_true", help="结束游戏")
+parser.add_argument("--suggest", action="store_true", help="获取建议")
 parser.add_argument("word", nargs="?", help="单词")
 
 
@@ -73,6 +71,7 @@ class Options:
     hint: bool = False
     stop: bool = False
     word: str = ""
+    suggest: bool = False
 
 
 games: Dict[str, Wordle] = {}
@@ -146,6 +145,7 @@ def smart_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) 
 shortcut("猜单词", ["--length", "5", "--dic", "CET4"], rule=smart_to_me)
 shortcut("提示", ["--hint"], aliases={"给个提示"}, rule=game_running)
 shortcut("结束", ["--stop"], aliases={"停", "停止游戏", "结束游戏"}, rule=game_running)
+shortcut("获取建议", ["--suggest"], aliases={"给个建议"}, rule=game_running)
 
 
 word_matcher = on_message(Rule(game_running) & get_word_input, block=True, priority=12)
@@ -240,6 +240,7 @@ async def handle_wordle(
 
         word, meaning = random_word(options.dic, options.length)
         game = Wordle(word, meaning)
+        game.ai = WordleAI(options.dic, options.length)
         games[cid] = game
         set_timeout(matcher, cid)
 
@@ -261,6 +262,12 @@ async def handle_wordle(
             await send("你还没有猜对过一个字母哦~再猜猜吧~")
         await send(image=game.draw_hint(hint))
 
+    if options.suggest:
+        if not game.guessed_words:
+            await send('请先猜一次再获取建议~')
+        suggest: str = game.ai.give_guess()
+        await send(f'建议您猜 {suggest}')
+
     word = options.word
     if not re.fullmatch(r"^[a-zA-Z]{3,8}$", word):
         await send()
@@ -268,6 +275,7 @@ async def handle_wordle(
         await send("请发送正确长度的单词")
 
     result = game.guess(word)
+    game.ai.store_result(word, calc_hint(game.word_lower, word))
     if result in [GuessResult.WIN, GuessResult.LOSS]:
         games.pop(cid)
         await send(

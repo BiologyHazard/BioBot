@@ -5,8 +5,16 @@ from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Message, MessageEvent, MessageSegment
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg, EventMessage
+from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
 
+__plugin_meta__ = PluginMetadata(
+    name='答案之书',
+    description='',
+    usage=(
+        ''
+    )
+)
 answers_path: Path = Path(__file__).parent / "answersbook.txt"
 answers: list[str] = answers_path.read_text("utf-8").splitlines()
 
@@ -41,4 +49,4 @@ async def anwsersbook(state: T_State, event: MessageEvent) -> None:
     await look_answer.finish(Message([MessageSegment.reply(reply),
                                       MessageSegment.at(event.user_id),
                                       MessageSegment.at(event.user_id),
-                                      MessageSegment.text(answer)]))    
+                                      MessageSegment.text(answer)]))

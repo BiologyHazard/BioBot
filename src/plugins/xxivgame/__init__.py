@@ -6,10 +6,19 @@ from nonebot.adapters.onebot.v11 import (GroupMessageEvent, Message,
                                          MessageEvent, PrivateMessageEvent)
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg, CommandStart, EventPlainText, EventToMe
+from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
 from .expression import replace_dict
 from .xxivcalculator import Expression, XXIVSolver
+
+__plugin_meta__ = PluginMetadata(
+    name='24点',
+    description='',
+    usage=(
+        ''
+    )
+)
 
 MAX_LENGTH: Final[int] = 64
 DEFAULT_SOLVABLE_PROBABILITY: Final[float] = 1.0

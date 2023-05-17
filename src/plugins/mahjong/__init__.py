@@ -5,8 +5,17 @@ from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent
 from nonebot.internal.matcher import Matcher
 from nonebot.internal.rule import Rule
 from nonebot.params import CommandArg, CommandStart, EventToMe
+from nonebot.plugin import PluginMetadata
 
 from .theory import Theory, Tile
+
+__plugin_meta__ = PluginMetadata(
+    name='麻将牌理分析',
+    description='',
+    usage=(
+        ''
+    )
+)
 
 
 @Rule
