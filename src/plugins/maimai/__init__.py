@@ -348,7 +348,7 @@ async def today_maimai_func(event: MessageEvent) -> None:
     await today_maimai.finish(Message([MessageSegment.text('\n'.join(lines))]) + music_info(music))
 
 
-@ score_line.handle()
+@score_line.handle()
 async def score_line_func(message: Message = CommandArg()):
     regex = r'(绿|黄|红|紫|白)(id)?([0-9]+)'
     argv: list[str] = message.extract_plain_text().strip().split()
@@ -387,16 +387,15 @@ async def score_line_func(message: Message = CommandArg()):
             await query_chart.finish("格式错误，输入“分数线 帮助”以查看帮助信息")
 
 
-@ best_40.handle()
-@ best_50.handle()
-async def best_pic_func(event: MessageEvent, matcher: Matcher, arg: Message = CommandArg()) -> None:
-
-    if not arg:  # b40
+@best_40.handle()
+@best_50.handle()
+async def best_pic_func(event: MessageEvent, matcher: Matcher, message: Message = CommandArg()) -> None:
+    if not message:  # b40
         payload = {'qq': event.user_id}
     else:
-        specific_qq: int | None = get_at_qq(arg)
+        specific_qq: int | None = get_at_qq(message)
         if specific_qq is None:  # b40 name
-            username: str = arg.extract_plain_text().strip()
+            username: str = message.extract_plain_text().strip()
             if username.isdigit():
                 payload: dict[str, Any] = {'qq': int(username)}
             else:
@@ -413,7 +412,7 @@ async def best_pic_func(event: MessageEvent, matcher: Matcher, arg: Message = Co
     await matcher.finish(MessageSegment.image(image_to_bytesio(result)))
 
 
-@ plate_process.handle()
+@plate_process.handle()
 async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()) -> None:
     plate_name_han, nickname = group
     version_han, target_han = plate_name_han[0], plate_name_han[1]
