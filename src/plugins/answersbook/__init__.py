@@ -8,12 +8,12 @@ from nonebot.plugin import PluginMetadata
 from nonebot.typing import T_State
 
 
-default_start: str = list(get_driver().config.command_start)[0]
+default_command_start: str = tuple(get_driver().config.command_start)[0]
 __plugin_meta__ = PluginMetadata(
     name='答案之书',
     description='这是一本治愈系的心灵解惑书，它将带给你的不止是生活的指引，还有心灵的慰藉。',
     usage=(
-        f'· {default_start}翻看答案 <问题>  # 翻看这个问题的答案\n'
+        f'· {default_command_start}翻看答案 <问题>  # 翻看这个问题的答案\n'
         f'· <回复一条消息> 翻看答案  # 翻看这个问题的答案\n'
     )
 )

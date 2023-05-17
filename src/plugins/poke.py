@@ -1,16 +1,14 @@
 from typing import NoReturn
 
 from nonebot import on_notice
-from nonebot.adapters.onebot.v11 import Bot, MessageSegment, PokeNotifyEvent
+from nonebot.adapters.onebot.v11 import MessageSegment, PokeNotifyEvent
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
 __plugin_meta__ = PluginMetadata(
     name='戳一戳',
-    description='',
-    usage=(
-        ''
-    )
+    description='戳bot一下，bot戳你一下；戳别人一下，bot跟着戳一下',
+    usage='戳bot一下，bot戳你一下；戳别人一下，bot跟着戳一下'
 )
 
 

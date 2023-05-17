@@ -11,10 +11,8 @@ from .homo import generate_homo
 
 __plugin_meta__ = PluginMetadata(
     name='恶臭论证',
-    description='',
-    usage=(
-        ''
-    )
+    description='用114514表示任何数字',
+    usage='· (恶臭论证|恶臭|homo|114514) <数字>'
 )
 
 

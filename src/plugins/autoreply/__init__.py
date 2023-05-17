@@ -1,5 +1,12 @@
 '''
+自动回复
+
 让Bot学习消息并自动回复 | Made by BioHazard
+
+指令列表：
+1. #学习 <触发语> <回复语>  # 让bot学习一条自动回复
+2. #忘记 <触发语> <回复语>  # 让bot忘记一条自动回复
+3. #查询 <触发语>  # 查询<触发语>的全部回复内容（仅限管理员使用该命令）
 '''
 
 from functools import partial
@@ -22,12 +29,13 @@ from .autoreply import ResultCode
 __plugin_meta__: PluginMetadata = PluginMetadata(
     name='自动回复',
     description='让Bot学习消息并自动回复 | Made by BioHazard',
-    usage='''
-指令列表：
-1. #学习 <触发语> <回复语>  # 让bot学习一条自动回复
-2. #忘记 <触发语> <回复语>  # 让bot忘记一条自动回复
-3. #查询 <触发语>  # 查询<触发语>的全部回复内容（仅限管理员使用该命令）
-'''.strip()
+    usage=(
+        '· #学习 <触发语> <回复语>  # 让bot学习一条自动回复\n'
+        '· #忘记 <触发语> <回复语>  # 让bot忘记一条自动回复\n'
+        '· #忘记全部 <触发语>  # 让bot忘记某个触发语的全部回复（仅限管理员使用）\n'
+        '· #查询 <触发语>  # 查询<触发语>的全部回复内容（仅限管理员使用）\n'
+        '· #查询全部  # 查询本群的全部触发语（仅限管理员使用）\n'
+    )
 )
 
 bot_nickname: str = 'Bio'

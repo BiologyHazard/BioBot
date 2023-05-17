@@ -13,9 +13,7 @@ from .tygj import Tygj, strftime, strftimedelta
 __plugin_meta__ = PluginMetadata(
     name='tygj',
     description='',
-    usage=(
-        ''
-    )
+    usage='tygj？tyg114514'
 )
 
 tyg_query: type[Matcher] = on_fullmatch('tygj')

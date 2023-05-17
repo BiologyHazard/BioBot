@@ -1,18 +1,19 @@
-import nonebot.plugin
 import nonebot
+import nonebot.plugin
 from nonebot import on_command
-from nonebot.matcher import Matcher
-from nonebot.params import CommandArg, Arg
 from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11.message import Message, MessageSegment
+from nonebot.matcher import Matcher
+from nonebot.params import Arg, CommandArg
+from nonebot.plugin import Plugin
 
-default_start = list(nonebot.get_driver().config.command_start)[0]
+default_start = tuple(nonebot.get_driver().config.command_start)[0]
 helper = on_command("help", priority=1, aliases={"帮助"})
 # Matcher level info registering, still active in-use
 helper.__help_name__ = 'help'
-helper.__help_info__ = f'''{default_start}help  # 获取本插件帮助
-{default_start}help list  # 展示已加载插件列表
-{default_start}help <plugin_name>  # 调取目标插件帮助信息'''
+helper.__help_info__ = f'''· {default_start}help  # 获取本插件帮助
+· {default_start}help list  # 展示已加载插件列表
+· {default_start}help <插件名>  # 调取目标插件帮助信息'''
 
 
 @helper.handle()
@@ -22,10 +23,10 @@ async def handle_first_receive(event: Event, matcher: Matcher, args: Message = C
         matcher.set_arg("content", args)
     else:
         await matcher.finish(Message(at + f'''欢迎使用Nonebot2 Help Menu
-支持使用的前缀：{" ".join(list(nonebot.get_driver().config.command_start))}
-{default_start}help  # 获取本插件帮助
-{default_start}help list  # 展示已加载插件列表
-{default_start}help <plugin_name>  # 调取目标插件帮助信息
+支持使用的前缀：{', '.join(f'"{x}"' if x else '[空]' for x in nonebot.get_driver().config.command_start)}
+· {default_start}help  # 获取本插件帮助
+· {default_start}help list  # 展示已加载插件列表
+· {default_start}help <plugin_name>  # 调取目标插件帮助信息
 '''))
 
 
@@ -34,7 +35,7 @@ async def get_result(event: Event, content: Message = Arg()):
     at = MessageSegment.at(event.get_user_id())
     arg = content.extract_plain_text().strip()
     if arg.lower() == "list":
-        plugin_set = nonebot.plugin.get_loaded_plugins()
+        plugin_set: set[Plugin] = nonebot.plugin.get_loaded_plugins()
         plugin_names = []
         for plugin in plugin_set:
             # plugin.name, then metadata name or legacy help name

@@ -22,22 +22,37 @@ from .image import image_to_bytesio, text_to_image
 from .music import Chart, Mai, Music, MusicList, get_cover_len4_id
 from .utils import get_random_inst, strftime
 
+driver: Driver = get_driver()
+default_command_start: str = tuple(driver.config.command_start)[0]
+help_str: str = f'''
+欢迎使用BioBot的maimai模块！
+本模块魔改自Diving-Fish/mai-bot和Yuri-YuzuChaN/maimaiDX
+maimai模块可用命令如下：
+· {default_command_start}help maimai  # 查看本帮助
+· {default_command_start}(今日舞萌|今日mai)  # 查看今天的舞萌运势
+· [...]maimai[...]什么  # 随机一首歌
+· 随个[dx|sd|标准][绿|黄|红|紫|白]<难度>  # 随机一首指定条件的乐曲
+· {default_command_start}(b40|b50)[<@某人>|<qq号>|<水鱼网昵称>]  # 查询自己或别人的b40/b50
+· {default_command_start}查歌 <乐曲标题的一部分>  # 通过标题查询乐曲
+· [绿|黄|红|紫|白]id<乐曲编号>  # 通过id查询乐曲或谱面
+· <乐曲别名>是什么歌  # 通过别名查询乐曲
+· {default_command_start}(添加|删除)别名 <乐曲id> <乐曲别名>  # 添加/删除乐曲别名
+· {default_command_start}查询别名 <乐曲id>  # 查询乐曲别名
+· {default_command_start}定数查歌 <定数>  # 查询定数对应的乐曲
+· {default_command_start}定数查歌 <定数下限> <定数上限>  # 查询定数对应的乐曲
+· {default_command_start}分数线 (绿|黄|红|紫|白)<乐曲id> <分数线>  # 详情请输入“分数线 帮助”查看
+'''.strip()
+
 __plugin_meta__ = PluginMetadata(
     name='maimai',
-    description='',
-    usage=(
-        ''
-    )
+    description='maimai查分/查歌/随机/查别名/查定数/查分数线',
+    usage=help_str
 )
-
-driver: Driver = get_driver()
 
 
 @driver.on_startup
 async def on_startup_func() -> None:
-    '''
-    bot启动时获取曲目信息和别名信息
-    '''
+    '''bot启动时获取曲目信息和别名信息'''
     logger.info('正在获取乐曲信息...')
     await Mai.get_music()
     logger.info('正在获取别名信息...')
@@ -63,24 +78,6 @@ query_alias = maimai_command_group.on_command('查询别名')
 plate_process = maimai_command_group.on_regex(
     r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽舞](?:[極极将神舞]|舞舞)|霸者)进度\s*(.*)')
 
-help_str: str = '''
-欢迎使用BioBot的maimai模块！
-本模块魔改自Diving-Fish/mai-bot和Yuri-YuzuChaN/maimaiDX
-maimai模块可用命令如下：
-· help maimai  # 查看本帮助
-· (今日舞萌|今日mai)  # 查看今天的舞萌运势
-· [...]maimai[...]什么  # 随机一首歌
-· 随个[dx|sd|标准][绿|黄|红|紫|白]<难度>  # 随机一首指定条件的乐曲
-· (b40|b50)[<@某人>|<qq号>|<水鱼网昵称>]  # 查询自己或别人的b40/b50
-· 查歌 <乐曲标题的一部分>  # 通过标题查询乐曲
-· [绿|黄|红|紫|白]id<乐曲编号>  # 通过id查询乐曲或谱面
-· <乐曲别名>是什么歌  # 通过别名查询乐曲
-· (添加|删除)别名 <乐曲id> <乐曲别名>  # 添加/删除乐曲别名
-· 查询别名 <乐曲id>  # 查询乐曲别名
-· 定数查歌 <定数>  # 查询定数对应的乐曲
-· 定数查歌 <定数下限> <定数上限>  # 查询定数对应的乐曲
-· 分数线 (绿|黄|红|紫|白)<乐曲id> <分数线>  # 详情请输入“分数线 帮助”查看
-'''.strip()
 
 search_music_by_inner_help_str: str = '''
 命令格式为

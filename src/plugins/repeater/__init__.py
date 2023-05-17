@@ -10,10 +10,8 @@ from . import config
 
 __plugin_meta__ = PluginMetadata(
     name='复读机',
-    description='',
-    usage=(
-        ''
-    )
+    description='bot的本质是复读',
+    usage='bot会自动复读重复的群消息'
 )
 
 repeater_group: Literal['all'] | list[int] = config.repeater_group

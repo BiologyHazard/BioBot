@@ -13,10 +13,12 @@ from .expression import replace_dict
 from .xxivcalculator import Expression, XXIVSolver
 
 __plugin_meta__ = PluginMetadata(
-    name='24点',
-    description='',
+    name='24点游戏',
+    description='不止24点，可自定义最终要计算的数/数字个数/有解概率',
     usage=(
-        ''
+        '· #24点 [<数字个数>] [<最终要计算的数>]  # 让bot随机出一道题\n'
+        '· #24点 <最终要计算的数> <若干个数作为题目>  # 让bot解题，使用例：#24点 24 3 3 7 7 --> "7 × (3 + 3 ÷ 7)"\n'
+        '· #有解概率 <有解概率>  # 改变有解概率\n'
     )
 )
 

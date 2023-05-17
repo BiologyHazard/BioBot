@@ -7,12 +7,18 @@ from nonebot.adapters.onebot.v11 import Message
 from nonebot.params import CommandArg, EventMessage
 from nonebot.plugin import PluginMetadata
 
+help_str: str = '''
+使用方法：
+· roll <上限>
+· roll <下限>~<上限>
+· 扔x面骰子
+· 扔骰子
+'''.strip()
+
 __plugin_meta__ = PluginMetadata(
     name='roll',
-    description='',
-    usage=(
-        ''
-    )
+    description='随机数',
+    usage=help_str
 )
 
 # roll_regex = r"^roll [0-9]+(-|~)[0-9]+"
@@ -31,9 +37,7 @@ async def roll_func(message: Message = CommandArg()) -> None:
         else:
             start, end = 1, int(str(message).strip())
     except Exception:
-        await roll.send('使用方法：\n'
-                        '1. roll <上限>\n'
-                        '2. roll <下限>~<上限>')
+        await roll.send(help_str)
     else:
         roll_res: int = random.randint(start, end)
         await roll.send(f'roll {start}~{end}: {roll_res}')
@@ -67,9 +71,7 @@ async def dice_func(message: Message = EventMessage()) -> None:
     try:
         end: int = find_end(message)
     except Exception:
-        await dice.send('使用方法：\n'
-                        '1. 扔色子/扔骰子\n'
-                        '2. 扔<上限>面(色子|骰子)')
+        await dice.send(help_str)
     else:
         roll_res: int = random.randint(1, end)
         await dice.send(f'roll {1}~{end}: {roll_res}')

@@ -11,14 +11,17 @@ from .othello import Othello
 
 __plugin_meta__ = PluginMetadata(
     name='棋类游戏',
-    description='',
+    description='和群友下五子棋/黑白棋',
     usage=(
-        ''
+        '· 开始(五子棋|黑白棋)\n'
+        '· 落子 <坐标>  # 使用例：落子 H4\n'
+        '· 悔棋\n'
+        '· 跳过回合\n'
+        '· 停止下棋'
     )
 )
 
 games: dict[int, BoardGame] = {}
-# game_players: dict[int, dict[int, str]] = defaultdict(list)
 
 not_group_text: str = '仅限群聊中使用哦~'
 game_already_started_text: str = '有正在进行中的游戏，发送“结束游戏”停止下棋'
@@ -31,8 +34,6 @@ skip = on_command('跳过回合')
 stop_game = on_command('停止下棋', aliases={'停止游戏', '结束游戏'})
 
 
-# def game_running(group_id: int, user_id: int) -> bool:
-# return (group_id in game_players) and (user_id in game_players[group_id])
 def game_running(group_id: int) -> bool:
     return group_id in games
 

@@ -11,9 +11,11 @@ from .theory import Theory, Tile
 
 __plugin_meta__ = PluginMetadata(
     name='麻将牌理分析',
-    description='',
+    description='分析向听数/何切',
     usage=(
-        ''
+        '· #向听数 <牌>  # 使用例：#向听数 1112345678999m1z\n'
+        '· #何切 <牌>\n'
+        '目前仅支持分析2, 5, 8, 11, 14张牌的情形'
     )
 )
 

@@ -29,9 +29,9 @@ __plugin_meta__ = nonebot.plugin.PluginMetadata(
 本插件提供公共帮助菜单能力
 此Bot配置的命令前缀：{" ".join(list(nonebot.get_driver().config.command_start))}
 
-{default_start}help  # 获取本插件帮助
-{default_start}help list  # 展示已加载插件列表
-{default_start}help <插件名>  # 调取目标插件帮助信息
+· {default_start}help  # 获取本插件帮助
+· {default_start}help list  # 展示已加载插件列表
+· {default_start}help <插件名>  # 调取目标插件帮助信息
 ''',
     extra={'version': '0.3.1'}
 )
