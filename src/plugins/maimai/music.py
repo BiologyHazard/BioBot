@@ -6,6 +6,7 @@ from typing import Any
 import aiofiles
 import aiohttp
 from retrying import retry
+import asyncio
 
 
 def get_cover_len4_id(mid) -> str:
@@ -187,17 +188,22 @@ class MusicList(list[Music]):
 
 
 class Mai:
-    # music_list: MusicList
+    music_list: MusicList
 
     @classmethod
-    # @retry(stop_max_attempt_number=3)
+    @retry(stop_max_attempt_number=3)
     async def get_music(cls) -> None:
-        async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
-            assert obj.status == 200
-            music_data = await obj.json()
-        async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
-            assert obj.status == 200
-            chart_stats = await obj.json()
+        async def get_music_data() -> Any:
+            async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
+                assert obj.status == 200
+                return await obj.json()
+
+        async def get_chart_stats() -> Any:
+            async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
+                assert obj.status == 200
+                return await obj.json()
+
+        music_data, chart_stats = await asyncio.gather(get_music_data(), get_chart_stats())
         # import requests
         # with requests.get('https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
         #     music_data = obj.json()
