@@ -1,11 +1,21 @@
 # import nonebot
-import re
-from .data_source import get_av_data
 import asyncio
+import re
 
 from nonebot import get_driver, on_regex
-from .config import Config
 from nonebot.adapters.onebot.v11 import Bot, Event
+from nonebot.plugin import PluginMetadata
+
+from .config import Config
+from .data_source import get_av_data
+
+__plugin_meta__ = PluginMetadata(
+    name='bilibili视频链接解析',
+    description='',
+    usage=(
+        ''
+    )
+)
 
 global_config = get_driver().config
 config = global_config.dict()

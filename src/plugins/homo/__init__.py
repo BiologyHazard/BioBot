@@ -5,8 +5,17 @@ from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent
 from nonebot.internal.matcher import Matcher
 from nonebot.internal.rule import Rule
 from nonebot.params import CommandArg, CommandStart, EventToMe
+from nonebot.plugin import PluginMetadata
 
 from .homo import generate_homo
+
+__plugin_meta__ = PluginMetadata(
+    name='恶臭论证',
+    description='',
+    usage=(
+        ''
+    )
+)
 
 
 @Rule

@@ -2,6 +2,15 @@ from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Message, MessageSegment
 from nonebot.internal.matcher import Matcher
 from nonebot.params import CommandArg
+from nonebot.plugin import PluginMetadata
+
+__plugin_meta__ = PluginMetadata(
+    name='文本转语音',
+    description='',
+    usage=(
+        ''
+    )
+)
 
 text2sound: type[Matcher] = on_command('文本转语音', aliases={'tts', 'text2sound', 't2s'}, priority=5)
 

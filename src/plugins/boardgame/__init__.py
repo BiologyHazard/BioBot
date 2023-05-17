@@ -1,11 +1,21 @@
 from nonebot import logger, on_command
-from nonebot.adapters.onebot.v11 import Bot, Event, Message, MessageSegment, GroupMessageEvent
+from nonebot.adapters.onebot.v11 import (Bot, Event, GroupMessageEvent,
+                                         Message, MessageSegment)
 from nonebot.params import CommandArg
+from nonebot.plugin import PluginMetadata
 
 from .boardgame import BoardGame, MoveResult, MoveSide, Pos
 from .gomoku import Gomoku
-from .othello import Othello
 from .image import image_to_message_segment
+from .othello import Othello
+
+__plugin_meta__ = PluginMetadata(
+    name='棋类游戏',
+    description='',
+    usage=(
+        ''
+    )
+)
 
 games: dict[int, BoardGame] = {}
 # game_players: dict[int, dict[int, str]] = defaultdict(list)

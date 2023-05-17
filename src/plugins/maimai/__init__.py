@@ -12,6 +12,7 @@ from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg, EventMessage, RegexGroup
 from nonebot.permission import SUPERUSER
+from nonebot.plugin import PluginMetadata
 
 from . import plate
 from .best_pic import generate
@@ -19,6 +20,14 @@ from .consts import DIFFICULTY_NAME
 from .image import image_to_bytesio, text_to_image
 from .music import Chart, Mai, Music, MusicList, get_cover_len4_id
 from .utils import get_hash_value, strftime
+
+__plugin_meta__ = PluginMetadata(
+    name='maimai',
+    description='',
+    usage=(
+        ''
+    )
+)
 
 driver: Driver = get_driver()
 
