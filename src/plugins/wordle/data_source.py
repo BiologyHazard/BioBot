@@ -5,7 +5,8 @@ from typing import List, Optional, Tuple
 from PIL import Image, ImageDraw
 from PIL.Image import Image as IMG
 
-from .utils import legal_word, load_font, save_png
+from .utils import is_legal_word, load_font, save_png
+from .wordleai import WordleAI
 
 
 class GuessResult(Enum):
@@ -16,6 +17,20 @@ class GuessResult(Enum):
 
 
 class Wordle(object):
+    block_size = (40, 40)  # 文字块尺寸
+    block_padding = (10, 10)  # 文字块之间间距
+    padding = (20, 20)  # 边界间距
+    border_width = 2  # 边框宽度
+    font_size = 20  # 字体大小
+    font = load_font("KarnakPro-Bold.ttf", font_size)
+
+    correct_color = (134, 163, 115)  # 存在且位置正确时的颜色
+    exist_color = (198, 182, 109)  # 存在但位置不正确时的颜色
+    wrong_color = (123, 123, 124)  # 不存在时颜色
+    border_color = (123, 123, 124)  # 边框颜色
+    bg_color = (255, 255, 255)  # 背景颜色
+    font_color = (255, 255, 255)  # 文字颜色
+
     def __init__(self, word: str, meaning: str):
         self.word: str = word  # 单词
         self.meaning: str = meaning  # 单词释义
@@ -23,24 +38,11 @@ class Wordle(object):
         self.word_lower: str = self.word.lower()
         self.length: int = len(word)  # 单词长度
         self.rows: int = self.length + 1  # 可猜次数
-        self.guessed_words: List[str] = []  # 记录已猜单词
-
-        self.block_size = (40, 40)  # 文字块尺寸
-        self.block_padding = (10, 10)  # 文字块之间间距
-        self.padding = (20, 20)  # 边界间距
-        self.border_width = 2  # 边框宽度
-        self.font_size = 20  # 字体大小
-        self.font = load_font("KarnakPro-Bold.ttf", self.font_size)
-
-        self.correct_color = (134, 163, 115)  # 存在且位置正确时的颜色
-        self.exist_color = (198, 182, 109)  # 存在但位置不正确时的颜色
-        self.wrong_color = (123, 123, 124)  # 不存在时颜色
-        self.border_color = (123, 123, 124)  # 边框颜色
-        self.bg_color = (255, 255, 255)  # 背景颜色
-        self.font_color = (255, 255, 255)  # 文字颜色
+        self.guessed_words: list[str] = []  # 记录已猜单词
+        self.ai: WordleAI
 
     def guess(self, word: str) -> Optional[GuessResult]:
-        if not legal_word(word):
+        if not is_legal_word(word):
             return GuessResult.ILLEGAL
         word = word.lower()
         if word in self.guessed_words:
