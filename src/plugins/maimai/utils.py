@@ -1,13 +1,10 @@
 import datetime
-import hashlib
 import time
+from random import Random
 
 
-def get_hash_value(id: int) -> int:
-    encryptor = hashlib.sha256()
-    encryptor.update(str(datetime.date.today()).encode())
-    encryptor.update(str(id).encode())
-    return int.from_bytes(encryptor.digest())
+def get_random_inst(qq: int) -> Random:
+    return Random(str(qq) + str(datetime.date.today()))
 
 
 def strftime(event_time: int) -> str:

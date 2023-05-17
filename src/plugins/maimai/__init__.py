@@ -1,6 +1,7 @@
 import json
 import math
 import re
+from random import Random
 from typing import Any
 
 import aiofiles
@@ -18,7 +19,7 @@ from .best_pic import generate
 from .consts import DIFFICULTY_NAME
 from .image import image_to_bytesio, text_to_image
 from .music import Chart, Mai, Music, MusicList, get_cover_len4_id
-from .utils import get_hash_value, strftime
+from .utils import get_random_inst, strftime
 
 driver: Driver = get_driver()
 
@@ -278,6 +279,19 @@ async def query_alias_func(event: GroupMessageEvent, message: Message = CommandA
     await query_alias.finish('\n'.join(result))
 
 
+@query_chart.handle()
+async def query_chart_func(group: tuple[str | None, str] = RegexGroup()):
+    music_id: str = group[1]
+    music: Music | None = Mai.music_list.by_id(music_id)
+    if music is None:
+        await query_chart.finish('未找到该乐曲。')
+    if group[0] is not None:
+        level_index: int = '绿黄红紫白'.index(group[0])
+        await query_chart.finish(chart_info(music, level_index))
+    else:
+        await query_chart.finish(music_info(music))
+
+
 @spec_rand.handle()
 async def spec_rand_func(group: tuple[str | None, str | None, str | None, str | None] = RegexGroup()) -> None:
     music_type, diff, ds, level = group
@@ -304,28 +318,14 @@ async def maimai_what_func() -> None:
     await maimai_what.finish(music_info(Mai.music_list.random()))
 
 
-@query_chart.handle()
-async def query_chart_func(group: tuple[str | None, str] = RegexGroup()):
-    music_id: str = group[1]
-    music: Music | None = Mai.music_list.by_id(music_id)
-    if music is None:
-        await query_chart.finish('未找到该乐曲。')
-    if group[0] is not None:
-        level_index: int = '绿黄红紫白'.index(group[0])
-        await query_chart.finish(chart_info(music, level_index))
-    else:
-        await query_chart.finish(music_info(music))
-
-
 wm_list: list[str] = ['拼机', '推分', '越级', '下埋', '夜勤', '练底力', '练手法', '打旧框', '干饭', '抓绝赞', '收歌']
 
 
 @today_maimai.handle()
-async def today_maimai_func(event: MessageEvent, message: Message = CommandArg()):
-    qq: int = event.user_id
-    hash_value: int = get_hash_value(qq)
-    luck: int = hash_value % 101
-    wm_value: list[int] = [(hash_value >> (i*2)) & 3 for i in range(len(wm_list))]
+async def today_maimai_func(event: MessageEvent) -> None:
+    random_inst: Random = get_random_inst(event.user_id)
+    luck: int = random_inst.randint(0, 100)
+    wm_value: list[int] = [random_inst.randrange(4) for _ in wm_list]
     lines: list[str] = []
     lines.append(f'今日人品值：{luck}')
     for i, (value, content) in enumerate(zip(wm_value, wm_list)):
@@ -335,11 +335,11 @@ async def today_maimai_func(event: MessageEvent, message: Message = CommandArg()
             lines.append(f'忌 {content}')
     lines.append('Bio提醒您：打机时不要大力拍打或滑动哦')
     lines.append('今日推荐歌曲：')
-    music: Music = Mai.music_list[hash_value % len(Mai.music_list)]
+    music: Music = random_inst.choice(Mai.music_list)
     await today_maimai.finish(Message([MessageSegment.text('\n'.join(lines))]) + music_info(music))
 
 
-@score_line.handle()
+@ score_line.handle()
 async def score_line_func(message: Message = CommandArg()):
     regex = r'(绿|黄|红|紫|白)(id)?([0-9]+)'
     argv: list[str] = message.extract_plain_text().strip().split()
@@ -378,8 +378,8 @@ async def score_line_func(message: Message = CommandArg()):
             await query_chart.finish("格式错误，输入“分数线 帮助”以查看帮助信息")
 
 
-@best_40.handle()
-@best_50.handle()
+@ best_40.handle()
+@ best_50.handle()
 async def best_pic_func(event: MessageEvent, matcher: Matcher, arg: Message = CommandArg()) -> None:
 
     if not arg:  # b40
@@ -404,7 +404,7 @@ async def best_pic_func(event: MessageEvent, matcher: Matcher, arg: Message = Co
     await matcher.finish(MessageSegment.image(image_to_bytesio(result)))
 
 
-@plate_process.handle()
+@ plate_process.handle()
 async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()) -> None:
     plate_name_han, nickname = group
     version_han, target_han = plate_name_han[0], plate_name_han[1]
