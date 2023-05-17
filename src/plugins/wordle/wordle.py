@@ -16,7 +16,7 @@ class GuessResult(Enum):
     ILLEGAL = 3  # 单词不合法
 
 
-class Wordle(object):
+class Wordle:
     block_size = (40, 40)  # 文字块尺寸
     block_padding = (10, 10)  # 文字块之间间距
     padding = (20, 20)  # 边界间距
@@ -31,10 +31,12 @@ class Wordle(object):
     bg_color = (255, 255, 255)  # 背景颜色
     font_color = (255, 255, 255)  # 文字颜色
 
-    def __init__(self, word: str, meaning: str):
+    def __init__(self, word: str, meaning: dict[str, str]):
         self.word: str = word  # 单词
-        self.meaning: str = meaning  # 单词释义
-        self.result = f"【单词】：{self.word}\n【释义】：{self.meaning}"
+        self.meaning: dict[str, str] = meaning  # 单词释义
+        self.result: str = f"【单词】{self.word}\n【中释】{self.meaning['中释']}"
+        if '英释' in self.meaning:
+            self.result += f"\n【英释】{self.meaning['英释']}"
         self.word_lower: str = self.word.lower()
         self.length: int = len(word)  # 单词长度
         self.rows: int = self.length + 1  # 可猜次数

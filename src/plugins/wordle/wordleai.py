@@ -44,12 +44,14 @@ class WordleAI:
         self.supported_guesses: set[str] = self.psb_answers.copy()
         self.length: int = length
 
-    def give_guess(self):
-        if len(self.psb_answers) == 1:
-            return self.psb_answers.pop()
+    def give_guess(self) -> str:
+        if len(self.psb_answers) <= 3:
+            guesses: set[str] = self.psb_answers
+        else:
+            guesses = self.supported_guesses
         guesses_exp: dict[str, float] = {}
         left_entropy: float = math.log2(len(self.psb_answers))
-        for guess in self.supported_guesses:
+        for guess in guesses:
             prob: float = 1 / len(self.psb_answers) if guess in self.psb_answers else 0.0
             hint_count = np.zeros(3**self.length, dtype=np.int8)
             for ans in self.psb_answers:

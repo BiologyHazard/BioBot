@@ -26,8 +26,8 @@ from nonebot.plugin import PluginMetadata
 from nonebot.rule import ArgumentParser, Rule
 from nonebot.typing import T_State
 
-from .data_source import GuessResult, Wordle
-from .utils import dic_list, random_word
+from .wordle import GuessResult, Wordle
+from .utils import dict_list, random_word
 from .wordleai import WordleAI, calc_hint
 
 __plugin_meta__ = PluginMetadata(
@@ -44,7 +44,7 @@ __plugin_meta__ = PluginMetadata(
         "可使用 -l/--length 指定单词长度，默认为5；\n"
         "可使用 -d/--dic 指定词典，默认为CET4\n"
         '发送“获取建议”获取猜测建议\n'
-        f"支持的词典：{'、'.join(dic_list)}"
+        f"支持的词典：{'、'.join(dict_list)}"
     ),
     extra={
         "unique_name": "wordle",
@@ -70,7 +70,7 @@ class Options:
     dic: str = ""
     hint: bool = False
     stop: bool = False
-    word: str = ""
+    word: str | None = ""
     suggest: bool = False
 
 
@@ -235,8 +235,8 @@ async def handle_wordle(
         if options.length < 3 or options.length > 8:
             await send("单词长度应在3~8之间")
 
-        if options.dic not in dic_list:
-            await send("支持的词典：" + ", ".join(dic_list))
+        if options.dic not in dict_list:
+            await send("支持的词典：" + ", ".join(dict_list))
 
         word, meaning = random_word(options.dic, options.length)
         game = Wordle(word, meaning)
@@ -265,27 +265,32 @@ async def handle_wordle(
     if options.suggest:
         if not game.guessed_words:
             await send('请先猜一次再获取建议~')
-        suggest: str = game.ai.give_guess()
-        await send(f'建议您猜 {suggest}')
+        messages: list[str] = [f'根据已有信息，可能的答案有{len(game.ai.psb_answers)}个']
+        if len(game.ai.psb_answers) <= 48:
+            messages.append(f'分别是 {", ".join(game.ai.psb_answers)}\n')
+        if game.length <= 6:
+            messages.append(f'建议您猜 {game.ai.give_guess()}')
+        await send('\n'.join(messages))
 
     word = options.word
-    if not re.fullmatch(r"^[a-zA-Z]{3,8}$", word):
-        await send()
-    if len(word) != game.length:
-        await send("请发送正确长度的单词")
+    if isinstance(word, str):
+        if not re.fullmatch(r"^[a-zA-Z]{3,8}$", word):
+            await send()
+        if len(word) != game.length:
+            await send("请发送正确长度的单词")
 
-    result = game.guess(word)
-    game.ai.store_result(word, calc_hint(game.word_lower, word))
-    if result in [GuessResult.WIN, GuessResult.LOSS]:
-        games.pop(cid)
-        await send(
-            ("恭喜你猜出了单词！" if result == GuessResult.WIN else "很遗憾，没有人猜出来呢")
-            + f"\n{game.result}",
-            game.draw(),
-        )
-    elif result == GuessResult.DUPLICATE:
-        await send("你已经猜过这个单词了呢")
-    elif result == GuessResult.ILLEGAL:
-        await send(f"你确定 {word} 是一个合法的单词吗？")
-    else:
-        await send(image=game.draw())
+        result = game.guess(word)
+        game.ai.store_result(word, calc_hint(game.word_lower, word))
+        if result in [GuessResult.WIN, GuessResult.LOSS]:
+            games.pop(cid)
+            await send(
+                ("恭喜你猜出了单词！" if result == GuessResult.WIN else "很遗憾，没有人猜出来呢")
+                + f"\n{game.result}",
+                game.draw(),
+            )
+        elif result == GuessResult.DUPLICATE:
+            await send("你已经猜过这个单词了呢")
+        elif result == GuessResult.ILLEGAL:
+            await send(f"你确定 {word} 是一个合法的单词吗？")
+        else:
+            await send(image=game.draw())
