@@ -48,11 +48,11 @@ async def start_gomuku_func(bot: Bot, event: Event, message: Message = CommandAr
 
     game: Gomoku = Gomoku()
     games[event.group_id] = game
-    await start_gomoku.finish(image_to_message_segment(game.draw()))
+    await start_gomoku.finish(image_to_message_segment(game.draw()) + '游戏已开始，发送“落子 <坐标>”加入游戏')
 
 
 @start_othello.handle()
-async def start_othello_func(bot: Bot, event: Event, message: Message = CommandArg()):
+async def start_othello_func(event: Event) -> None:
     if not isinstance(event, GroupMessageEvent):
         await start_gomoku.finish(not_group_text)
 
@@ -65,7 +65,7 @@ async def start_othello_func(bot: Bot, event: Event, message: Message = CommandA
 
 
 @place.handle()
-async def place_func(bot: Bot, event: Event, message: Message = CommandArg()):
+async def place_func(event: Event, message: Message = CommandArg()):
     if not isinstance(event, GroupMessageEvent):
         await start_gomoku.finish(not_group_text)
 
@@ -81,12 +81,10 @@ async def place_func(bot: Bot, event: Event, message: Message = CommandArg()):
     if (game.moveside == MoveSide.BLACK) and (not game.player_black):
         game.player_black = event.user_id
         await place.send('您已加入游戏，您是黑方', at_sender=True)
-        logger.trace(repr(game.player_black))
 
     if (game.moveside == MoveSide.WHITE) and (not game.player_white):
         game.player_white = event.user_id
         await place.send('您已加入游戏，您是白方', at_sender=True)
-        logger.trace(repr(game.player_white))
 
     if (((game.moveside == MoveSide.BLACK) and (game.player_black != event.user_id))
             or ((game.moveside == MoveSide.WHITE) and (game.player_white != event.user_id))):
@@ -109,7 +107,7 @@ async def place_func(bot: Bot, event: Event, message: Message = CommandArg()):
 
 
 @repent.handle()
-async def repent_func(bot: Bot, event: Event, message: Message = CommandArg()):
+async def repent_func(event: Event):
     if not isinstance(event, GroupMessageEvent):
         await repent.finish(not_group_text)
 
@@ -128,7 +126,7 @@ async def repent_func(bot: Bot, event: Event, message: Message = CommandArg()):
 
 
 @stop_game.handle()
-async def stop_game_func(bot: Bot, event: Event, message: Message = CommandArg()):
+async def stop_game_func(event: Event, message: Message = CommandArg()):
     if not isinstance(event, GroupMessageEvent):
         await stop_game.finish(not_group_text)
 

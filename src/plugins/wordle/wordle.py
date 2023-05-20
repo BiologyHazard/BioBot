@@ -17,6 +17,8 @@ class GuessResult(Enum):
 
 
 class Wordle:
+    ROWS: dict[int, int] = {3: 7, 4: 6, 5: 6, 6: 6, 7: 5, 8: 5}
+
     block_size = (40, 40)  # 文字块尺寸
     block_padding = (10, 10)  # 文字块之间间距
     padding = (20, 20)  # 边界间距
@@ -39,7 +41,7 @@ class Wordle:
             self.result += f"\n【英释】{self.meaning['英释']}"
         self.word_lower: str = self.word.lower()
         self.length: int = len(word)  # 单词长度
-        self.rows: int = self.length + 1  # 可猜次数
+        self.rows: int = self.ROWS[self.length]  # 可猜次数
         self.guessed_words: list[str] = []  # 记录已猜单词
         self.ai: WordleAI
 

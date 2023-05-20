@@ -112,10 +112,8 @@ V12Bot.on_called_api(save_msg_id_v12)
 
 
 def remove_msg_id(key: str, msg_id: str) -> None:
-    print(msg_ids)
     if key in msg_ids and msg_id in msg_ids[key]:
         msg_ids[key].remove(msg_id)
-    print(msg_ids)
 
 
 # 命令前缀为空则需要to_me，否则不需要

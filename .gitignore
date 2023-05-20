@@ -3,6 +3,7 @@ __pycache__
 /.idea
 /.mypy_cache
 /.vscode
+/.ipynb_checkpoints
 /accounts
 /go-cqhttp*
 /data

@@ -1,7 +1,4 @@
-from .boardgame import BoardGame, MoveResult, Pos, Placement
-
-
-from typing import Optional
+from .boardgame import BoardGame, MoveResult, Placement, Pos
 
 
 class Gomoku(BoardGame):
@@ -10,7 +7,7 @@ class Gomoku(BoardGame):
     def __init__(self):
         super().__init__(size=15, placement=Placement.CROSS, allow_skip=False)
 
-    def update(self, pos: Pos) -> Optional[MoveResult]:
+    def update(self, pos: Pos) -> MoveResult | None:
         size = self.size
         moveside = self.moveside
         self.push(pos)

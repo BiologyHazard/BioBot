@@ -1,5 +1,3 @@
-from typing import Optional
-
 from .boardgame import BoardGame, MoveResult, Placement, Pos
 
 

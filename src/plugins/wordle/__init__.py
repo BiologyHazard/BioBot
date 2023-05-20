@@ -31,53 +31,62 @@ from .utils import dict_list, random_word
 from .wordleai import WordleAI, calc_hint
 
 __plugin_meta__ = PluginMetadata(
-    name="猜单词",
-    description="wordle猜单词游戏",
+    name='wordle',
+    description='wordle猜单词游戏',
     usage=(
-        "@我 + “猜单词”开始游戏；\n"
-        "答案为指定长度单词，发送对应长度单词即可；\n"
-        "绿色块代表此单词中有此字母且位置正确；\n"
-        "黄色块代表此单词中有此字母，但该字母所处位置不对；\n"
-        "灰色块代表此单词中没有此字母；\n"
-        "猜出单词或用光次数则游戏结束；\n"
-        "发送“结束”结束游戏；发送“提示”查看提示；\n"
-        "可使用 -l/--length 指定单词长度，默认为5；\n"
-        "可使用 -d/--dic 指定词典，默认为CET4\n"
-        '发送“获取建议”获取猜测建议\n'
-        f"支持的词典：{'、'.join(dict_list)}"
-    ),
-    extra={
-        "unique_name": "wordle",
-        "example": "@小Q 猜单词\nwordle -l 6 -d CET6",
-        "author": "meetwq <meetwq@gmail.com>",
-        "version": "0.2.1",
-    },
+        '可用命令：\n'
+        '· wordle  # 开始游戏\n'
+        '· wordle [options] [...]  # 开始游戏并且指定单词长度或者答案词库\n'
+        'Options:\n'
+        '  -l, --length <长度>  # 指定单词长度，默认为5\n'
+        '  -d, --dict <词库>  # 指定答案词库，默认为CET4\n'
+        '· <对应长度的单词>  # 进行猜测\n'
+        '· 结束游戏\n'
+        '· 提示  # 提示黄色块单词所在位置\n'
+        '· 获取建议  # 获取可能的答案以及猜测建议\n'
+        '\n'
+        '规则：\n'
+        'wordle是一个猜单词游戏，答案是一个指定长度的单词\n'
+        '您有若干次机会来猜测这个单词\n'
+        '绿色块代表答案中有此字母且位置正确\n'
+        '黄色块代表答案中有此字母，但该字母所处位置不对\n'
+        '灰色块代表答案中没有此字母\n'
+        '一个字母的黄色和绿色数量与答案中的数量保持一致\n'
+        '以答案adapt，猜测apple为例\n'
+        '结果为apple的第一个p是黄色，第二个p是灰色\n'
+        '代表答案中只有一个p，且不在第二或第三个字母\n'
+        '以答案adapt，猜测trust为例\n'
+        '结果为trust的第一个t是灰色，第二个t是绿色\n'
+        '代表答案中只有一个t，且在第五个字母\n'
+        '\n'
+        f'支持的词库：{"、".join(dict_list)}'
+    )
 )
 
 
-parser = ArgumentParser("wordle", description="猜单词")
-parser.add_argument("-l", "--length", type=int, default=5, help="单词长度")
-parser.add_argument("-d", "--dic", default="CET4", help="词典")
-parser.add_argument("--hint", action="store_true", help="提示")
-parser.add_argument("--stop", action="store_true", help="结束游戏")
-parser.add_argument("--suggest", action="store_true", help="获取建议")
-parser.add_argument("word", nargs="?", help="单词")
+parser = ArgumentParser('wordle', description='猜单词')
+parser.add_argument('-l', '--length', type=int, default=5, help='单词长度')
+parser.add_argument('-d', '--dict', default='CET4', help='词典')
+parser.add_argument('--hint', action='store_true', help='提示')
+parser.add_argument('--stop', action='store_true', help='结束游戏')
+parser.add_argument('--suggest', action='store_true', help='获取建议')
+parser.add_argument('word', nargs='?', help='单词')
 
 
 @dataclass
 class Options:
     length: int = 0
-    dic: str = ""
+    dict: str = ''
     hint: bool = False
     stop: bool = False
-    word: str | None = ""
+    word: str | None = ''
     suggest: bool = False
 
 
 games: Dict[str, Wordle] = {}
 timers: Dict[str, TimerHandle] = {}
 
-wordle = on_shell_command("wordle", parser=parser, block=True, priority=13)
+wordle = on_shell_command('wordle', parser=parser, block=True, priority=13)
 
 
 @wordle.handle()
@@ -92,14 +101,14 @@ async def _(
 
 def get_cid(bot: Union[V11Bot, V12Bot], event: Union[V11MEvent, V12MEvent]):
     if isinstance(event, V11MEvent):
-        cid = f"{bot.self_id}_{event.sub_type}_"
+        cid = f'{bot.self_id}_{event.sub_type}_'
     else:
-        cid = f"{bot.self_id}_{event.detail_type}_"
+        cid = f'{bot.self_id}_{event.detail_type}_'
 
     if isinstance(event, V11GMEvent) or isinstance(event, V12GMEvent):
         cid += str(event.group_id)
     elif isinstance(event, V12CMEvent):
-        cid += f"{event.guild_id}_{event.channel_id}"
+        cid += f'{event.guild_id}_{event.channel_id}'
     else:
         cid += str(event.user_id)
 
@@ -114,8 +123,8 @@ def game_running(
 
 
 def get_word_input(state: T_State, msg: str = EventPlainText()) -> bool:
-    if re.fullmatch(r"^[a-zA-Z]{3,8}$", msg):
-        state["word"] = msg
+    if re.fullmatch(r'^[a-zA-Z]{3,8}$', msg):
+        state['word'] = msg
         return True
     return False
 
@@ -142,10 +151,10 @@ def smart_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) 
     return bool(command_start) or to_me
 
 
-shortcut("猜单词", ["--length", "5", "--dic", "CET4"], rule=smart_to_me)
-shortcut("提示", ["--hint"], aliases={"给个提示"}, rule=game_running)
-shortcut("结束", ["--stop"], aliases={"停", "停止游戏", "结束游戏"}, rule=game_running)
-shortcut("获取建议", ["--suggest"], aliases={"给个建议"}, rule=game_running)
+shortcut('猜单词', ['--length', '5', '--dict', 'CET4'], rule=smart_to_me)
+shortcut('提示', ['--hint'], aliases={'给个提示'}, rule=game_running)
+shortcut('结束', ['--stop'], aliases={'停', '停止游戏', '结束游戏'}, rule=game_running)
+shortcut('获取建议', ['--suggest'], aliases={'给个建议'}, rule=game_running)
 
 
 word_matcher = on_message(Rule(game_running) & get_word_input, block=True, priority=12)
@@ -158,7 +167,7 @@ async def _(
     event: Union[V11MEvent, V12MEvent],
     state: T_State,
 ):
-    word: str = state["word"]
+    word: str = state['word']
     await handle_wordle(bot, matcher, event, [word])
 
 
@@ -166,9 +175,9 @@ async def stop_game(matcher: Matcher, cid: str):
     timers.pop(cid, None)
     if games.get(cid, None):
         game = games.pop(cid)
-        msg = "猜单词超时，游戏结束"
+        msg = '猜单词超时，游戏结束'
         if len(game.guessed_words) >= 1:
-            msg += f"\n{game.result}"
+            msg += f'\n{game.result}'
         await matcher.finish(msg)
 
 
@@ -203,9 +212,9 @@ async def handle_wordle(
             msg = V12Msg()
             if image:
                 resp = await bot.upload_file(
-                    type="data", name="wordle", data=image.getvalue()
+                    type='data', name='wordle', data=image.getvalue()
                 )
-                file_id = resp["file_id"]
+                file_id = resp['file_id']
                 msg.append(V12MsgSeg.image(file_id))
 
         if message:
@@ -227,30 +236,30 @@ async def handle_wordle(
             await send()
 
         if options.word or options.stop or options.hint:
-            await send("没有正在进行的游戏")
+            await send('没有正在进行的游戏')
 
-        if not (options.length and options.dic):
-            await send("请指定单词长度和词典")
+        if not (options.length and options.dict):
+            await send('请指定单词长度和词典')
 
         if options.length < 3 or options.length > 8:
-            await send("单词长度应在3~8之间")
+            await send('单词长度应在3~8之间')
 
-        if options.dic not in dict_list:
-            await send("支持的词典：" + ", ".join(dict_list))
+        if options.dict not in dict_list:
+            await send('支持的词典：' + ', '.join(dict_list))
 
-        word, meaning = random_word(options.dic, options.length)
+        word, meaning = random_word(options.dict, options.length)
         game = Wordle(word, meaning)
-        game.ai = WordleAI(options.dic, options.length)
+        game.ai = WordleAI(options.dict, options.length)
         games[cid] = game
         set_timeout(matcher, cid)
 
-        await send(f"你有{game.rows}次机会猜出单词，单词长度为{game.length}，请发送单词", game.draw())
+        await send(f'你有{game.rows}次机会猜出单词，单词长度为{game.length}，请发送单词', game.draw())
 
     if options.stop:
         game = games.pop(cid)
-        msg = "游戏已结束"
+        msg = '游戏已结束'
         if len(game.guessed_words) >= 1:
-            msg += f"\n{game.result}"
+            msg += f'\n{game.result}'
         await send(msg)
 
     game = games[cid]
@@ -258,8 +267,8 @@ async def handle_wordle(
 
     if options.hint:
         hint = game.get_hint()
-        if not hint.replace("*", ""):
-            await send("你还没有猜对过一个字母哦~再猜猜吧~")
+        if not hint.replace('*', ''):
+            await send('你还没有猜对过一个字母哦~再猜猜吧~')
         await send(image=game.draw_hint(hint))
 
     if options.suggest:
@@ -267,30 +276,30 @@ async def handle_wordle(
             await send('请先猜一次再获取建议~')
         messages: list[str] = [f'根据已有信息，可能的答案有{len(game.ai.psb_answers)}个']
         if len(game.ai.psb_answers) <= 48:
-            messages.append(f'分别是 {", ".join(game.ai.psb_answers)}\n')
+            messages.append(f'分别是 {", ".join(game.ai.psb_answers)}')
         if game.length <= 6:
             messages.append(f'建议您猜 {game.ai.give_guess()}')
         await send('\n'.join(messages))
 
     word = options.word
     if isinstance(word, str):
-        if not re.fullmatch(r"^[a-zA-Z]{3,8}$", word):
+        if not re.fullmatch(r'^[a-zA-Z]{3,8}$', word):
             await send()
         if len(word) != game.length:
-            await send("请发送正确长度的单词")
+            await send('请发送正确长度的单词')
 
         result = game.guess(word)
         game.ai.store_result(word, calc_hint(game.word_lower, word))
         if result in [GuessResult.WIN, GuessResult.LOSS]:
             games.pop(cid)
             await send(
-                ("恭喜你猜出了单词！" if result == GuessResult.WIN else "很遗憾，没有人猜出来呢")
-                + f"\n{game.result}",
+                ('恭喜你猜出了单词！' if result == GuessResult.WIN else '很遗憾，没有人猜出来呢')
+                + f'\n{game.result}',
                 game.draw(),
             )
         elif result == GuessResult.DUPLICATE:
-            await send("你已经猜过这个单词了呢")
+            await send('你已经猜过这个单词了呢')
         elif result == GuessResult.ILLEGAL:
-            await send(f"你确定 {word} 是一个合法的单词吗？")
+            await send(f'你确定 {word} 是一个合法的单词吗？')
         else:
             await send(image=game.draw())

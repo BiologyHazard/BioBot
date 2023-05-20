@@ -234,10 +234,3 @@ class BoardGame:
 
         image1: PILImage = image1.resize((width, height), Image.Resampling.BILINEAR)
         return Image.alpha_composite(image0, image1)
-
-
-if __name__ == '__main__':
-    game: BoardGame = BoardGame(8, Placement.GRID)
-    game.set(Pos(0, 0), 1)
-    game.set(Pos(0, 1), -1)
-    game.draw(grid_pixels=64).show()

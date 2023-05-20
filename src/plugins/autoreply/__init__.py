@@ -9,16 +9,13 @@
 3. #查询 <触发语>  # 查询<触发语>的全部回复内容（仅限管理员使用该命令）
 '''
 
-from functools import partial
 
-from nonebot import MatcherGroup, get_driver, logger, on_command, on_message
-from nonebot.adapters.onebot.v11 import (GROUP_ADMIN, GROUP_OWNER, Bot, Event,
-                                         GroupMessageEvent, Message,
-                                         MessageEvent)
+from nonebot import MatcherGroup, get_driver, on_message
+from nonebot.adapters.onebot.v11 import (GROUP_ADMIN, GROUP_OWNER, Bot, MessageEvent,
+                                         GroupMessageEvent, Message)
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
-from nonebot.params import (CommandArg, CommandStart, EventMessage, EventToMe,
-                            RawCommand)
+from nonebot.params import (CommandArg, CommandStart, EventMessage, EventToMe)
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
@@ -63,13 +60,18 @@ async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me
     return bool(command_start) or to_me
 
 
+@Rule
+async def should_reply(event: GroupMessageEvent, message: Message = EventMessage()) -> bool:
+    return await autoreply.get_reply(event.group_id, str(message)) is not None
+
+
 autoreply_command_group = MatcherGroup(rule=with_command_start_or_to_me, block=False, priority=5)
 learn: type[Matcher] = autoreply_command_group.on_command('学习')
 forget: type[Matcher] = autoreply_command_group.on_command('忘记', {'删除'})
 forget_all: type[Matcher] = autoreply_command_group.on_command('忘记全部')
 query: type[Matcher] = autoreply_command_group.on_command('查询')
 query_all: type[Matcher] = autoreply_command_group.on_command('查询全部')
-reply: type[Matcher] = on_message(block=False, priority=15)
+reply: type[Matcher] = on_message(rule=should_reply, block=False, priority=15)
 
 
 driver: Driver = get_driver()
@@ -84,7 +86,7 @@ async def on_bot_connect_func(bot: Bot) -> None:
 
 
 @learn.handle()
-async def learn_func(event: Event, message: Message = CommandArg()) -> None:
+async def learn_func(event: MessageEvent, message: Message = CommandArg()) -> None:
     if not isinstance(event, GroupMessageEvent):
         await learn.finish(not_group_text)
 
@@ -109,7 +111,7 @@ async def learn_func(event: Event, message: Message = CommandArg()) -> None:
 
 
 @forget.handle()
-async def forget_func(bot: Bot, event: Event, message: Message = CommandArg()) -> None:
+async def forget_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
     if not isinstance(event, GroupMessageEvent):
         await forget.finish(not_group_text)
 
@@ -140,7 +142,7 @@ async def forget_func(bot: Bot, event: Event, message: Message = CommandArg()) -
 
 
 @forget_all.handle()
-async def forget_all_func(bot: Bot, event: Event, message: Message = CommandArg()) -> None:
+async def forget_all_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
     if not isinstance(event, GroupMessageEvent):
         await forget_all.finish(not_group_text)
 
@@ -159,7 +161,7 @@ async def forget_all_func(bot: Bot, event: Event, message: Message = CommandArg(
 
 
 @query.handle()
-async def query_func(bot: Bot, event: Event, message: Message = CommandArg()) -> None:
+async def query_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
     if not isinstance(event, GroupMessageEvent):
         await query.finish(not_group_text)
 
@@ -174,7 +176,7 @@ async def query_func(bot: Bot, event: Event, message: Message = CommandArg()) ->
 
 
 @query_all.handle()
-async def query_all_func(bot: Bot, event: Event) -> None:
+async def query_all_func(bot: Bot, event: MessageEvent) -> None:
     if not isinstance(event, GroupMessageEvent):
         await query.finish(not_group_text)
 
@@ -185,7 +187,7 @@ async def query_all_func(bot: Bot, event: Event) -> None:
 
 
 @reply.handle()
-async def reply_func(bot: Bot, event: GroupMessageEvent, message: Message = EventMessage()) -> None:
+async def reply_func(event: GroupMessageEvent, message: Message = EventMessage()) -> None:
     reply_message: str | None = await autoreply.get_reply(event.group_id, str(message))
     if reply_message is None:
         return

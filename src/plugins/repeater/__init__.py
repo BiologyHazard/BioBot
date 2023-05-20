@@ -41,11 +41,8 @@ async def not_in_blacklist(raw_message: Message = EventMessage()) -> bool:
     return raw_message not in blacklist
 
 
-repeat = on_message(rule=in_repeater_group & not_in_blacklist, priority=10, block=False)
-
-
-@repeat.handle()
-async def repeat_func(bot: Bot, event: GroupMessageEvent, raw_message: Message = EventMessage()) -> None:
+@Rule
+async def should_repeat(event: GroupMessageEvent, raw_message: Message = EventMessage()) -> bool:
     message: Message = _message_preprocess(raw_message)
     logger.debug(f'[复读姬] 这一次消息: {message}')
     logger.debug(f'[复读姬] 上一次消息: {last_message.get(event.group_id)}')
@@ -53,10 +50,15 @@ async def repeat_func(bot: Bot, event: GroupMessageEvent, raw_message: Message =
         message_times[event.group_id] = 1
     else:
         message_times[event.group_id] += 1
-    logger.debug(
-        f'[复读姬] 已重复次数: {message_times.get(event.group_id)}/{config.shortest_times}')
-    if message_times.get(event.group_id) == config.shortest_times:
-        logger.debug(f'[复读姬] 原始的消息: {str(event.message)}')
-        logger.debug(f"[复读姬] 欲发送信息: {raw_message}")
-        await bot.send_group_msg(group_id=event.group_id, message=raw_message, auto_escape=False)
+    logger.debug(f'[复读姬] 已重复次数: {message_times.get(event.group_id)}/{config.shortest_times}')
     last_message[event.group_id] = message
+    return message_times.get(event.group_id) == config.shortest_times
+
+repeat = on_message(rule=in_repeater_group & not_in_blacklist & should_repeat, priority=10, block=False)
+
+
+@repeat.handle()
+async def repeat_func(event: GroupMessageEvent, raw_message: Message = EventMessage()) -> None:
+    logger.debug(f'[复读姬] 原始的消息: {str(event.message)}')
+    logger.debug(f"[复读姬] 欲发送信息: {raw_message}")
+    await repeat.finish(raw_message)
