@@ -51,7 +51,7 @@ async def get_sx(word):
             return msg if msg else []
 
 
-sx = on_regex(pattern="^sx\ |^缩写\ (.*)")
+sx = on_regex(pattern=r"^sx\ |^缩写\ (.*)")
 
 
 @sx.handle()
