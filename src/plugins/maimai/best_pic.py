@@ -4,9 +4,9 @@ from typing import Dict, List, Literal, Optional, Tuple, Union, overload
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .image import get_user_logo
+from .image import get_cover_len4_id, get_user_logo
 from .consts import *
-from .music import Mai, get_cover_len4_id
+from .music import Mai
 from .api_data import get_player_data
 
 

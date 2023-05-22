@@ -1,3 +1,4 @@
+from typing import Iterable, overload
 import json
 import random
 from copy import deepcopy
@@ -7,13 +8,6 @@ import aiofiles
 import aiohttp
 from retrying import retry
 import asyncio
-
-
-def get_cover_len4_id(mid) -> str:
-    mid = int(mid)
-    if mid > 10000:
-        mid -= 10000
-    return f'{mid:04d}'
 
 
 def cross(checker: list[Any], elem: Any | list[Any] | None, diff):
@@ -58,80 +52,72 @@ def in_or_equal(checker: Any, elem: Any | list[Any] | None):
         return checker == elem
 
 
-class Stats(dict):
-    cnt: int
-    diff: str
-    fit_diff: float
-    avg: float
-    avg_dx: float
-    std_dev: float
-    dist: list[int]
-    fc_dist: list[int]
+class Stats:
+    def __init__(self, obj) -> None:
+        self.cnt: int = obj['cnt']
+        self.diff: str = obj['diff']
+        self.fit_diff: float = obj['fit_diff']
+        self.avg: float = obj['avg']
+        self.avg_dx: float = obj['avg_dx']
+        self.std_dev: float = obj['std_dev']
+        self.dist: list[int] = obj['dist']
+        self.fc_dist: list[int] = obj['fc_dist']
 
-    def __getattribute__(self, item):
-        try:
-            if item in self:
-                return self[item]
-            return super().__getattribute__(item)
-        except KeyError:
-            return 'Unknown'
+    def __repr__(self) -> str:
+        return self.__class__.__name__ + '(' + ', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items()) + ')'
 
 
-class Chart(dict):
-    tap: int
-    slide: int
-    hold: int
-    touch: int
-    break_: int
-    charter: str
+class Chart:
+    def __init__(self, obj) -> None:
+        self.is_dx: bool = len(obj['notes']) == 5
+        self.tap: int = obj['notes'][0]
+        self.hold: int = obj['notes'][1]
+        self.slide: int = obj['notes'][2]
+        self.touch: int = obj['notes'][3] if len(obj['notes']) == 5 else 0
+        self.break_: int = obj['notes'][-1]
+        self.charter: str = obj['charter']
 
-    def __getattribute__(self, item):
-        if item == 'tap':
-            return self['notes'][0]
-        elif item == 'hold':
-            return self['notes'][1]
-        elif item == 'slide':
-            return self['notes'][2]
-        elif item == 'touch':
-            return self['notes'][3] if len(self['notes']) == 5 else 0
-        elif item == 'break_':
-            return self['notes'][-1]
-        elif item == 'charter':
-            return self['charter']
-        return super().__getattribute__(item)
+    def __repr__(self) -> str:
+        return self.__class__.__name__ + '(' + ', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items()) + ')'
 
 
-class Music(dict):
-    id: str
-    title: str
-    type: str
-    ds: list[float]
-    level: list[str]
-    artist: str
-    genre: str
-    bpm: float
-    release_date: str
-    version: str
-    charts: list[Chart]
-    stats: Stats
+class Music:
+    stats: list[Stats]
     aliases: dict[str, dict[str, Any]]
 
-    diff: list[int] = []
+    def __init__(self, obj) -> None:
+        if isinstance(obj, Music):
+            super().__init__()
+            return
+        self.id: str = obj['id']
+        self.title: str = obj['title']
+        self.type: str = obj['type']
+        self.ds: list[float] = obj['ds']
+        self.level: list[str] = obj['level']
+        self.artist: str = obj['basic_info']['artist']
+        self.genre: str = obj['basic_info']['genre']
+        self.bpm: float = obj['basic_info']['bpm']
+        self.release_date: str = obj['basic_info']['release_date']
+        self.version: str = obj['basic_info']['from']
+        self.charts: list[Chart] = [Chart(chart) for chart in obj['charts']]
 
-    def __getattribute__(self, __name: str) -> Any:
-        try:
-            return super().__getattribute__(__name)
-        except AttributeError:
-            if __name in {'genre', 'artist', 'release_date', 'bpm', 'version'}:
-                if __name == 'version':
-                    return self['basic_info']['from']
-                return self['basic_info'][__name]
-            elif __name in self:
-                return self[__name]
-            raise
+        self.diff: list[int] = []
+
+    @property
+    def has_remaster(self) -> bool:
+        return len(self.level) == 5
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__ + '(' + ', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items()) + ')'
 
 
 class MusicList(list[Music]):
+    def __init__(self, obj=None) -> None:
+        if obj is None:
+            super().__init__()
+            return
+        super().__init__(Music(music) for music in obj)
+
     def by_id(self, music_id: str) -> Music | None:
         for music in self:
             if music.id == music_id:
@@ -210,12 +196,11 @@ class Mai:
         # with requests.get('https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
         #     chart_stats = obj.json()
         cls.music_list = MusicList(music_data)
-        for i in range(len(cls.music_list)):
-            cls.music_list[i] = Music(cls.music_list[i])
-            cls.music_list[i]['stats'] = chart_stats['charts'][cls.music_list[i].id]
-            for j in range(len(cls.music_list[i].charts)):
-                cls.music_list[i].charts[j] = Chart(cls.music_list[i].charts[j])
-                cls.music_list[i].stats[j] = Stats(cls.music_list[i].stats[j])
+        for music in cls.music_list:
+            music.stats = []
+            for stats_dict in chart_stats['charts'][music.id]:
+                if stats_dict:
+                    music.stats.append(Stats(stats_dict))
 
     @classmethod
     async def get_aliases(cls) -> None:
@@ -226,3 +211,9 @@ class Mai:
                 music.aliases = obj[music.id]['aliases']
             else:
                 music.aliases = {}
+
+
+if __name__ == '__main__':
+    asyncio.run(Mai.get_music())
+    asyncio.run(Mai.get_aliases())
+    print(Mai.music_list[0])
