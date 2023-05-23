@@ -9,7 +9,7 @@ class Othello(BoardGame):
 
     def __init__(self):
         size = 8
-        super().__init__(size, placement=Placement.GRID, allow_skip=True)
+        super().__init__(size, placement=Placement.GRID)
 
         mid = int(size / 2)
         self.set(Pos(mid - 1, mid - 1), -1)

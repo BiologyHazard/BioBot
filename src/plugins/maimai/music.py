@@ -75,6 +75,7 @@ class Chart:
         self.slide: int = obj['notes'][2]
         self.touch: int = obj['notes'][3] if len(obj['notes']) == 5 else 0
         self.break_: int = obj['notes'][-1]
+        self.notes: int = sum(obj['notes'])
         self.charter: str = obj['charter']
 
     def __repr__(self) -> str:
@@ -112,11 +113,9 @@ class Music:
 
 
 class MusicList(list[Music]):
-    def __init__(self, obj=None) -> None:
-        if obj is None:
-            super().__init__()
-            return
-        super().__init__(Music(music) for music in obj)
+    @classmethod
+    def from_json(cls, obj) -> 'MusicList':
+        return cls(Music(music) for music in obj)
 
     def by_id(self, music_id: str) -> Music | None:
         for music in self:
@@ -195,7 +194,7 @@ class Mai:
         #     music_data = obj.json()
         # with requests.get('https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
         #     chart_stats = obj.json()
-        cls.music_list = MusicList(music_data)
+        cls.music_list = MusicList.from_json(music_data)
         for music in cls.music_list:
             music.stats = []
             for stats_dict in chart_stats['charts'][music.id]:
@@ -211,9 +210,3 @@ class Mai:
                 music.aliases = obj[music.id]['aliases']
             else:
                 music.aliases = {}
-
-
-if __name__ == '__main__':
-    asyncio.run(Mai.get_music())
-    asyncio.run(Mai.get_aliases())
-    print(Mai.music_list[0])

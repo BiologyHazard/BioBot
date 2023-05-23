@@ -5,7 +5,7 @@ class Gomoku(BoardGame):
     name: str = "五子棋"
 
     def __init__(self):
-        super().__init__(size=15, placement=Placement.CROSS, allow_skip=False)
+        super().__init__(size=15, placement=Placement.CROSS)
 
     def update(self, pos: Pos) -> MoveResult | None:
         size = self.size

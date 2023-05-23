@@ -96,7 +96,7 @@ async def place_func(event: Event, message: Message = CommandArg()):
     if game.get(pos) != 0:
         await place.finish('此处已有落子')
 
-    move_result = game.update(pos)
+    move_result: MoveResult | None = game.update(pos)
     if move_result == MoveResult.BLACK_WIN:
         await place.finish(Message(['黑方获胜！', image_to_message_segment(game.draw())]))  # type: ignore
     elif move_result == MoveResult.WHITE_WIN:

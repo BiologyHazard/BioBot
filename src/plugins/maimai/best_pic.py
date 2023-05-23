@@ -1,3 +1,4 @@
+from .music import Chart
 import math
 import os
 from typing import Dict, List, Literal, Optional, Tuple, Union, overload
@@ -179,10 +180,7 @@ class DrawBest:
         return ''.join(sList)
 
     def _dxScore(self, info: ChartInfo) -> Tuple[int, int]:
-        notes: list[int] = Mai.music_list.by_id(str(info.id)).charts[info.level]['notes']
-        value = 0
-        for i in notes:
-            value += i
+        value: int = Mai.music_list.by_id(str(info.id)).charts[info.level].notes
         dx = info.dxscore / (value * 3) * 100
         if dx <= 85:
             result = (0, 0)

@@ -5,9 +5,6 @@ from PIL import Image, ImageDraw, ImageFont
 from PIL.Image import Image as PILImage
 from PIL.ImageDraw import ImageDraw as PILImageDraw
 from PIL.ImageFont import FreeTypeFont
-from .config import data_path, cover_path, pic_path
-from .music import Music
-from .best_pic import DrawText
 
 fontpath = "data/maimai/fonts/SourceHanSans.otf"
 
@@ -65,8 +62,8 @@ def image_to_bytesio(img: PILImage, format='PNG') -> BytesIO:
 
 
 async def get_user_logo(qq: int) -> PILImage:
-    async with aiohttp.request('GET', f'http://q1.qlogo.cn/g?b=qq&nk={qq}&s=100') as resp:
-        return Image.open(await resp.read())
+    async with aiohttp.request('GET', f'http://q1.qlogo.cn/g?b=qq&nk={qq}&s=100') as response:
+        return Image.open(BytesIO(await response.read()))
 
 
 def get_cover_len4_id(music_id: str) -> str:

@@ -1,10 +1,6 @@
 import aiohttp
-
-from nonebot.adapters.onebot.v11 import Message
-from nonebot.typing import T_State
-from nonebot.plugin import on_regex
-from nonebot.adapters.onebot.v11 import Bot, Event
-from nonebot.plugin import PluginMetadata
+from nonebot.adapters.onebot.v11 import Event
+from nonebot.plugin import PluginMetadata, on_regex
 
 __plugin_meta__ = PluginMetadata(
     name='缩写查询器',
@@ -55,7 +51,7 @@ sx = on_regex(pattern=r"^sx\ |^缩写\ (.*)")
 
 
 @sx.handle()
-async def _(bot: Bot, event: Event):
+async def _(event: Event):
     msg = str(event.get_message())[3:]
     data = await get_sx(msg)
     result = ""

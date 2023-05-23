@@ -82,12 +82,11 @@ class BoardGame:
         self,
         size: int = 0,
         placement: Placement = Placement.CROSS,
-        allow_skip: bool = False,
         allow_repent: bool = True,
     ) -> None:
+
         self.size: int = size
         self.placement: Placement = placement
-        self.allow_skip: bool = allow_skip
         self.allow_repent: bool = allow_repent
 
         self.is_game_over: bool = False
@@ -170,16 +169,18 @@ class BoardGame:
              font_size=0.6,
              dot_r=0.45,
              dot_width=0.04,
+             cross_r=0.3,
              anti_alias=2.0) -> Image.Image:
 
         width = height = round((self.size + 2 * border) * grid_pixels)
         width_anti_alias = height_anti_alias = round(
             (self.size + 2 * border) * grid_pixels * anti_alias)
         image0: PILImage = Image.new('RGBA', (width, height), 'white')
-        image1 = Image.new(
-            'RGBA', (width_anti_alias, height_anti_alias), (0, 0, 0, 0))
+        image1: PILImage = Image.new('RGBA', (width_anti_alias, height_anti_alias), (0, 0, 0, 0))
         draw0: PILImageDraw = ImageDraw.Draw(image0)
         draw1: PILImageDraw = ImageDraw.Draw(image1)
+
+        # 画格子
         if self.placement == Placement.CROSS:
             for i in range(self.size):
                 draw0.line(((round((border + i + 1/2) * grid_pixels),
@@ -206,19 +207,7 @@ class BoardGame:
                             (round((border + self.size) * grid_pixels),
                              round((border + i) * grid_pixels))),
                            'black', round(grid_width * grid_pixels))
-
-        for x in range(self.size):
-            for y in range(self.size):
-                xy: xy_T = ((round((border + x + 1/2 - dot_r) * grid_pixels * anti_alias),
-                             round((border + y + 1/2 - dot_r) * grid_pixels * anti_alias)),
-                            (round((border + x + 1/2 + dot_r) * grid_pixels * anti_alias),
-                             round((border + y + 1/2 + dot_r) * grid_pixels * anti_alias)))
-                if self.get(Pos(x, y)) == 1:
-                    draw1.ellipse(xy, 'black')
-                elif self.get(Pos(x, y)) == -1:
-                    draw1.ellipse(xy, 'white', 'black',
-                                  round(dot_width * anti_alias * grid_pixels))
-
+        # 写字
         font0: FreeTypeFont = ImageFont.truetype(
             r'data/boardgame/consola.ttf', round(font_size * grid_pixels))
         for i in range(self.size):
@@ -231,6 +220,31 @@ class BoardGame:
             draw0.text((round((border - 0.1) * grid_pixels - font_pixels[0]),
                         round((border + i + 1/2) * grid_pixels - font_pixels[1] / 2)),
                        str(i + 1), 'black', font0, align='center')
+
+        # 画棋子
+        for x in range(self.size):
+            for y in range(self.size):
+                xy: xy_T = ((round((border + x + 1/2 - dot_r) * grid_pixels * anti_alias),
+                             round((border + y + 1/2 - dot_r) * grid_pixels * anti_alias)),
+                            (round((border + x + 1/2 + dot_r) * grid_pixels * anti_alias),
+                             round((border + y + 1/2 + dot_r) * grid_pixels * anti_alias)))
+                if self.get(Pos(x, y)) == 1:
+                    draw1.ellipse(xy, 'black')
+                elif self.get(Pos(x, y)) == -1:
+                    draw1.ellipse(xy, 'white', 'black', round(dot_width * anti_alias * grid_pixels))
+
+        # 画十字标记
+        if len(self.history) > 1:
+            moveside: int = self.history[-2].moveside
+            pos: Pos = self.positions[-1]
+            if moveside == MoveSide.BLACK:
+                draw1.line(((round((border + pos.x + 1/2 - cross_r) * grid_pixels * anti_alias),
+                             round((border + pos.y + 1/2) * grid_pixels * anti_alias)),
+                            (round((border + pos.x + 1/2 + cross_r) * grid_pixels * anti_alias),
+                             round((border + pos.y + 1/2) * grid_pixels * anti_alias))),
+                           'white', round(grid_width * grid_pixels * anti_alias))
+            else:
+                ...
 
         image1: PILImage = image1.resize((width, height), Image.Resampling.BILINEAR)
         return Image.alpha_composite(image0, image1)

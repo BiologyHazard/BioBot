@@ -1,4 +1,3 @@
-from nonebot.typing import T_State
 import asyncio
 import json
 import math
@@ -9,43 +8,59 @@ from typing import Any
 import aiofiles
 from nonebot import MatcherGroup, get_driver, logger
 from nonebot.adapters.onebot.v11 import (Bot, GroupMessageEvent, Message,
-                                         MessageEvent, MessageSegment)
+                                         MessageEvent, MessageSegment,
+                                         PrivateMessageEvent)
 from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
-from nonebot.params import CommandArg, EventMessage, RegexGroup, EventPlainText
+from nonebot.params import CommandArg, EventMessage, EventPlainText, RegexGroup
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
+from nonebot.rule import Rule
 
 from . import plate
 from .best_pic import generate
 from .consts import DIFFICULTY_NAME
+from .guess import Guess, guesses
 from .image import get_cover_len4_id, image_to_bytesio, text_to_image
 from .music import Chart, Mai, Music, MusicList
 from .utils import get_random_inst, strftime
-# from .guess import is_now_playing_guess_music, guesses, Guess
-from .guess import Guess
 
 driver: Driver = get_driver()
 default_command_start: str = tuple(driver.config.command_start)[0]
 help_str: str = f'''
-欢迎使用BioBot的maimai模块！
-本模块魔改自Diving-Fish/mai-bot和Yuri-YuzuChaN/maimaiDX
-maimai模块可用命令如下：
+欢迎使用 BioBot 的 maimai插件！
+本插件魔改自 Diving-Fish/mai-bot 和 Yuri-YuzuChaN/maimaiDX
+maimai插件可用命令如下：
+
+【插件帮助】
 · {default_command_start}help maimai  # 查看本帮助
+
+【随机乐曲】
 · {default_command_start}(今日舞萌|今日mai)  # 查看今天的舞萌运势
 · [...]maimai[...]什么  # 随机一首歌
 · 随个[dx|sd|标准][绿|黄|红|紫|白]<难度>  # 随机一首指定条件的乐曲
-· {default_command_start}(b40|b50)[<@某人>|<qq号>|<水鱼网昵称>]  # 查询自己或别人的b40/b50
-· <牌子名称>进度  # 查询牌子进度
+
+【查询分数】
+· {default_command_start}(b40|b50) [<@某人>|<qq号>|<水鱼网昵称>]  # 查询自己或别人的b40/b50
+· <牌子名称>进度 [<@某人>|<qq号>|<水鱼网昵称>]  # 查询自己或别人的牌子进度
+
+【查询乐曲】
 · {default_command_start}查歌 <乐曲标题的一部分>  # 通过标题查询乐曲
 · [绿|黄|红|紫|白]id<乐曲编号>  # 通过id查询乐曲或谱面
 · <乐曲别名>是什么歌  # 通过别名查询乐曲
-· {default_command_start}(添加|删除)别名 <乐曲id> <乐曲别名>  # 添加/删除乐曲别名
-· {default_command_start}查询别名 <乐曲id>  # 查询乐曲别名
 · {default_command_start}定数查歌 <定数>  # 查询定数对应的乐曲
 · {default_command_start}定数查歌 <定数下限> <定数上限>  # 查询定数对应的乐曲
+
+【乐曲别名】
+· {default_command_start}(添加|删除)别名 <乐曲id> <乐曲别名>  # 添加/删除乐曲别名
+· {default_command_start}查询别名 <乐曲id>  # 查询乐曲别名
+
+【推分助手】
 · {default_command_start}分数线 (绿|黄|红|紫|白)<乐曲id> <分数线>  # 详情请输入“分数线 帮助”查看
+
+【猜歌游戏】
+· {default_command_start}猜歌  # 开始猜歌
 '''.strip()
 
 __plugin_meta__ = PluginMetadata(
@@ -63,9 +78,27 @@ async def on_startup_func() -> None:
     logger.info('正在获取别名信息...')
     await Mai.get_aliases()
 
+
+def get_event_id(bot: Bot, event: MessageEvent) -> str:
+    if isinstance(event, PrivateMessageEvent):
+        return f'{bot.self_id}_{event.sub_type}_{event.user_id}'
+    elif isinstance(event, GroupMessageEvent):
+        return f'{bot.self_id}_{event.sub_type}_{event.group_id}'
+    raise TypeError
+
+
+@Rule
+def no_command_arg(command_arg: Message = CommandArg()) -> bool:
+    return not command_arg
+
+
+def is_now_playing_guess_music(bot: Bot, event: MessageEvent) -> bool:
+    return get_event_id(bot, event) in guesses
+
+
 maimai_command_group = MatcherGroup(priority=3, block=False)
-help = maimai_command_group.on_command('help maimai')
-today_maimai = maimai_command_group.on_command('今日舞萌', aliases={'今日mai', 'jrwm', '今日乌蒙'})
+help = maimai_command_group.on_command('help maimai', rule=no_command_arg)
+today_maimai = maimai_command_group.on_command('今日舞萌', aliases={'今日mai', 'jrwm', '今日乌蒙'}, rule=no_command_arg)
 maimai_what = maimai_command_group.on_regex(r"maimai.*什么", flags=re.RegexFlag.IGNORECASE)
 spec_rand = maimai_command_group.on_regex(
     r"[随来给]个(dx|sd|标准)?(绿|黄|红|紫|白)?(?:(\d{1,2}\.\d)|(\d{1,2}\+?))", flags=re.RegexFlag.IGNORECASE)
@@ -82,8 +115,8 @@ query_alias = maimai_command_group.on_command('查询别名')
 # query_alias = maimai_command_group.on_regex(r'(.*)有什么别名')
 plate_process = maimai_command_group.on_regex(
     r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽舞](?:[極极将神舞]|舞舞)|霸者)进度\s*(.*)')
-guess_music_start = maimai_command_group.on_command('猜歌')
-guess_music_solve = maimai_command_group.on_message()  # rule=is_now_playing_guess_music)
+guess_music_start = maimai_command_group.on_command('猜歌', rule=no_command_arg)
+guess_music_solve = maimai_command_group.on_message(rule=is_now_playing_guess_music)
 
 
 search_music_by_inner_help_str: str = '''
@@ -275,7 +308,7 @@ async def delete_alias_func(bot: Bot, event: GroupMessageEvent, message: Message
 
 
 @query_alias.handle()
-async def query_alias_func(event: GroupMessageEvent, message: Message = CommandArg()) -> None:
+async def query_alias_func(message: Message = CommandArg()) -> None:
     id: str = message.extract_plain_text()
     music: Music | None = Mai.music_list.by_id(id)
     if music is None:
@@ -447,58 +480,65 @@ async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = E
         payload['version'] = list(set(version for version in list(plate.plate_to_version.values())[:-5]))
     else:
         payload['version'] = [plate.plate_to_version[version_han]]
-    data = await plate.player_plate_data(payload, version_han, target_han, nickname)
+    data: MessageSegment | str = await plate.player_plate_data(payload, version_han, target_han, nickname)
     await plate_process.send(data)
 
 
 @guess_music_start.handle()
-async def guess_music_start_func(event: GroupMessageEvent, state: T_State) -> None:
+async def guess_music_start_func(bot: Bot, event: MessageEvent) -> None:
     # if event.group_id not in guess.config['enable']:
     #     await guess_music_start.finish('该群已关闭猜歌功能，开启请输入 开启mai猜歌', reply_message=True)
-    # if event.group_id in guesses:
-    #     await guess_music_start.finish('该群已有正在进行的猜歌', reply_message=True)
+    if is_now_playing_guess_music(bot, event):
+        await guess_music_start.finish('该群已有正在进行的猜歌', reply_message=True)
+    # guess = Guess(Mai.music_list.by_id('8'))
     guess = Guess()
-    # guesses[event.group_id] = guess
-    state['guess'] = guess
+    # guess.ROUNDS = 1
+    guesses[get_event_id(bot, event)] = guess
     await guess_music_start.send(
-        '我将从热门乐曲中选择一首歌，每隔8秒描述它的特征\n'
+        '我将从热门乐曲中选择一首乐曲，每隔8秒描述它的特征\n'
         '请输入乐曲的 id 或 标题 或 别名（不区分大小写）进行猜歌\n'
-        'DX乐谱和标准乐谱视为两首歌\n'
-        '猜歌时查歌等其他命令依然可用\n'
+        'DX乐谱和标准乐谱视为两首乐曲\n'
+        '猜歌时查歌等其他命令依然可用'
     )
-    await guess_music_loop(event, state)
+    await guess_music_loop(bot, event, guess)
 
 
 @guess_music_solve.handle()
-async def guess_music_solve_func(event: GroupMessageEvent, state: T_State, message: str = EventPlainText()) -> None:
+async def guess_music_solve_func(bot: Bot, event: MessageEvent, message: str = EventPlainText()) -> None:
     message = message.strip()
-    guess: Guess = state['guess']
+    guess: Guess = guesses[get_event_id(bot, event)]
     answer: Music = guess.music
-    guess_musics: MusicList = Mai.music_list.by_alias(message)
-    if len(guess_musics) == 1 and answer.id == guess_musics[0].id:
+    matched_musics: MusicList = Mai.music_list.by_alias(message)
+    if answer.id == message or (len(matched_musics) == 1 and answer.id == matched_musics[0].id):
         guess.finished = True
+        del guesses[get_event_id(bot, event)]
         await guess_music_solve.finish('猜对了，答案是：' + music_info(answer), reply_message=True)
+    elif 2 <= len(matched_musics) <= 10:
+        await guess_music_solve.finish(f'“{message}”匹配{len(matched_musics)}首乐曲：\n'
+                                       + '\n'.join(music_info_compact(music) for music in matched_musics)
+                                       + '\n请发送乐曲的id以确定猜测的乐曲。')
 
 
-async def guess_music_loop(event: GroupMessageEvent, state: T_State) -> None:
-    guess: Guess = state['guess']
+async def guess_music_loop(bot: Bot, event: MessageEvent, guess: Guess) -> None:
+    if guess.round == 0:
+        await asyncio.sleep(4)
+    else:
+        await asyncio.sleep(8)
     if guess.finished:
         return
-    if guess.round == 0:
-        await asyncio.sleep(5)
-    else:
-        await asyncio.sleep(10)
-    if guess.round < guess.ROUNDS:
+
+    if guess.round < guess.rounds:
         await guess_music_start.send(guess.give_hint())
-    if guess.round == guess.ROUNDS:
-        await give_answer(event, state)
-    await guess_music_loop(event, state)
+    if guess.round == guess.rounds:
+        await give_answer(bot, event, guess)
+    else:
+        await guess_music_loop(bot, event, guess)
 
 
-async def give_answer(event: GroupMessageEvent, state: T_State) -> None:
+async def give_answer(bot: Bot, event: MessageEvent, guess: Guess) -> None:
     await asyncio.sleep(30)
-    guess: Guess = state['guess']
     if guess.finished:
         return
     guess.finished = True
-    await guess_music_solve.finish('答案是：' + music_info(guess.music), reply_message=True)
+    del guesses[get_event_id(bot, event)]
+    await guess_music_start.finish('答案是：' + music_info(guess.music))
