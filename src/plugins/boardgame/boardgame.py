@@ -6,7 +6,7 @@ from PIL.ImageDraw import ImageDraw as PILImageDraw
 from PIL.ImageFont import FreeTypeFont
 from enum import Enum
 
-pos_T = tuple[int, int]
+pos_T = tuple[float, float]
 xy_T = tuple[pos_T, pos_T]
 
 
@@ -169,7 +169,8 @@ class BoardGame:
              font_size=0.6,
              dot_r=0.45,
              dot_width=0.04,
-             cross_r=0.3,
+             cross_r=0.25,
+             cross_width=0.06,
              anti_alias=2.0) -> Image.Image:
 
         width = height = round((self.size + 2 * border) * grid_pixels)
@@ -183,51 +184,51 @@ class BoardGame:
         # 画格子
         if self.placement == Placement.CROSS:
             for i in range(self.size):
-                draw0.line(((round((border + i + 1/2) * grid_pixels),
-                             round((border + 1/2) * grid_pixels)),
-                            (round((border + i + 1/2) * grid_pixels),
-                             round((border + self.size - 1 + 1/2) * grid_pixels))),
+                draw0.line(((round((border + i + 1/2) * grid_pixels - 1/2),
+                             round((border + 1/2) * grid_pixels - 1/2)),
+                            (round((border + i + 1/2) * grid_pixels - 1/2),
+                             round((border + self.size - 1 + 1/2) * grid_pixels - 1/2))),
                            'black', round(grid_width * grid_pixels))
             for i in range(self.size):
-                draw0.line(((round((border + 1/2) * grid_pixels),
-                             round((border + i + 1/2) * grid_pixels)),
-                            (round((border + self.size - 1 + 1/2) * grid_pixels),
-                             round((border + i + 1/2) * grid_pixels))),
+                draw0.line(((round((border + 1/2) * grid_pixels - 1/2),
+                             round((border + i + 1/2) * grid_pixels - 1/2)),
+                            (round((border + self.size - 1 + 1/2) * grid_pixels - 1/2),
+                             round((border + i + 1/2) * grid_pixels - 1/2))),
                            'black', round(grid_width * grid_pixels))
         elif self.placement == Placement.GRID:
             for i in range(self.size + 1):
-                draw0.line(((round((border + i) * grid_pixels),
-                             round((border) * grid_pixels)),
-                            (round((border + i) * grid_pixels),
-                             round((border + self.size) * grid_pixels))),
+                draw0.line(((round((border + i) * grid_pixels - 1/2),
+                             round((border) * grid_pixels - 1/2)),
+                            (round((border + i) * grid_pixels - 1/2),
+                             round((border + self.size) * grid_pixels - 1/2))),
                            'black', round(grid_width * grid_pixels))
             for i in range(self.size + 1):
-                draw0.line(((round((border) * grid_pixels),
-                             round((border + i) * grid_pixels)),
-                            (round((border + self.size) * grid_pixels),
-                             round((border + i) * grid_pixels))),
+                draw0.line(((round((border) * grid_pixels - 1/2),
+                             round((border + i) * grid_pixels - 1/2)),
+                            (round((border + self.size) * grid_pixels - 1/2),
+                             round((border + i) * grid_pixels - 1/2))),
                            'black', round(grid_width * grid_pixels))
         # 写字
         font0: FreeTypeFont = ImageFont.truetype(
             r'data/boardgame/consola.ttf', round(font_size * grid_pixels))
         for i in range(self.size):
             font_pixels: tuple[int, int] = font0.getsize(Pos.num_to_letter(i))
-            draw0.text((round((border + i + 1/2) * grid_pixels - font_pixels[0] / 2),
-                        round((border - 0.1) * grid_pixels - font_pixels[1])),
+            draw0.text((round((border + i + 1/2) * grid_pixels - font_pixels[0] / 2 - 1/2),
+                        round((border - 0.1) * grid_pixels - font_pixels[1] - 1/2)),
                        Pos.num_to_letter(i), 'black', font0, align='center')
         for i in range(self.size):
             font_pixels = font0.getsize(str(i + 1))
-            draw0.text((round((border - 0.1) * grid_pixels - font_pixels[0]),
-                        round((border + i + 1/2) * grid_pixels - font_pixels[1] / 2)),
+            draw0.text((round((border - 0.1) * grid_pixels - font_pixels[0] - 1/2),
+                        round((border + i + 1/2) * grid_pixels - font_pixels[1] / 2 - 1/2)),
                        str(i + 1), 'black', font0, align='center')
 
         # 画棋子
         for x in range(self.size):
             for y in range(self.size):
-                xy: xy_T = ((round((border + x + 1/2 - dot_r) * grid_pixels * anti_alias),
-                             round((border + y + 1/2 - dot_r) * grid_pixels * anti_alias)),
-                            (round((border + x + 1/2 + dot_r) * grid_pixels * anti_alias),
-                             round((border + y + 1/2 + dot_r) * grid_pixels * anti_alias)))
+                xy: xy_T = ((round((border + x + 1/2 - dot_r) * grid_pixels * anti_alias - 1/2),
+                             round((border + y + 1/2 - dot_r) * grid_pixels * anti_alias - 1/2)),
+                            (round((border + x + 1/2 + dot_r) * grid_pixels * anti_alias - 1/2),
+                             round((border + y + 1/2 + dot_r) * grid_pixels * anti_alias - 1/2)))
                 if self.get(Pos(x, y)) == 1:
                     draw1.ellipse(xy, 'black')
                 elif self.get(Pos(x, y)) == -1:
@@ -237,14 +238,17 @@ class BoardGame:
         if len(self.history) > 1:
             moveside: int = self.history[-2].moveside
             pos: Pos = self.positions[-1]
-            if moveside == MoveSide.BLACK:
-                draw1.line(((round((border + pos.x + 1/2 - cross_r) * grid_pixels * anti_alias),
-                             round((border + pos.y + 1/2) * grid_pixels * anti_alias)),
-                            (round((border + pos.x + 1/2 + cross_r) * grid_pixels * anti_alias),
-                             round((border + pos.y + 1/2) * grid_pixels * anti_alias))),
-                           'white', round(grid_width * grid_pixels * anti_alias))
-            else:
-                ...
+            horizonal_xy: xy_T = ((round((border + pos.x + 1/2 - cross_r) * grid_pixels * anti_alias - 1/2),
+                                   round((border + pos.y + 1/2) * grid_pixels * anti_alias - 1/2)),
+                                  (round((border + pos.x + 1/2 + cross_r) * grid_pixels * anti_alias - 1/2),
+                                   round((border + pos.y + 1/2) * grid_pixels * anti_alias - 1/2)))
+            vertical_xy:  xy_T = ((round((border + pos.x + 1/2) * grid_pixels * anti_alias - 1/2),
+                                   round((border + pos.y + 1/2 - cross_r) * grid_pixels * anti_alias - 1/2)),
+                                  (round((border + pos.x + 1/2) * grid_pixels * anti_alias - 1/2),
+                                   round((border + pos.y + 1/2 + cross_r) * grid_pixels * anti_alias - 1/2)))
+            color: str = 'black' if moveside == MoveSide.BLACK else 'white'
+            draw1.line(horizonal_xy, color, round(cross_width * grid_pixels * anti_alias))
+            draw1.line(vertical_xy,  color, round(cross_width * grid_pixels * anti_alias))
 
         image1: PILImage = image1.resize((width, height), Image.Resampling.BILINEAR)
         return Image.alpha_composite(image0, image1)
