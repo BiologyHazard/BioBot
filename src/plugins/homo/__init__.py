@@ -1,7 +1,7 @@
 from typing import NoReturn
 
 from nonebot import on_command
-from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent
+from nonebot.adapters.onebot.v11 import Message
 from nonebot.internal.matcher import Matcher
 from nonebot.internal.rule import Rule
 from nonebot.params import CommandArg, CommandStart, EventToMe
@@ -22,10 +22,10 @@ async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me
 
 generate: type[Matcher] = on_command('恶臭',
                                      aliases={'恶臭论证', 'homo', '114514'},
-                                     rule=with_command_start_or_to_me,
+                                     #  rule=with_command_start_or_to_me,
                                      priority=5)
 
 
 @generate.handle()
-async def homo_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> NoReturn:
-    await generate.finish(generate_homo(str(message)))
+async def homo_func(message: Message = CommandArg()) -> NoReturn:
+    await generate.finish(generate_homo(message.extract_plain_text()))
