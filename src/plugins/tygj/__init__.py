@@ -37,7 +37,7 @@ async def tyg_query_func(event: GroupMessageEvent) -> None:
     global inst
     if inst is None or datetime.date.fromtimestamp(event.time) != datetime.date.fromtimestamp(inst.time):
         inst = None
-        await tyg_query.finish(f"tyg人数未知")
+        await tyg_query.finish(f'我不到啊，问群友罢（')
 
     await tyg_query.finish(f"tyg{inst.num}\n# 由{inst.card or inst.nickname} "
                            f"({inst.qqid}) 于{strftime(inst.time)} ({strftimedelta(inst.time, event.time)}前)设置")

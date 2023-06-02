@@ -37,10 +37,11 @@ class Tygj:
         else:
             return cls(**json.loads(data_path.read_text()))
 
-    def save_to_file(self, path: Path) -> None:
+    def save_to_file(self, path: Path) -> 'Tygj':
         if not path.parent.exists():
             path.parent.mkdir()
         path.write_text(json.dumps(self.__dict__, ensure_ascii=False, indent=4))
+        return self
 
     @staticmethod
     def in_business_hours(event_time: float) -> bool:
