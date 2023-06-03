@@ -19,8 +19,11 @@ from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
 from . import plate
+from .api_data import get_player_data
 from .best_pic import generate
-from .consts import DIFFICULTY_NAME
+from .config import SONGS_PER_PAGE, data_path
+from .consts import (DIFFICULTY_NAME, LEVELS, VERSION_HAN, combo_rank,
+                     comboRank, sync_rank, syncRank)
 from .guess import Guess, guesses
 from .image import get_cover_len4_id, image_to_bytesio, text_to_image
 from .music import Chart, Mai, Music, MusicList
@@ -39,18 +42,22 @@ maimai插件可用命令如下：
 【随机乐曲】
 · {default_command_start}(今日舞萌|今日mai)  # 查看今天的舞萌运势
 · [...]maimai[...]什么  # 随机一首歌
-· 随个[dx|sd|标准][绿|黄|红|紫|白]<难度>  # 随机一首指定条件的乐曲
+· 随个[dx|sd|标准][绿|黄|红|紫|白]<等级|定数>  # 随机一首指定条件的乐曲
 
 【查询分数】
-· {default_command_start}(b40|b50) [<@某人>|<qq号>|<水鱼网昵称>]  # 查询自己或别人的b40/b50
-· <牌子名称>进度 [<@某人>|<qq号>|<水鱼网昵称>]  # 查询自己或别人的牌子进度
+· {default_command_start}(b40|b50) [<@某人|qq号|水鱼网昵称>]  # 查询自己或别人的b40/b50
+· <牌子名称>进度 [<@某人|qq号|水鱼网昵称>]  # 查询自己或别人的牌子进度
 
 【查询乐曲】
-· {default_command_start}查歌 <乐曲标题的一部分>  # 通过标题查询乐曲
 · [绿|黄|红|紫|白]id<乐曲编号>  # 通过id查询乐曲或谱面
+· {default_command_start}查歌 <乐曲标题的一部分>  # 通过标题查询乐曲
 · <乐曲别名>是什么歌  # 通过别名查询乐曲
-· {default_command_start}定数查歌 <定数>  # 查询定数对应的乐曲
-· {default_command_start}定数查歌 <定数下限> <定数上限>  # 查询定数对应的乐曲
+· {default_command_start}定数查歌 <定数>  # 通过定数查询乐曲
+· {default_command_start}定数查歌 <定数下限> <定数上限>
+· {default_command_start}bpm查歌 <曲速>  # 通过曲速查询乐曲
+· {default_command_start}bpm查歌 <曲速下限> <曲速上限> [<页码>]
+· {default_command_start}曲师查歌 <艺术家> [<页码>]  # 通过艺术家查询乐曲
+· {default_command_start}谱师查歌 <谱师> [<页码>]  # 通过谱师查询谱面
 
 【乐曲别名】
 · {default_command_start}(添加|删除)别名 <乐曲id> <乐曲别名>  # 添加/删除乐曲别名
@@ -97,35 +104,62 @@ def is_now_playing_guess_music(bot: Bot, event: MessageEvent) -> bool:
 
 
 maimai_command_group = MatcherGroup(priority=3, block=False)
+# 插件帮助
 help = maimai_command_group.on_command('help maimai', rule=no_command_arg)
+# 随机乐曲
 today_maimai = maimai_command_group.on_command('今日舞萌', aliases={'今日mai', 'jrwm', '今日乌蒙'}, rule=no_command_arg)
-maimai_what = maimai_command_group.on_regex(r"maimai.*什么", flags=re.RegexFlag.IGNORECASE)
+maimai_what = maimai_command_group.on_regex(r'maimai.*什么', flags=re.RegexFlag.IGNORECASE)
 spec_rand = maimai_command_group.on_regex(
-    r"[随来给]个(dx|sd|标准)?(绿|黄|红|紫|白)?(?:(\d{1,2}\.\d)|(\d{1,2}\+?))", flags=re.RegexFlag.IGNORECASE)
+    r'[随来给]个(dx|sd|标准)?(绿|黄|红|紫|白)?(?:(\d{1,2}\.\d)|(\d{1,2}\+?))', flags=re.RegexFlag.IGNORECASE)
+# 查询分数
 best_40 = maimai_command_group.on_command('b40', aliases={'best40'})
 best_50 = maimai_command_group.on_command('b50', aliases={'best50'})
-search_music_by_inner = maimai_command_group.on_command('定数查歌')
+plate_process = maimai_command_group.on_regex(
+    r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽舞](?:[極极将神舞]|舞舞)|霸者)进度\s*(.*)')
+level_achievement = maimai_command_group.on_regex(r'^(?:(\d{1,2}\.\d)|(\d{1,2}\+?))分数列表\s*(\d+)?\s*(.+)?', priority=5)
+# 查询乐曲
+query_chart = maimai_command_group.on_regex(r'^(绿|黄|红|紫|白)?\s*id\s*(\d+)')
 search_music_by_title = maimai_command_group.on_command('查歌')
 search_music_by_alias = maimai_command_group.on_regex(r'(.*)(?:是什么歌|是啥歌)')
-query_chart = maimai_command_group.on_regex(r"^(绿|黄|红|紫|白)?\s*id\s*(\d+)")
-score_line = maimai_command_group.on_command('分数线')
+search_music_by_inner = maimai_command_group.on_command('定数查歌')
+search_music_by_tempo = maimai_command_group.on_command('bpm查歌')
+search_music_by_artist = maimai_command_group.on_command('曲师查歌')
+search_music_by_charter = maimai_command_group.on_command('谱师查歌')
+# 乐曲别名
 add_alias = maimai_command_group.on_command('添加别名', aliases={'添加别称', '增加别名', '增加别称'})
 delete_alias = maimai_command_group.on_command('删除别名', aliases={'删除别称'})
 query_alias = maimai_command_group.on_command('查询别名')
 # query_alias = maimai_command_group.on_regex(r'(.*)有什么别名')
-plate_process = maimai_command_group.on_regex(
-    r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽舞](?:[極极将神舞]|舞舞)|霸者)进度\s*(.*)')
+# 推分助手
+score_line = maimai_command_group.on_command('分数线')
+# 猜歌游戏
 guess_music_start = maimai_command_group.on_command('猜歌', rule=no_command_arg)
 guess_music_solve = maimai_command_group.on_message(rule=is_now_playing_guess_music)
 
 
-search_music_by_inner_help_str: str = '''
+search_music_by_inner_help_text: str = f'''
 命令格式为
-· 定数查歌 <定数>  # 查询定数对应的乐曲
-· 定数查歌 <定数下限> <定数上限>  # 查询定数对应的乐曲
+· {default_command_start}定数查歌 <定数>  # 查询定数对应的乐曲
+· {default_command_start}定数查歌 <定数下限> <定数上限>
 '''.strip()
 
-query_score_help_str: str = '''
+search_music_by_tempo_help_text: str = f'''
+命令格式为：
+· {default_command_start}bpm查歌 <曲速>  # 通过曲速查询乐曲
+· {default_command_start}bpm查歌 <曲速下限> <曲速上限> [<页码>]
+'''.strip()
+
+search_music_by_artist_help_text: str = f'''
+命令格式为：
+· {default_command_start}曲师查歌 <艺术家> [<页码>]  # 通过艺术家查询乐曲
+'''.strip()
+
+search_music_by_charter_help_text: str = f'''
+命令格式为：
+· {default_command_start}谱师查歌 <谱师> [<页码>]  # 通过谱师查询谱面
+'''.strip()
+
+query_score_help_text: str = '''
 此功能为查找某首歌分数线设计。
 命令格式：分数线 <难度+歌曲id> <分数线>
 例如：分数线 紫799 100
@@ -144,6 +178,30 @@ def get_at_qq(message: Message) -> int | None:
     for message_segment in message:
         if message_segment.type == 'at' and message_segment.data['qq'] != 'all':
             return int(message_segment.data['qq'])
+    return None
+
+
+async def get_payload_and_nickname(bot: Bot, event: MessageEvent, message: Message, user: str | None = None) -> tuple[dict[str, Any], str]:
+    payload: dict[str, Any] = {}
+    if (qqid := get_at_qq(message)) is not None:
+        payload['qq'] = qqid
+        nickname: str = (await bot.get_stranger_info(user_id=qqid))['nickname'] or str(qqid)
+    elif user is not None:
+        user = user.strip()
+        if user.isdigit():
+            stranger_nickname: str = (await bot.get_stranger_info(user_id=int(user)))['nickname']
+            if not stranger_nickname:
+                payload['nickname'] = nickname = user
+            else:
+                payload['qq'] = int(user)
+                nickname = stranger_nickname
+        else:
+            payload['nickname'] = nickname = user
+    else:
+        payload['qq'] = event.user_id
+        nickname = (await bot.get_stranger_info(user_id=event.user_id))['nickname'] or str(qqid)
+
+    return payload, nickname
 
 
 def music_info(music: Music) -> Message:
@@ -192,150 +250,30 @@ async def help_func() -> None:
     await help.finish(MessageSegment.image(image_to_bytesio(text_to_image(help_str))))
 
 
-@search_music_by_inner.handle()
-async def search_music_by_inner_func(message: Message = CommandArg()):
-    argv: list[str] = str(message).strip().split()
-    try:
-        if len(argv) == 1:
-            ds = float(argv[0])
-            assert math.isfinite(ds), ValueError
-        elif len(argv) == 2:
-            ds = (float(argv[0]), float(argv[1]))
-            assert math.isfinite(ds[0]) and math.isfinite(ds[1]), ValueError
-        else:
-            raise ValueError
-    except ValueError:
-        await search_music_by_inner.finish(search_music_by_inner_help_str)
-
-    result: MusicList = Mai.music_list.filter(ds=ds)
-    if not result:
-        await search_music_by_inner.finish('没有找到这样的乐曲。')
-
-    length_of_result: int = sum(len(music.diff) for music in result)
-    if length_of_result <= 48:
-        result.sort(key=lambda music: int(music.id))
-        await search_music_by_inner.finish(f'查询到{length_of_result}首乐曲：\n'
-                                           + '\n'.join(music_info_with_diff_compact(music, diff)
-                                                       for music in result for diff in music.diff))
-    await search_music_by_inner.finish(f"结果过多（{length_of_result} 条），请缩小查询范围。")
+wm_list: list[str] = ['拼机', '推分', '越级', '下埋', '夜勤', '练底力', '练手法', '打旧框', '干饭', '抓绝赞', '收歌']
 
 
-@search_music_by_title.handle()
-async def search_music_by_title_func(message: Message = CommandArg()) -> None:
-    name: str = message.extract_plain_text()
-    if not name:
-        await search_music_by_title.finish('请输入要查询的歌曲。')
-    result: MusicList = Mai.music_list.filter(title_search=name)
-    if not result:
-        await search_music_by_title.finish('没有找到这样的乐曲。')
-    if len(result) == 1:
-        (music, ) = result
-        await search_music_by_title.finish(music_info(music))
-    if len(result) <= 48:
-        result.sort(key=lambda music: int(music.id))
-        await search_music_by_title.finish(f'查询到{len(result)}首乐曲：\n'
-                                           + '\n'.join(music_info_compact(music) for music in result))
-    await search_music_by_title.finish(f"结果过多（{len(result)}条），请缩小查询范围。")
+@today_maimai.handle()
+async def today_maimai_func(event: MessageEvent) -> None:
+    random_inst: Random = get_random_inst(event.user_id)
+    luck: int = random_inst.randint(0, 100)
+    wm_value: list[int] = [random_inst.randrange(4) for _ in wm_list]
+    lines: list[str] = []
+    lines.append(f'今日人品值：{luck}')
+    for value, content in zip(wm_value, wm_list):
+        if value == 3:
+            lines.append(f'宜 {content}')
+        elif value == 0:
+            lines.append(f'忌 {content}')
+    lines.append('Bio提醒您：打机时不要大力拍打或滑动哦')
+    lines.append('今日推荐歌曲：')
+    music: Music = random_inst.choice(Mai.music_list)
+    await today_maimai.finish(Message([MessageSegment.text('\n'.join(lines))]) + music_info(music))
 
 
-@search_music_by_alias.handle()
-async def search_music_by_alias_func(group: tuple[str] = RegexGroup()):
-    (alias, ) = group
-    result: MusicList = Mai.music_list.by_alias(alias)
-    if not result:
-        await search_music_by_alias.finish('没有找到这样的乐曲。')
-    if len(result) == 1:
-        (music, ) = result
-        await search_music_by_alias.finish(music_info(music))
-    if len(result) <= 48:
-        await search_music_by_alias.finish(f'查询到{len(result)}首乐曲：\n'
-                                           + '\n'.join(music_info_compact(music) for music in result))
-    await search_music_by_alias.finish(f'结果过多（{len(result)}条），请缩小查询范围。')
-
-
-@add_alias.handle()
-async def add_alias_func(event: GroupMessageEvent, message: Message = CommandArg()) -> None:
-    try:
-        id, alias = message.extract_plain_text().split()
-    except ValueError:
-        await add_alias.finish('命令格式：\n添加别名 <乐曲id> <乐曲别名>')
-    music: Music | None = Mai.music_list.by_id(id)
-    if music is None:
-        await add_alias.finish(f'没有id为{id}的乐曲。')
-    if alias.lower() in (x.lower() for x in music.aliases):
-        await add_alias.finish(f'该别名已存在。')
-    info: dict[str, int | str | None] = {'group': event.group_id,
-                                         'qqid': event.user_id,
-                                         'nickname': event.sender.nickname,
-                                         'card': event.sender.card,
-                                         'role': event.sender.role,
-                                         'time': event.time, }
-    music.aliases[alias] = info
-    async with aiofiles.open('data/maimai/aliases.json', 'r', encoding='utf-8') as fp:
-        aliases = json.loads(await fp.read())
-    if id not in aliases:
-        aliases[id] = {'title': music.title, 'aliases': {}}
-    aliases[id]['aliases'][alias] = info
-    async with aiofiles.open('data/maimai/aliases.json', 'w', encoding='utf-8') as fp:
-        await fp.write(json.dumps(aliases, ensure_ascii=False, indent=4))
-    await add_alias.finish(f'已为 {id}. {music.title} 添加别名“{alias}”')
-
-
-@delete_alias.handle()
-async def delete_alias_func(bot: Bot, event: GroupMessageEvent, message: Message = CommandArg()) -> None:
-    try:
-        id, alias = message.extract_plain_text().split()
-    except ValueError:
-        await add_alias.finish('命令格式：\n删除别名 <乐曲id> <乐曲别名>')
-    music: Music | None = Mai.music_list.by_id(id)
-    if music is None:
-        await delete_alias.finish(f'没有id为{id}的乐曲。')
-    if alias not in music.aliases:
-        await delete_alias.finish(f'该别名不存在。')
-    if music.aliases[alias]['group'] != event.group_id:
-        await delete_alias.finish(f'别名“{alias}”由非本群的成员添加，不可在本群删除。')
-    if (music.aliases[alias]['role'] in ('owner', 'admin')
-            and not await (SUPERUSER | GROUP_OWNER | GROUP_ADMIN)(bot, event)):
-        await delete_alias.finish(f'别名“{alias}”由群管理员添加，只可由群管理员删除。')
-
-    del music.aliases[alias]
-    async with aiofiles.open('data/maimai/aliases.json', 'r', encoding='utf-8') as fp:
-        aliases = json.loads(await fp.read())
-    del aliases[id]['aliases'][alias]
-    async with aiofiles.open('data/maimai/aliases.json', 'w', encoding='utf-8') as fp:
-        await fp.write(json.dumps(aliases, ensure_ascii=False, indent=4))
-    await delete_alias.finish(f'已删除 {id}. {music.title} 的别名“{alias}”')
-
-
-@query_alias.handle()
-async def query_alias_func(message: Message = CommandArg()) -> None:
-    id: str = message.extract_plain_text()
-    music: Music | None = Mai.music_list.by_id(id)
-    if music is None:
-        await query_alias.finish(f'没有id为{id}的乐曲。')
-    if not music.aliases:
-        await query_alias.finish(f'{id}. {music.title}暂无别名。')
-    result: list[str] = [f'{id}. {music.title}的别名共{len(music.aliases)}个：']
-    for i, (alias, info) in enumerate(music.aliases.items()):
-        # if info['group'] != event.group_id:
-        #     info_str: str = f'{info["card"] or info["nickname"]} ({info["qqid"]})'
-        # else:
-        #     info_str = '非本群的成员'
-        result.append(f'{i+1}. {alias}  # 由{info["card"] or info["nickname"]} ({info["qqid"]}) 于{strftime(info["time"])}设置')
-    await query_alias.finish('\n'.join(result))
-
-
-@query_chart.handle()
-async def query_chart_func(group: tuple[str | None, str] = RegexGroup()):
-    music_id: str = group[1]
-    music: Music | None = Mai.music_list.by_id(music_id)
-    if music is None:
-        await query_chart.finish('未找到该乐曲。')
-    if group[0] is not None:
-        level_index: int = '绿黄红紫白'.index(group[0])
-        await query_chart.finish(chart_info(music, level_index))
-    else:
-        await query_chart.finish(music_info(music))
+@maimai_what.handle()
+async def maimai_what_func() -> None:
+    await maimai_what.finish(music_info(Mai.music_list.random()))
 
 
 @spec_rand.handle()
@@ -343,6 +281,7 @@ async def spec_rand_func(group: tuple[str | None, str | None, str | None, str | 
     music_type, diff, ds, level = group
     if ds is not None:
         ds = float(ds)
+        assert math.isfinite(ds), ValueError
     if music_type is not None:
         if music_type.lower() == "dx":
             music_type = "DX"
@@ -357,71 +296,6 @@ async def spec_rand_func(group: tuple[str | None, str | None, str | None, str | 
         await spec_rand.finish("没有这样的乐曲哦。")
     else:
         await spec_rand.finish(music_info(music_data.random()))
-
-
-@maimai_what.handle()
-async def maimai_what_func() -> None:
-    await maimai_what.finish(music_info(Mai.music_list.random()))
-
-
-wm_list: list[str] = ['拼机', '推分', '越级', '下埋', '夜勤', '练底力', '练手法', '打旧框', '干饭', '抓绝赞', '收歌']
-
-
-@today_maimai.handle()
-async def today_maimai_func(event: MessageEvent) -> None:
-    random_inst: Random = get_random_inst(event.user_id)
-    luck: int = random_inst.randint(0, 100)
-    wm_value: list[int] = [random_inst.randrange(4) for _ in wm_list]
-    lines: list[str] = []
-    lines.append(f'今日人品值：{luck}')
-    for i, (value, content) in enumerate(zip(wm_value, wm_list)):
-        if value == 3:
-            lines.append(f'宜 {content}')
-        elif value == 0:
-            lines.append(f'忌 {content}')
-    lines.append('Bio提醒您：打机时不要大力拍打或滑动哦')
-    lines.append('今日推荐歌曲：')
-    music: Music = random_inst.choice(Mai.music_list)
-    await today_maimai.finish(Message([MessageSegment.text('\n'.join(lines))]) + music_info(music))
-
-
-@score_line.handle()
-async def score_line_func(message: Message = CommandArg()):
-    regex = r'(绿|黄|红|紫|白)(id)?([0-9]+)'
-    argv: list[str] = message.extract_plain_text().strip().split()
-    if len(argv) == 1 and argv[0] == '帮助':
-        await score_line.send(MessageSegment.image(image_to_bytesio(text_to_image(query_score_help_str))))
-    elif len(argv) == 2:
-        try:
-            match = re.match(regex, argv[0], flags=re.RegexFlag.IGNORECASE)
-            if match is None:
-                raise ValueError
-            group = match.groups()
-            diff: int = '绿黄红紫白'.index(group[0])
-            chart_id: str = group[2]
-            line = float(argv[1])
-            if not math.isfinite(line):
-                raise ValueError
-            music: Music | None = Mai.music_list.by_id(chart_id)
-            if music is None:
-                raise ValueError
-            chart: Chart = music.charts[diff]
-            tap: int = chart.tap
-            slide: int = chart.slide
-            hold: int = chart.hold
-            touch: int = chart.touch
-            break_: int = chart.break_
-            total_score: int = 500 * tap + slide * 1500 + hold * 1000 + touch * 500 + break_ * 2500
-            break_bonus: float = 0.01 / break_
-            break_50_reduce: float = total_score * break_bonus / 4
-            reduce: float = 101.0 - line
-            if reduce < 0 or reduce > 101:
-                raise ValueError
-            await query_chart.finish(music_info_with_diff_compact(music, diff) +
-                                     f'分数线 {line}% 允许的最多 TAP GREAT 数量为 {(total_score * reduce / 10000):.2f}(每个-{10000 / total_score:.4f}%),\n'
-                                     f'BREAK 50落(一共{break_}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT(-{break_50_reduce / total_score * 100:.4f}%)')
-        except (ValueError, IndexError):
-            await query_chart.finish("格式错误，输入“分数线 帮助”以查看帮助信息")
 
 
 @best_40.handle()
@@ -484,10 +358,334 @@ async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = E
     await plate_process.send(data)
 
 
+@level_achievement.handle()
+async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str | None, str | None, str | None, str | None] = RegexGroup()) -> None:
+    ds, level, page, user = group
+    if level is not None and level not in LEVELS:
+        await level_achievement.finish(f'不存在等级为{level}的乐曲。', reply_message=True)
+
+    if ds is not None and not Mai.music_list.min_ds <= float(ds) <= Mai.music_list.max_ds:
+        await level_achievement.finish(f'不存在定数为{ds}的乐曲。', reply_message=True)
+
+    payload, nickname = await get_payload_and_nickname(bot, event, message, user)
+    payload['version'] = list(version for version in VERSION_HAN)
+    logger.info(repr(payload))
+    logger.info(repr(group))
+    data: dict[str, list[dict[str, Any]]] | str = await get_player_data('plate', payload)
+    if isinstance(data, str):
+        await level_achievement.finish(data, reply_message=True)
+
+    achivement_list: list[tuple[Music, dict[str, Any]]] = []
+    if ds is not None:
+        for achievement_data in data['verlist']:
+            music: Music = Mai.music_list.by_id(str(achievement_data['id']), strict=True)
+            for music_ds in music.ds:
+                if math.isclose(music_ds, float(ds)):
+                    achivement_list.append((music, achievement_data))
+    else:
+        for achievement_data in data['verlist']:
+            if achievement_data['level'] == level:
+                music: Music = Mai.music_list.by_id(str(achievement_data['id']), strict=True)
+                achivement_list.append((music, achievement_data))
+
+    pages: int = math.ceil(len(achivement_list) / SONGS_PER_PAGE)
+    page: str | int | None = max(min(int(page), pages - 1), 0) if page else 0
+
+    messages: list[str] = [f'{nickname}的{ds or level}分数列表（从高至低）：\n']
+    for i, (music, achievement_data) in enumerate(sorted(achivement_list,
+                                                         key=lambda x: x[1]['achivements'], reverse=True)):
+        if page * SONGS_PER_PAGE <= i < (page + 1) * SONGS_PER_PAGE:
+            m: Music = Mai.music_list.by_id(str(achievement_data['id']), strict=True)
+            messages.append(f'No.{i+1} | {achievement_data["achievements"]:.4f}% | {m.id}. {m.title} | {DIFFICULTY_NAME[achievement_data["level_index"]]} {m.ds[achievement_data["level_index"]]} |')
+            if achievement_data['fc']:
+                messages.append(f' {comboRank[combo_rank.index(achievement_data["fc"])].upper()}')
+            if achievement_data['fs']:
+                messages.append(f' {syncRank[sync_rank.index(achievement_data["fs"])].upper()}')
+            messages.append('\n')
+    messages.append(f'第{page + 1}页，共{pages}页')
+    if pages > 1:
+        messages.append(f'，发送“{ds or level}分数列表 <页码> {user}”查看其他页')
+
+    await level_achievement.finish(
+        MessageSegment.image(image_to_bytesio(text_to_image(''.join(messages)))), reply_message=True)
+
+
+@query_chart.handle()
+async def query_chart_func(group: tuple[str | None, str] = RegexGroup()) -> None:
+    music_id: str = group[1]
+    music: Music | None = Mai.music_list.by_id(music_id)
+    if music is None:
+        await query_chart.finish('未找到该乐曲。')
+    if group[0] is not None:
+        level_index: int = '绿黄红紫白'.index(group[0])
+        await query_chart.finish(chart_info(music, level_index))
+    else:
+        await query_chart.finish(music_info(music))
+
+
+@search_music_by_title.handle()
+async def search_music_by_title_func(message: Message = CommandArg()) -> None:
+    name: str = message.extract_plain_text()
+    if not name:
+        await search_music_by_title.finish('请输入要查询的乐曲。')
+    result: MusicList = Mai.music_list.filter(title_search=name)
+    if not result:
+        await search_music_by_title.finish(f'没有找到标题中含有“{name}”的乐曲呢……\n试试别名查歌（命令为“...是什么歌”）吧~')
+    if len(result) == 1:
+        (music, ) = result
+        await search_music_by_title.finish(music_info(music))
+    if len(result) <= 48:
+        result.sort(key=lambda music: int(music.id))
+        await search_music_by_title.finish(f'查询到{len(result)}首乐曲：\n'
+                                           + '\n'.join(music_info_compact(music) for music in result))
+    await search_music_by_title.finish(f"结果过多（{len(result)}条），请缩小查询范围。")
+
+
+@search_music_by_alias.handle()
+async def search_music_by_alias_func(group: tuple[str] = RegexGroup()) -> None:
+    (alias, ) = group
+    result: MusicList = Mai.music_list.by_alias(alias)
+    if not result:
+        await search_music_by_alias.finish('没有找到这样的乐曲。')
+    if len(result) == 1:
+        (music, ) = result
+        await search_music_by_alias.finish(music_info(music))
+    if len(result) <= 48:
+        await search_music_by_alias.finish(f'查询到{len(result)}首乐曲：\n'
+                                           + '\n'.join(music_info_compact(music) for music in result))
+    await search_music_by_alias.finish(f'结果过多（{len(result)}条），请缩小查询范围。')
+
+
+@search_music_by_inner.handle()
+async def search_music_by_inner_func(message: str = CommandArg()) -> None:
+    args: list[str] = str(message).strip().split()
+    try:
+        if len(args) == 1:
+            ds = float(args[0])
+            assert math.isfinite(ds), ValueError
+        elif len(args) == 2:
+            ds = (float(args[0]), float(args[1]))
+            assert math.isfinite(ds[0]) and math.isfinite(ds[1]), ValueError
+        else:
+            raise ValueError
+    except ValueError:
+        await search_music_by_inner.finish(search_music_by_inner_help_text)
+
+    result: MusicList = Mai.music_list.filter(ds=ds)
+    if not result:
+        await search_music_by_inner.finish('没有找到符合条件的乐曲。', reply_message=True)
+
+    length_of_result: int = sum(len(music.diff) for music in result)
+    if length_of_result <= 48:
+        result.sort(key=lambda music: int(music.id))
+        await search_music_by_inner.finish(f'查询到{length_of_result}首乐曲：\n'
+                                           + '\n'.join(music_info_with_diff_compact(music, diff)
+                                                       for music in result for diff in music.diff))
+    await search_music_by_inner.finish(f"结果过多（{length_of_result} 条），请缩小查询范围。")
+
+
+@search_music_by_tempo.handle()
+async def search_music_by_tempo_func(message: Message = CommandArg()) -> None:
+    try:
+        args: list[str] = message.extract_plain_text().strip().split()
+        page: int = 0
+        if len(args) == 1:
+            bpm: int | tuple[int, int] = int(args[0])
+        elif len(args) == 2:
+            bpm = (int(args[0]), int(args[1]))
+        elif len(args) == 3:
+            bpm = (int(args[0]), int(args[1]))
+            page = int(args[2]) - 1
+        else:
+            raise ValueError
+    except ValueError:
+        await search_music_by_tempo.finish(search_music_by_tempo_help_text, reply_message=True)
+
+    results: MusicList = Mai.music_list.filter(bpm=bpm)
+    if not results:
+        await search_music_by_tempo.finish(f'没有找到符合条件的乐曲。', reply_message=True)
+
+    pages: int = math.ceil(len(results) / SONGS_PER_PAGE)
+    page = max(min(page, pages - 1), 0)
+    messages: list[str] = []
+    for i, music in enumerate(sorted(results, key=lambda i: i.bpm)):
+        if page * SONGS_PER_PAGE <= i < (page + 1) * SONGS_PER_PAGE:
+            messages.append(f'No. {i+1} | {music.id}. {music.title} | {music.bpm}bpm')
+    messages.append(f'第{page + 1}页，共{pages}页')
+    await search_music_by_tempo.finish(
+        MessageSegment.image(image_to_bytesio(text_to_image('\n'.join(messages)))), reply_message=True)
+
+
+@search_music_by_artist.handle()
+async def search_music_by_artist_func(message: Message = CommandArg()) -> None:
+    message_plain_text: str = message.extract_plain_text().strip()
+    if not message_plain_text:
+        await search_music_by_artist.finish(search_music_by_artist_help_text, reply_message=True)
+
+    args: list[str] = message_plain_text.rsplit(maxsplit=1)
+    name: str = message_plain_text
+    page: int = 0
+    if len(args) == 2 and args[1].isdigit():
+        name: str = args[0]
+        page = int(args[1]) - 1
+
+    results: MusicList = Mai.music_list.filter(artist_search=name)
+    if not results:
+        await search_music_by_artist.finish(f'没有找到艺术家为“{name}”的乐曲呢……', reply_message=True)
+
+    pages: int = math.ceil(len(results) / SONGS_PER_PAGE)
+    page = max(min(page, pages - 1), 0)
+    messages: list[str] = []
+    for i, music in enumerate(results):
+        if page * SONGS_PER_PAGE <= i < (page + 1) * SONGS_PER_PAGE:
+            messages.append(f'No. {i+1} | {music.id}. {music.title} | {music.artist}')
+    messages.append(f'第{page + 1}页，共{pages}页')
+    await search_music_by_artist.finish(
+        MessageSegment.image(image_to_bytesio(text_to_image('\n'.join(messages)))), reply_message=True)
+
+
+@search_music_by_charter.handle()
+async def search_music_by_charter_func(message: Message = CommandArg()) -> None:
+    message_plain_text: str = message.extract_plain_text().strip()
+    if not message_plain_text:
+        await search_music_by_artist.finish(search_music_by_charter_help_text, reply_message=True)
+
+    args: list[str] = message_plain_text.rsplit(maxsplit=1)
+    name: str = message_plain_text
+    page: int = 0
+    if len(args) == 2 and args[1].isdigit():
+        name: str = args[0]
+        page = int(args[1]) - 1
+
+    results: MusicList = Mai.music_list.filter(charter_search=name)
+    if not results:
+        await search_music_by_charter.finish(f'没有找到谱师为“{name}”的谱面呢……', reply_message=True)
+
+    pages: int = math.ceil(len(results) / SONGS_PER_PAGE)
+    page = max(min(page, pages - 1), 0)
+    messages: list[str] = []
+    for i, music in enumerate(results):
+        if page * SONGS_PER_PAGE <= i < (page + 1) * SONGS_PER_PAGE:
+            diff_charter = zip([DIFFICULTY_NAME[i] for i in music.diff], [music.charts[d].charter for d in music.diff])
+            messages.append(f'No. {i+1} | {music.id}. {music.title} | {" | ".join([f"{difficulty_name} {charter}" for difficulty_name, charter in diff_charter])}')
+    messages.append(f'第{page + 1}页，共{pages}页')
+    await search_music_by_charter.finish(
+        MessageSegment.image(image_to_bytesio(text_to_image('\n'.join(messages)))), reply_message=True)
+
+
+@add_alias.handle()
+async def add_alias_func(event: GroupMessageEvent, message: Message = CommandArg()) -> None:
+    try:
+        id, alias = message.extract_plain_text().split()
+    except ValueError:
+        await add_alias.finish('命令格式：\n添加别名 <乐曲id> <乐曲别名>')
+    music: Music | None = Mai.music_list.by_id(id)
+    if music is None:
+        await add_alias.finish(f'没有id为{id}的乐曲。')
+    if alias.lower() in (x.lower() for x in music.aliases):
+        await add_alias.finish(f'该别名已存在。')
+    info: dict[str, int | str | None] = {'group': event.group_id,
+                                         'qqid': event.user_id,
+                                         'nickname': event.sender.nickname,
+                                         'card': event.sender.card,
+                                         'role': event.sender.role,
+                                         'time': event.time, }
+    music.aliases[alias] = info
+    async with aiofiles.open(data_path / 'aliases.json', 'r', encoding='utf-8') as fp:
+        aliases = json.loads(await fp.read())
+    if id not in aliases:
+        aliases[id] = {'title': music.title, 'aliases': {}}
+    aliases[id]['aliases'][alias] = info
+    async with aiofiles.open(data_path / 'aliases.json', 'w', encoding='utf-8') as fp:
+        await fp.write(json.dumps(aliases, ensure_ascii=False, indent=4))
+    await add_alias.finish(f'已为 {id}. {music.title} 添加别名“{alias}”')
+
+
+@delete_alias.handle()
+async def delete_alias_func(bot: Bot, event: GroupMessageEvent, message: Message = CommandArg()) -> None:
+    try:
+        id, alias = message.extract_plain_text().split()
+    except ValueError:
+        await add_alias.finish('命令格式：\n删除别名 <乐曲id> <乐曲别名>')
+    music: Music | None = Mai.music_list.by_id(id)
+    if music is None:
+        await delete_alias.finish(f'没有id为{id}的乐曲。')
+    if alias not in music.aliases:
+        await delete_alias.finish(f'该别名不存在。')
+    if music.aliases[alias]['group'] != event.group_id:
+        await delete_alias.finish(f'别名“{alias}”由非本群的成员添加，不可在本群删除。')
+    if (music.aliases[alias]['role'] in ('owner', 'admin')
+            and not await (SUPERUSER | GROUP_OWNER | GROUP_ADMIN)(bot, event)):
+        await delete_alias.finish(f'别名“{alias}”由群管理员添加，只可由群管理员删除。')
+
+    del music.aliases[alias]
+    async with aiofiles.open('data/maimai/aliases.json', 'r', encoding='utf-8') as fp:
+        aliases = json.loads(await fp.read())
+    del aliases[id]['aliases'][alias]
+    async with aiofiles.open('data/maimai/aliases.json', 'w', encoding='utf-8') as fp:
+        await fp.write(json.dumps(aliases, ensure_ascii=False, indent=4))
+    await delete_alias.finish(f'已删除 {id}. {music.title} 的别名“{alias}”')
+
+
+@query_alias.handle()
+async def query_alias_func(message: Message = CommandArg()) -> None:
+    id: str = message.extract_plain_text()
+    music: Music | None = Mai.music_list.by_id(id)
+    if music is None:
+        await query_alias.finish(f'没有id为{id}的乐曲。')
+    if not music.aliases:
+        await query_alias.finish(f'{id}. {music.title}暂无别名。')
+    result: list[str] = [f'{id}. {music.title}的别名共{len(music.aliases)}个：']
+    for i, (alias, info) in enumerate(music.aliases.items()):
+        # if info['group'] != event.group_id:
+        #     info_str: str = f'{info["card"] or info["nickname"]} ({info["qqid"]})'
+        # else:
+        #     info_str = '非本群的成员'
+        result.append(f'{i+1}. {alias}  # 由{info["card"] or info["nickname"]} ({info["qqid"]}) 于{strftime(info["time"])}设置')
+    await query_alias.finish('\n'.join(result))
+
+
+@score_line.handle()
+async def score_line_func(message: Message = CommandArg()):
+    regex = r'(绿|黄|红|紫|白)(id)?([0-9]+)'
+    argv: list[str] = message.extract_plain_text().strip().split()
+    if len(argv) == 1 and argv[0] == '帮助':
+        await score_line.send(MessageSegment.image(image_to_bytesio(text_to_image(query_score_help_text))))
+    elif len(argv) == 2:
+        try:
+            match = re.match(regex, argv[0], flags=re.RegexFlag.IGNORECASE)
+            if match is None:
+                raise ValueError
+            group = match.groups()
+            diff: int = '绿黄红紫白'.index(group[0])
+            chart_id: str = group[2]
+            line = float(argv[1])
+            if not math.isfinite(line):
+                raise ValueError
+            music: Music | None = Mai.music_list.by_id(chart_id)
+            if music is None:
+                raise ValueError
+            chart: Chart = music.charts[diff]
+            tap: int = chart.tap
+            slide: int = chart.slide
+            hold: int = chart.hold
+            touch: int = chart.touch
+            break_: int = chart.break_
+            total_score: int = 500 * tap + slide * 1500 + hold * 1000 + touch * 500 + break_ * 2500
+            break_bonus: float = 0.01 / break_
+            break_50_reduce: float = total_score * break_bonus / 4
+            reduce: float = 101.0 - line
+            if reduce < 0 or reduce > 101:
+                raise ValueError
+            await query_chart.finish(music_info_with_diff_compact(music, diff) +
+                                     f'分数线 {line}% 允许的最多 TAP GREAT 数量为 {(total_score * reduce / 10000):.2f}(每个-{10000 / total_score:.4f}%),\n'
+                                     f'BREAK 50落(一共{break_}个)等价于 {(break_50_reduce / 100):.3f} 个 TAP GREAT(-{break_50_reduce / total_score * 100:.4f}%)')
+        except (ValueError, IndexError):
+            await query_chart.finish("格式错误，输入“分数线 帮助”以查看帮助信息")
+
+
 @guess_music_start.handle()
 async def guess_music_start_func(bot: Bot, event: MessageEvent) -> None:
-    # if event.group_id not in guess.config['enable']:
-    #     await guess_music_start.finish('该群已关闭猜歌功能，开启请输入 开启mai猜歌', reply_message=True)
     if is_now_playing_guess_music(bot, event):
         await guess_music_start.finish('该群已有正在进行的猜歌', reply_message=True)
     # guess = Guess(Mai.music_list.by_id('8'))
