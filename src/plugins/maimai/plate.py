@@ -132,7 +132,7 @@ async def player_plate_data(payload: dict, version_han: str, target_han: str, ni
         assert music is not None
         if music.ds[song[1]] > 13.6:
             song_remain_difficult.append(
-                [music.id, music.title, DIFFICULTY_NAME[song[1]], music.ds[song[1]], f'{music.stats[song[1]].fit_diff:.2f}', song[1]])
+                [music.id, music.title, DIFFICULTY_NAME[song[1]], music.ds[song[1]], f'{music.charts[song[1]].stats.fit_diff:.2f}', song[1]])
 
     appellation = nickname if nickname else '您'
 
@@ -198,7 +198,7 @@ Master剩余{len(song_remain_master)}首
                         if data['verlist'][record_index]['fs']:
                             self_record = syncRank[sync_rank.index(
                                 data['verlist'][record_index]['fs'])].upper()
-                msg += f'No.{i + 1} {m.id}. {m.title} {DIFFICULTY_NAME[s[1]]} {m.ds[s[1]]} {m.stats[s[1]].fit_diff:.2f} {self_record}'.strip(
+                msg += f'No.{i + 1} {m.id}. {m.title} {DIFFICULTY_NAME[s[1]]} {m.ds[s[1]]} {m.charts[s[1]].stats.fit_diff:.2f} {self_record}'.strip(
                 ) + '\n'
             if len(song_remain) > 10:
                 msg = MessageSegment.image(image_to_bytesio(text_to_image(msg.strip())))

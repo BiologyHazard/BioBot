@@ -57,7 +57,6 @@ class DrawText:
 
 
 class ChartInfo(object):
-
     def __init__(self, id: str, title: str, level: int, achievement: float, dxscore: int, rate: int, ra: int, fc: int, fs: int, ds: float, type: str):
         self.id = id
         self.title = title

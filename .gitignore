@@ -11,7 +11,7 @@ __pycache__
 /BioBot.zip
 /config.yml
 /device.json
-/session*.token
+/session*.token*
 /.env.dev
 /.env.prod
 /test*
