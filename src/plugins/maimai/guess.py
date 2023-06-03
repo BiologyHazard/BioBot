@@ -4,7 +4,7 @@ from pathlib import Path
 from nonebot.adapters.onebot.v11 import MessageSegment, Message
 from PIL import Image
 
-from .config import data_path
+from .config import plugin_config
 from .image import get_cover_len4_id, image_to_bytesio
 from .music import Mai, Music
 
@@ -51,7 +51,7 @@ class Guess:
         if self.round < self.rounds:
             return self.hints_shuffled[self.round - 1]
 
-        cover_path: Path = data_path / 'mai/cover' / f'{get_cover_len4_id(self.music.id)}.png'
+        cover_path: Path = plugin_config.data_path / 'mai/cover' / f'{get_cover_len4_id(self.music.id)}.png'
 
         image: Image.Image = Image.open(cover_path)
         w, h = image.size

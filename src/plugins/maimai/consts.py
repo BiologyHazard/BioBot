@@ -1,17 +1,17 @@
 DIFFICULTY_NAME: list[str] = ['Basic', 'Advanced', 'Expert', 'Master', 'Re:MASTER']
 '''`['Basic', 'Advanced', 'Expert', 'Master', 'Re:MASTER']`'''
 
-scoreRank: list[str] = ['d', 'c', 'b', 'bb', 'bbb', 'a', 'aa', 'aaa', 's', 's+', 'ss', 'ss+', 'sss', 'sss+']
-'''`['d', 'c', 'b', 'bb', 'bbb', 'a', 'aa', 'aaa', 's', 's+', 'ss', 'ss+', 'sss', 'sss+']`'''
+scoreRank: list[str] = ['D', 'C', 'B', 'BB', 'BBB', 'A', 'AA', 'AAA', 'S', 'S+', 'SS', 'SS+', 'SSS', 'SSS+']
+'''`['D', 'C', 'B', 'BB', 'BBB', 'A', 'AA', 'AAA', 'S', 'S+', 'SS', 'SS+', 'SSS', 'SSS+']`'''
 
-comboRank: list[str] = ['fc', 'fc+', 'ap', 'ap+']
-'''`['fc', 'fc+', 'ap', 'ap+']`'''
+comboRank: list[str] = ['FC', 'FC+', 'AP', 'AP+']
+'''`['FC', 'FC+', 'AP', 'AP+']`'''
 
 combo_rank: list[str] = ['fc', 'fcp', 'ap', 'app']
 '''`['fc', 'fcp', 'ap', 'app']`'''
 
-syncRank: list[str] = ['fs', 'fs+', 'fdx', 'fdx+']
-'''`['fs', 'fs+', 'fdx', 'fdx+']`'''
+syncRank: list[str] = ['FS', 'FS+', 'FSD', 'FSD+']
+'''`['FS', 'FS+', 'FSD', 'FSD+']`'''
 
 sync_rank: list[str] = ['fs', 'fsp', 'fsd', 'fsdp']
 '''`['fs', 'fsp', 'fsd', 'fsdp']`'''

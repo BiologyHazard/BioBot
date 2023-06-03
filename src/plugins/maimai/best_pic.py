@@ -428,8 +428,8 @@ def generateAchievementList(ds: float, spp: bool = False):
     return _achievementList
 
 
-async def generate(payload: dict) -> Union[Image.Image, str]:
-    obj = await get_player_data('best', payload)
+async def generate(payload: dict, queryer: int) -> Union[Image.Image, str]:
+    obj = await get_player_data('best', payload, queryer)
     if isinstance(obj, str):
         return obj
     qqId = None

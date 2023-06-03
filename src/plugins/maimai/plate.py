@@ -3,9 +3,9 @@ from math import ceil
 from nonebot import logger
 from nonebot.adapters.onebot.v11 import MessageSegment
 
-from .image import text_to_image, image_to_bytesio
-from .consts import DIFFICULTY_NAME
 from .api_data import get_player_data
+from .consts import DIFFICULTY_NAME
+from .image import image_to_bytesio, text_to_image
 from .music import Mai, Music
 
 plate_to_version = {
@@ -41,7 +41,7 @@ syncRank = ['fs', 'fs+', 'fdx', 'fdx+']
 sync_rank = ['fs', 'fsp', 'fsd', 'fsdp']
 
 
-async def player_plate_data(payload: dict, version_han: str, target_han: str, nickname: str | None) -> MessageSegment | str:
+async def player_plate_data(payload: dict, version_han: str, target_han: str, nickname: str | None, queryer: int) -> MessageSegment | str:
     song_played = []
     song_remain_basic = []
     song_remain_advanced = []
@@ -50,7 +50,7 @@ async def player_plate_data(payload: dict, version_han: str, target_han: str, ni
     song_remain_re_master = []
     song_remain_difficult = []
 
-    data = await get_player_data('plate', payload)
+    data = await get_player_data('plate', payload, queryer)
     # logger.debug(repr(data))
 
     if isinstance(data, str):

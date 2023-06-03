@@ -8,7 +8,7 @@ import aiofiles
 import aiohttp
 from retrying import retry
 
-from .config import data_path
+from .config import plugin_config
 from .consts import GENRE_HAN, VERSION_HAN
 
 
@@ -24,7 +24,7 @@ class Stats:
         self.fc_dist: list[int] = obj['fc_dist']
 
     def __repr__(self) -> str:
-        return self.__class__.__name__ + '(' + ', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items()) + ')'
+        return f'''{self.__class__.__name__}({', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())})'''
 
 
 class Chart:
@@ -35,13 +35,13 @@ class Chart:
         self.tap: int = obj['notes'][0]
         self.hold: int = obj['notes'][1]
         self.slide: int = obj['notes'][2]
-        self.touch: int = obj['notes'][3] if len(obj['notes']) == 5 else 0
+        self.touch: int = obj['notes'][3] if self.is_dx else 0
         self.break_: int = obj['notes'][-1]
         self.notes: int = sum(obj['notes'])
         self.charter: str = obj['charter']
 
     def __repr__(self) -> str:
-        return self.__class__.__name__ + '(' + ', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items()) + ')'
+        return f'''{self.__class__.__name__}({', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())})'''
 
 
 class Music:
@@ -56,6 +56,8 @@ class Music:
         self.type: str = obj['type']
         self.ds: list[float] = obj['ds']
         self.level: list[str] = obj['level']
+        self.diff_num: int = len(self.level)
+        self.has_remaster: bool = (self.diff_num == 5)
         self.artist: str = obj['basic_info']['artist']
         self.genre: str = obj['basic_info']['genre']
         self.genre_han: str = GENRE_HAN[self.genre]
@@ -65,14 +67,10 @@ class Music:
         self.version_han: str = VERSION_HAN[self.version]
         self.charts: list[Chart] = [Chart(chart) for chart in obj['charts']]
 
-        self.diff: list[int] = list(range(len(self.level)))
-
-    @property
-    def has_remaster(self) -> bool:
-        return len(self.level) == 5
+        self.diff: list[int] = list(range(self.diff_num))
 
     def __repr__(self) -> str:
-        return self.__class__.__name__ + '(' + ', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items()) + ')'
+        return f'''{self.__class__.__name__}({', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())})'''
 
 
 def _cross(checker: list[Any], elem: Any | tuple[Any, Any] | list[Any] | None, diff: list[int]) -> tuple[bool, list[int]]:
@@ -161,6 +159,12 @@ class MusicList(list[Music]):
                          if music_alias in music.title.lower()
                          or any(alias.strip().lower() == music_alias for alias in music.aliases))
 
+    def by_name(self, name: str) -> 'MusicList':
+        if name.isdigit() and (music := Mai.music_list.by_id(name)) is not None:
+            return MusicList([music])
+        else:
+            return self.by_alias(name)
+
     def random(self) -> Music:
         return random.choice(self)
 
@@ -178,7 +182,7 @@ class MusicList(list[Music]):
                ) -> 'MusicList':
         new_list = MusicList()
         for music in self:
-            diff2: list[int] = diff if diff is not None else list(range(len(music.level)))
+            diff2: list[int] = diff if diff is not None else list(range(music.diff_num))
             ret, diff2 = _cross(music.level, level, diff2)
             if not ret:
                 continue
@@ -248,7 +252,7 @@ class Mai:
 
     @classmethod
     async def get_aliases(cls) -> None:
-        async with aiofiles.open(data_path / 'aliases.json', 'r', encoding='utf-8') as fp:
+        async with aiofiles.open(plugin_config.data_path / 'aliases.json', 'r', encoding='utf-8') as fp:
             obj: dict = json.loads(await fp.read())
         for music in cls.music_list:
             if music.id in obj:
