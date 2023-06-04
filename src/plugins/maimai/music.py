@@ -1,76 +1,124 @@
 import asyncio
+import copy
 import json
 import random
-import copy
-from typing import Any, overload, Literal
+from collections import defaultdict
+from dataclasses import dataclass, field
+from typing import Any, Literal, Self, overload
 
 import aiofiles
 import aiohttp
-from retrying import retry
+from nonebot import logger
 
 from .config import plugin_config
-from .consts import GENRE_HAN, VERSION_HAN
+from .consts import GENRE_HAN, LEVELS, VERSION_HAN
 
 
-class Stats:
-    def __init__(self, obj) -> None:
-        self.cnt: int = int(obj['cnt'])
-        self.diff: str = obj['diff']
-        self.fit_diff: float = obj['fit_diff']
-        self.avg: float = obj['avg']
-        self.avg_dx: float = obj['avg_dx']
-        self.std_dev: float = obj['std_dev']
-        self.dist: list[int] = obj['dist']
-        self.fc_dist: list[int] = obj['fc_dist']
+@dataclass
+class ChartStats:
+    count: int
+    diff: str
+    fit_diff: float
+    avg_achievement: float
+    avg_dx_score: float
+    std_dev: float
+    dist: list[int]
+    fc_dist: list[int]
 
-    def __repr__(self) -> str:
-        return f'''{self.__class__.__name__}({', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())})'''
+    @classmethod
+    def from_json(cls, obj: dict[str, Any]) -> Self:
+        return cls(
+            count=int(obj['cnt']),
+            diff=obj['diff'],
+            fit_diff=obj['fit_diff'],
+            avg_achievement=obj['avg'],
+            avg_dx_score=obj['avg_dx'],
+            std_dev=obj['std_dev'],
+            dist=[int(x) for x in obj['dist']],
+            fc_dist=[int(x) for x in obj['fc_dist']],
+        )
+
+        # self.count: int = int(obj['cnt'])
+        # self.diff: str = obj['diff']
+        # self.fit_diff: float = obj['fit_diff']
+        # self.avg_achievement: float = obj['avg']
+        # self.avg_dx_score: float = obj['avg_dx']
+        # self.std_dev: float = obj['std_dev']
+        # self.dist: list[int] = [int(x) for x in obj['dist']]
+        # self.fc_dist: list[int] = [int(x) for x in obj['fc_dist']]
+
+    # def __repr__(self) -> str:
+    #     return f'''{self.__class__.__name__}({', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())})'''
 
 
+@dataclass
 class Chart:
-    stats: Stats
+    is_dx: bool
+    tap: int
+    hold: int
+    slide: int
+    touch: int
+    break_: int
+    notes: int
+    max_dx_score: int
+    charter: str
+    stats: ChartStats = field(init=False)
 
-    def __init__(self, obj) -> None:
-        self.is_dx: bool = len(obj['notes']) == 5
-        self.tap: int = obj['notes'][0]
-        self.hold: int = obj['notes'][1]
-        self.slide: int = obj['notes'][2]
-        self.touch: int = obj['notes'][3] if self.is_dx else 0
-        self.break_: int = obj['notes'][-1]
-        self.notes: int = sum(obj['notes'])
-        self.charter: str = obj['charter']
+    @classmethod
+    def from_json(cls, obj: dict[str, Any]) -> Self:
+        return cls(
+            is_dx=len(obj['notes']) == 5,
+            tap=obj['notes'][0],
+            hold=obj['notes'][1],
+            slide=obj['notes'][2],
+            touch=obj['notes'][3] if len(obj['notes']) == 5 else 0,
+            break_=obj['notes'][-1],
+            notes=sum(obj['notes']),
+            max_dx_score=sum(obj['notes']) * 3,
+            charter=obj['charter'],
+        )
 
-    def __repr__(self) -> str:
-        return f'''{self.__class__.__name__}({', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())})'''
 
-
+@dataclass
 class Music:
-    aliases: dict[str, dict[str, Any]]
+    id: str
+    title: str
+    type: str
+    ds: list[float]
+    level: list[str]
+    diff_num: int
+    has_remaster: bool
+    artist: str
+    genre: str
+    genre_han: str
+    bpm: float
+    release_date: str
+    version: str
+    version_han: str
+    charts: list[Chart]
+    diff: list[int]
+    aliases: dict[str, dict[str, Any]] = field(init=False)
 
-    def __init__(self, obj) -> None:
-        if isinstance(obj, Music):
-            super().__init__()
-            return
-        self.id: str = obj['id']
-        self.title: str = obj['title']
-        self.type: str = obj['type']
-        self.ds: list[float] = obj['ds']
-        self.level: list[str] = obj['level']
-        self.diff_num: int = len(self.level)
-        self.has_remaster: bool = (self.diff_num == 5)
-        self.artist: str = obj['basic_info']['artist']
-        self.genre: str = obj['basic_info']['genre']
-        self.genre_han: str = GENRE_HAN[self.genre]
-        self.bpm: float = obj['basic_info']['bpm']
-        self.release_date: str = obj['basic_info']['release_date']
-        self.version: str = obj['basic_info']['from']
-        self.version_han: str = VERSION_HAN[self.version]
-        self.charts: list[Chart] = [Chart(chart) for chart in obj['charts']]
-
-        self.diff: list[int] = list(range(self.diff_num))
-
-    def __repr__(self) -> str:
-        return f'''{self.__class__.__name__}({', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())})'''
+    @classmethod
+    def from_json(cls, obj: dict[str, Any]) -> Self:
+        return cls(
+            id=obj['id'],
+            title=obj['title'],
+            type=obj['type'],
+            ds=obj['ds'],
+            level=obj['level'],
+            diff_num=len(obj['level']),
+            has_remaster=(len(obj['level']) == 5),
+            artist=obj['basic_info']['artist'],
+            genre=obj['basic_info']['genre'],
+            genre_han=GENRE_HAN[obj['basic_info']['genre']],
+            bpm=obj['basic_info']['bpm'],
+            release_date=obj['basic_info']['release_date'],
+            version=obj['basic_info']['from'],
+            version_han=VERSION_HAN[obj['basic_info']['from']],
+            charts=[Chart.from_json(chart) for chart in obj['charts']],
+            diff=list(range(len(obj['level'])))
+        )
 
 
 def _cross(checker: list[Any], elem: Any | tuple[Any, Any] | list[Any] | None, diff: list[int]) -> tuple[bool, list[int]]:
@@ -129,21 +177,22 @@ def _search_charts(checker: list[Chart], elem: str | None, diff: list[int]) -> t
 
 class MusicList(list[Music]):
     @classmethod
-    def from_json(cls, obj) -> 'MusicList':
-        return cls(Music(music) for music in obj)
+    def from_json(cls, obj: list[dict[str, Any]]) -> Self:
+        return cls(Music.from_json(music) for music in obj)
 
     @overload
-    def by_id(self, music_id: str, strict: Literal[True] = ...) -> Music: ...
+    def by_id(self, name: str, strict: Literal[False] = ...) -> Music | None: ...
 
     @overload
-    def by_id(self, music_id: str, strict: Literal[False] = ...) -> Music | None: ...
+    def by_id(self, name: str, strict: Literal[True] = ...) -> Music: ...
 
-    def by_id(self, music_id: str, strict: bool = False) -> Music | None:
-        for music in self:
-            if music.id == music_id:
-                return music
+    def by_id(self, name: str, strict: bool = False) -> Music | None:
+        if name and name.isdigit():
+            for music in self:
+                if music.id == name:
+                    return music
         if strict:
-            raise ValueError(f'Music of id{music_id} not found.')
+            raise ValueError(f'Music of id{name} not found.')
         return None
 
     # def by_title(self, music_title: str) -> Music | None:
@@ -152,16 +201,18 @@ class MusicList(list[Music]):
     #             return music
     #     return None
 
-    def by_alias(self, music_alias: str) -> 'MusicList':
-        '''标题的字串也可以'''
-        music_alias = music_alias.strip().lower()
-        return MusicList(music for music in self
-                         if music_alias in music.title.lower()
-                         or any(alias.strip().lower() == music_alias for alias in music.aliases))
+    def by_alias(self, name: str) -> Self:
+        '''标题的字串也可以，对大小写和空格不敏感'''
+        name = name.strip().replace(' ', '').lower()
+        if not name:
+            return self.__class__()
+        return self.__class__(music for music in self
+                              if name in music.title.replace(' ', '').lower()
+                              or any(alias.strip().replace(' ', '').lower() == name for alias in music.aliases))
 
-    def by_name(self, name: str) -> 'MusicList':
+    def by_name(self, name: str) -> Self:
         if name.isdigit() and (music := Mai.music_list.by_id(name)) is not None:
-            return MusicList([music])
+            return self.__class__([music])
         else:
             return self.by_alias(name)
 
@@ -179,8 +230,8 @@ class MusicList(list[Music]):
                bpm: float | list[float] | tuple[float, float] | None = None,
                type_: str | list[str] | None = None,
                diff: list[int] | None = None,
-               ) -> 'MusicList':
-        new_list = MusicList()
+               ) -> Self:
+        new_list = self.__class__()
         for music in self:
             diff2: list[int] = diff if diff is not None else list(range(music.diff_num))
             ret, diff2 = _cross(music.level, level, diff2)
@@ -216,21 +267,50 @@ class MusicList(list[Music]):
         return min(min(music.ds) for music in self)
 
 
+@dataclass
+class LevelStats:
+    avg_count: float
+    avg_achievement: float
+    avg_std_dev: float
+    avg_dx_score_ratio: float
+    dist: list[float]
+    fc_dist: list[float]
+
+
 class Mai:
     music_list: MusicList
+    hot_music_list: MusicList
+    diff_data: dict[str, LevelStats]
 
     @classmethod
-    @retry(stop_max_attempt_number=3)
     async def get_music(cls) -> None:
         async def get_music_data() -> Any:
-            async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
-                assert obj.status == 200
-                return await obj.json()
+            logger.info('正在获取乐曲信息...')
+            try:
+                async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as response:
+                    assert response.status == 200
+                    obj: Any = await response.json()
+                    async with aiofiles.open(plugin_config.data_path / 'music_data.json', 'w', encoding='utf-8') as fp:
+                        await fp.write(json.dumps(obj, ensure_ascii=False))
+            except Exception:
+                logger.warning('乐曲信息获取失败，请检查网络环境。已切换至本地暂存文件。')
+                async with aiofiles.open(plugin_config.data_path / 'music_data.json', 'r', encoding='utf-8') as fp:
+                    obj = json.loads(await fp.read())
+            return obj
 
         async def get_chart_stats() -> Any:
-            async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as obj:
-                assert obj.status == 200
-                return await obj.json()
+            logger.info('正在获取谱面统计...')
+            try:
+                async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as response:
+                    assert response.status == 200
+                    obj: Any = await response.json()
+                    async with aiofiles.open(plugin_config.data_path / 'chart_stats.json', 'w', encoding='utf-8') as fp:
+                        await fp.write(json.dumps(obj, ensure_ascii=False))
+            except Exception:
+                logger.warning('谱面统计获取失败，请检查网络环境。已切换至本地暂存文件。')
+                async with aiofiles.open(plugin_config.data_path / 'chart_stats.json', 'r', encoding='utf-8') as fp:
+                    obj = json.loads(await fp.read())
+            return obj
 
         music_data, chart_stats = await asyncio.gather(get_music_data(), get_chart_stats())
         # import requests
@@ -242,16 +322,43 @@ class Mai:
         for music in cls.music_list:
             for i, stats_dict in enumerate(chart_stats['charts'][music.id]):
                 if stats_dict:
-                    music.charts[i].stats = Stats(stats_dict)
+                    music.charts[i].stats = ChartStats.from_json(stats_dict)
 
         cls.hot_music_list = MusicList(
             sorted(cls.music_list,
-                   key=lambda music: sum(chart.stats.cnt for chart in music.charts),
+                   key=lambda music: sum(chart.stats.count for chart in music.charts),
                    reverse=True)[:128]
         )
 
+        count: defaultdict[str, int] = defaultdict(int)
+        count_sum: defaultdict[str, int] = defaultdict(int)
+        std_dev_sum: defaultdict[str, float] = defaultdict(float)
+        dx_score_ratio_sum: defaultdict[str, float] = defaultdict(float)
+        for music in cls.music_list:
+            for i in range(music.diff_num):
+                level: str = music.level[i]
+                count[level] += 1
+                chart: Chart = music.charts[i]
+                stats: ChartStats = chart.stats
+                count_sum[level] += stats.count
+                std_dev_sum[level] += stats.std_dev
+                dx_score_ratio_sum[level] += stats.avg_dx_score / chart.max_dx_score
+
+        cls.diff_data = {}
+        for level in LEVELS:
+            level_diff_data: dict[str, Any] = chart_stats['diff_data'][level]
+            cls.diff_data[level] = LevelStats(
+                avg_count=count_sum[level] / count[level],
+                avg_achievement=level_diff_data['achievements'],
+                avg_std_dev=std_dev_sum[level] / count[level],
+                avg_dx_score_ratio=dx_score_ratio_sum[level] / count[level],
+                dist=level_diff_data['dist'],
+                fc_dist=level_diff_data['fc_dist'],
+            )
+
     @classmethod
     async def get_aliases(cls) -> None:
+        logger.info('正在获取别名信息...')
         async with aiofiles.open(plugin_config.data_path / 'aliases.json', 'r', encoding='utf-8') as fp:
             obj: dict = json.loads(await fp.read())
         for music in cls.music_list:

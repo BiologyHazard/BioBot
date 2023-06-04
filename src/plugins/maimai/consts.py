@@ -1,20 +1,20 @@
 DIFFICULTY_NAME: list[str] = ['Basic', 'Advanced', 'Expert', 'Master', 'Re:MASTER']
 '''`['Basic', 'Advanced', 'Expert', 'Master', 'Re:MASTER']`'''
 
-scoreRank: list[str] = ['D', 'C', 'B', 'BB', 'BBB', 'A', 'AA', 'AAA', 'S', 'S+', 'SS', 'SS+', 'SSS', 'SSS+']
+SCORE_RANK: list[str] = ['D', 'C', 'B', 'BB', 'BBB', 'A', 'AA', 'AAA', 'S', 'S+', 'SS', 'SS+', 'SSS', 'SSS+']
 '''`['D', 'C', 'B', 'BB', 'BBB', 'A', 'AA', 'AAA', 'S', 'S+', 'SS', 'SS+', 'SSS', 'SSS+']`'''
 
-comboRank: list[str] = ['FC', 'FC+', 'AP', 'AP+']
-'''`['FC', 'FC+', 'AP', 'AP+']`'''
+COMBO_RANK: list[str] = ['Not FC', 'FC', 'FC+', 'AP', 'AP+']
+'''`['Not FC', 'FC', 'FC+', 'AP', 'AP+']`'''
 
-combo_rank: list[str] = ['fc', 'fcp', 'ap', 'app']
-'''`['fc', 'fcp', 'ap', 'app']`'''
+combo_rank: list[str] = ['', 'fc', 'fcp', 'ap', 'app']
+'''`['', 'fc', 'fcp', 'ap', 'app']`'''
 
-syncRank: list[str] = ['FS', 'FS+', 'FSD', 'FSD+']
-'''`['FS', 'FS+', 'FSD', 'FSD+']`'''
+syncRank: list[str] = ['Not FS', 'FS', 'FS+', 'FSD', 'FSD+']
+'''`['Not FS', 'FS', 'FS+', 'FSD', 'FSD+']`'''
 
-sync_rank: list[str] = ['fs', 'fsp', 'fsd', 'fsdp']
-'''`['fs', 'fsp', 'fsd', 'fsdp']`'''
+sync_rank: list[str] = ['', 'fs', 'fsp', 'fsd', 'fsdp']
+'''`['', 'fs', 'fsp', 'fsd', 'fsdp']`'''
 
 LEVELS: list[str] = ['1', '2', '3', '4', '5', '6', '7', '7+', '8', '8+', '9', '9+', '10', '10+', '11', '11+', '12', '12+', '13', '13+', '14', '14+', '15']
 '''`['1', '2', '3', '4', '5', '6', '7', '7+', '8', '8+', '9', '9+', '10', '10+', '11', '11+', '12', '12+', '13', '13+', '14', '14+', '15']`'''
@@ -59,3 +59,29 @@ VERSION_HAN: dict[str, str] = {
     'maimai でらっくす UNiVERSE PLUS': '星',
     'maimai でらっくす FESTiVAL': '祭',
 }
+'''
+```
+{
+    'maimai': '真',
+    'maimai PLUS': '真',
+    'maimai GreeN': '超',
+    'maimai GreeN PLUS': '檄',
+    'maimai ORANGE': '橙',
+    'maimai ORANGE PLUS': '暁',
+    'maimai PiNK': '桃',
+    'maimai PiNK PLUS': '櫻',
+    'maimai MURASAKi': '紫',
+    'maimai MURASAKi PLUS': '菫',
+    'maimai MiLK': '白',
+    'MiLK PLUS': '雪',
+    'maimai FiNALE': '輝',
+    'maimai でらっくす': '熊',
+    'maimai でらっくす PLUS': '華',
+    'maimai でらっくす Splash': '爽',
+    'maimai でらっくす Splash PLUS': '煌',
+    'maimai でらっくす UNiVERSE': '宙',
+    'maimai でらっくす UNiVERSE PLUS': '星',
+    'maimai でらっくす FESTiVAL': '祭',
+}
+```
+'''

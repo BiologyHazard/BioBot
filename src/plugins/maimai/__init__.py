@@ -6,7 +6,7 @@ from random import Random
 from typing import Any
 
 import aiofiles
-from nonebot import MatcherGroup, get_driver, logger
+from nonebot import MatcherGroup, get_driver, logger, require
 from nonebot.adapters.onebot.v11 import (Bot, GroupMessageEvent, Message,
                                          MessageEvent, MessageSegment,
                                          PrivateMessageEvent)
@@ -18,17 +18,21 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
-from . import plate
 from .api_data import get_player_data
 from .best_pic import generate
 from .config import plugin_config
 from .consts import (DIFFICULTY_NAME, LEVELS, VERSION_HAN, combo_rank,
-                     comboRank, sync_rank, syncRank)
+                     COMBO_RANK, sync_rank, syncRank)
 from .guess import Guess, guesses
 from .image import get_cover_len4_id, image_to_bytesio, text_to_image
-from .music import Chart, Mai, Music, MusicList
+from .music import Chart, ChartStats, Mai, Music, MusicList
+from .plate import plate_to_version, player_plate_data
 from .privacy import set_privacy as privacy_set_privacy
+from .stats_pic import chart_stats_text
 from .utils import get_random_inst, strftime
+
+require('nonebot_plugin_apscheduler')
+from nonebot_plugin_apscheduler import scheduler  # NOQA: E402
 
 driver: Driver = get_driver()
 default_command_start: str = tuple(driver.config.command_start)[0]
@@ -51,7 +55,7 @@ maimai插件可用命令如下：
 · [...]maimai[...]什么　　# 随机一首乐曲
 · 随个[dx|sd|标准][绿|黄|红|紫|白]<等级|定数>　　# 随机一首指定条件的乐曲
 
-【查询分数】
+【查询成绩】
 · {default_command_start}(b40|b50) [<@某人|qq号|水鱼网昵称>]　　# 查询b40/b50
 · {default_command_start}乐曲成绩 <乐曲id|标题|别名> [<@某人|qq号|水鱼网昵称>]　　# 查询乐曲成绩
 · <牌子名称>进度 [<@某人|qq号|水鱼网昵称>]　　# 查询牌子进度
@@ -71,6 +75,7 @@ maimai插件可用命令如下：
 · {default_command_start}bpm查歌 <曲速下限> <曲速上限> [<页码>]
 · {default_command_start}曲师查歌 <艺术家> [<页码>]　　# 通过艺术家查询乐曲
 · {default_command_start}谱师查歌 <谱师> [<页码>]　　# 通过谱师查询谱面
+· {default_command_start}谱面统计 [绿|黄|红|紫|白]<乐曲id|标题|别名>　　# 查询谱面的统计信息
 
 【乐曲别名】
 · {default_command_start}(添加|删除)别名 <乐曲id> <乐曲别名>　　# 添加/删除乐曲别名
@@ -90,7 +95,7 @@ maimai插件可用命令如下：
 　# 可以使用上面的命令更改隐私设置。
 　# 请注意：这条命令仅在BioBot中起作用，
 　# BioBot没有能力阻止其他人通过您的qq号查询成绩，
-　# 如果您仍有顾虑，唯一可行的办法是在水鱼网中解除绑定qq号。
+　# 如果您仍有顾虑，您可以选择在水鱼网中解除绑定qq号。
 '''.strip()
 
 __plugin_meta__ = PluginMetadata(
@@ -100,12 +105,11 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
+@scheduler.scheduled_job('cron', hour=0)
 @driver.on_startup
 async def on_startup_func() -> None:
     '''bot启动时获取曲目信息和别名信息'''
-    logger.info('正在获取乐曲信息...')
     await Mai.get_music()
-    logger.info('正在获取别名信息...')
     await Mai.get_aliases()
 
 
@@ -140,7 +144,7 @@ today_maimai = maimai_command_group.on_command(
 maimai_what = maimai_command_group.on_regex(r'maimai.*什么', flags=re.RegexFlag.IGNORECASE)
 spec_rand = maimai_command_group.on_regex(
     r'[随来给]个(dx|sd|标准)?(绿|黄|红|紫|白)?(?:(\d{1,2}\.\d)|(\d{1,2}\+?))', flags=re.RegexFlag.IGNORECASE)
-# 查询分数
+# 查询成绩
 best_40 = maimai_command_group.on_command('b40', aliases={'best40'}, rule=not_anonymous)
 best_50 = maimai_command_group.on_command('b50', aliases={'best50'}, rule=not_anonymous)
 plate_process = maimai_command_group.on_regex(
@@ -148,7 +152,7 @@ plate_process = maimai_command_group.on_regex(
 level_achievement = maimai_command_group.on_regex(
     r'^(?:(\d{1,2}\.\d)|(\d{1,2}\+?))分数列表\s*(\d+)?\s*(.+)?', rule=not_anonymous)
 music_score = maimai_command_group.on_command(
-    '乐曲成绩', aliases={'歌曲成绩', 'minfo'}, rule=not_anonymous)
+    '乐曲成绩', aliases={'歌曲成绩', '我的成绩', '查成绩', 'minfo'}, rule=not_anonymous)
 # 查询乐曲
 query_chart = maimai_command_group.on_regex(r'^(绿|黄|红|紫|白)?\s*id\s*(\d+)')
 search_music_by_title = maimai_command_group.on_command('查歌')
@@ -157,6 +161,7 @@ search_music_by_inner = maimai_command_group.on_command('定数查歌')
 search_music_by_tempo = maimai_command_group.on_command('bpm查歌')
 search_music_by_artist = maimai_command_group.on_command('曲师查歌')
 search_music_by_charter = maimai_command_group.on_command('谱师查歌')
+chart_stats = maimai_command_group.on_command('谱面统计', aliases={'统计信息', 'ginfo'})
 # 乐曲别名
 add_alias = maimai_command_group.on_command(
     '添加别名', aliases={'添加别称', '增加别名', '增加别称'}, rule=not_anonymous)
@@ -393,14 +398,14 @@ async def music_score_func(bot: Bot, event: MessageEvent, message: Message = Com
     for achievement_data in sorted(player_data, key=lambda x: x['level_index']):
         messages.append(f'{DIFFICULTY_NAME[achievement_data["level_index"]]} {music.ds[achievement_data["level_index"]]} | {achievement_data["achievements"]:.4f}%')
         if achievement_data['fc']:
-            messages.append(f' {comboRank[combo_rank.index(achievement_data["fc"])]}')
+            messages.append(f' {COMBO_RANK[combo_rank.index(achievement_data["fc"])]}')
         if achievement_data['fs']:
             messages.append(f' {syncRank[sync_rank.index(achievement_data["fs"])]}')
         messages.append('\n')
     await music_score.finish(''.join(messages), at_sender=True)
 
 
-@ plate_process.handle()
+@plate_process.handle()
 async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()) -> None:
     plate_name_han, nickname = group
     version_han, target_han = plate_name_han[0], plate_name_han[1]
@@ -428,14 +433,14 @@ async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = E
         nickname = (await bot.get_stranger_info(user_id=int(qqid)))['nickname']
 
     if version_han in {'霸', '舞'}:
-        payload['version'] = list(set(version for version in list(plate.plate_to_version.values())[:-5]))
+        payload['version'] = list(set(version for version in list(plate_to_version.values())[:-5]))
     else:
-        payload['version'] = [plate.plate_to_version[version_han]]
-    data: MessageSegment | str = await plate.player_plate_data(payload, version_han, target_han, nickname, event.user_id)
+        payload['version'] = [plate_to_version[version_han]]
+    data: MessageSegment | str = await player_plate_data(payload, version_han, target_han, nickname, event.user_id)
     await plate_process.send(data)
 
 
-@ level_achievement.handle()
+@level_achievement.handle()
 async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str | None, str | None, str | None, str | None] = RegexGroup()) -> None:
     ds, level, page, user = group
     if level is not None and level not in LEVELS:
@@ -464,7 +469,7 @@ async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message
                 achievement_list.append((music, achievement_data))
 
     pages: int = math.ceil(len(achievement_list) / plugin_config.songs_per_page)
-    page: str | int | None = max(min(int(page), pages - 1), 0) if page else 0
+    page: str | int | None = max(min(int(page) - 1, pages - 1), 0) if page else 0
 
     messages: list[str] = [f'{nickname}的{ds or level}分数列表（从高至低）：\n']
     for i, (music, achievement_data) in enumerate(sorted(achievement_list,
@@ -472,7 +477,7 @@ async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message
         if page * plugin_config.songs_per_page <= i < (page + 1) * plugin_config.songs_per_page:
             messages.append(f'No.{i+1} | {achievement_data["achievements"]:.4f}% | {music.id}. {music.title} | {DIFFICULTY_NAME[achievement_data["level_index"]]} {music.ds[achievement_data["level_index"]]}')
             if achievement_data['fc']:
-                messages.append(f' | {comboRank[combo_rank.index(achievement_data["fc"])]}')
+                messages.append(f' | {COMBO_RANK[combo_rank.index(achievement_data["fc"])]}')
             if achievement_data['fs']:
                 messages.append(f' {syncRank[sync_rank.index(achievement_data["fs"])]}')
             messages.append('\n')
@@ -484,7 +489,7 @@ async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message
         MessageSegment.image(image_to_bytesio(text_to_image(''.join(messages)))))
 
 
-@ query_chart.handle()
+@query_chart.handle()
 async def query_chart_func(group: tuple[str | None, str] = RegexGroup()) -> None:
     music_id: str = group[1]
     music: Music | None = Mai.music_list.by_id(music_id)
@@ -497,7 +502,7 @@ async def query_chart_func(group: tuple[str | None, str] = RegexGroup()) -> None
         await query_chart.finish(music_info(music))
 
 
-@ search_music_by_title.handle()
+@search_music_by_title.handle()
 async def search_music_by_title_func(message: Message = CommandArg()) -> None:
     name: str = message.extract_plain_text()
     if not name:
@@ -515,7 +520,7 @@ async def search_music_by_title_func(message: Message = CommandArg()) -> None:
     await search_music_by_title.finish(f"结果过多（{len(result)}条），请缩小查询范围。")
 
 
-@ search_music_by_alias.handle()
+@search_music_by_alias.handle()
 async def search_music_by_alias_func(group: tuple[str] = RegexGroup()) -> None:
     (alias, ) = group
     result: MusicList = Mai.music_list.by_alias(alias)
@@ -530,7 +535,7 @@ async def search_music_by_alias_func(group: tuple[str] = RegexGroup()) -> None:
     await search_music_by_alias.finish(f'结果过多（{len(result)}条），请缩小查询范围。')
 
 
-@ search_music_by_inner.handle()
+@search_music_by_inner.handle()
 async def search_music_by_inner_func(message: Message = CommandArg()) -> None:
     args: list[str] = message.extract_plain_text().strip().split()
     try:
@@ -558,7 +563,7 @@ async def search_music_by_inner_func(message: Message = CommandArg()) -> None:
     await search_music_by_inner.finish(f"结果过多（{length_of_result} 条），请缩小查询范围。")
 
 
-@ search_music_by_tempo.handle()
+@search_music_by_tempo.handle()
 async def search_music_by_tempo_func(message: Message = CommandArg()) -> None:
     try:
         args: list[str] = message.extract_plain_text().strip().split()
@@ -595,7 +600,7 @@ async def search_music_by_tempo_func(message: Message = CommandArg()) -> None:
     await search_music_by_tempo.finish(MessageSegment.image(image_to_bytesio(text_to_image('\n'.join(messages)))))
 
 
-@ search_music_by_artist.handle()
+@search_music_by_artist.handle()
 async def search_music_by_artist_func(message: Message = CommandArg()) -> None:
     message_plain_text: str = message.extract_plain_text().strip()
     if not message_plain_text:
@@ -625,7 +630,7 @@ async def search_music_by_artist_func(message: Message = CommandArg()) -> None:
     await search_music_by_artist.finish(MessageSegment.image(image_to_bytesio(text_to_image('\n'.join(messages)))))
 
 
-@ search_music_by_charter.handle()
+@search_music_by_charter.handle()
 async def search_music_by_charter_func(message: Message = CommandArg()) -> None:
     message_plain_text: str = message.extract_plain_text().strip()
     if not message_plain_text:
@@ -656,7 +661,45 @@ async def search_music_by_charter_func(message: Message = CommandArg()) -> None:
     await search_music_by_charter.finish(MessageSegment.image(image_to_bytesio(text_to_image('\n'.join(messages)))))
 
 
-@ add_alias.handle()
+@chart_stats.handle()
+async def chart_stats_func(event: MessageEvent, message: Message = CommandArg()):
+    plain_text: str = message.extract_plain_text().strip()
+    diff_index: int = '绿黄红紫白'.find(plain_text[0])  # 未指定则为-1
+    if diff_index == -1:
+        name = plain_text
+    else:
+        name = plain_text[1:]
+
+    matched_music: MusicList = Mai.music_list.by_name(name)
+    if not matched_music:
+        await music_score.finish(f'没有找到id/标题/别名为“{name}”的乐曲。')
+    if 1 < len(matched_music) <= 25:
+        await music_score.finish(f'“{name}”匹配{len(matched_music)}首乐曲：\n'
+                                 + '\n'.join(music_info_compact(music) for music in matched_music)
+                                 + '\n请发送乐曲的id以确定查询的乐曲。')
+    elif len(matched_music) > 25:
+        await music_score.finish(f'“{name}”匹配{len(matched_music)}首乐曲：\n'
+                                 + '请发送乐曲的id以确定查询的乐曲。')
+
+    (music,) = matched_music
+    if diff_index == -1:
+        diff_index = music.diff_num - 1
+    diff_index = min(diff_index, music.diff_num - 1)
+    stats: ChartStats = music.charts[diff_index].stats
+    if not stats:
+        await chart_stats.finish('该乐曲还没有统计信息', reply_message=True)
+    # await chart_stats.finish(MessageSegment.image(image_to_bytesio(music_global_data(music, diff_index)))
+    #                          + (f'游玩次数：{round(stats.count)}\n'
+    #                             f'拟合难度：{stats.fit_diff:.2f}\n'
+    #                             f'平均达成率：{stats.avg_achievement:.4f}%\n'
+    #                             f'平均 DX 分数：{stats.avg_dx_score:.2f}\n'
+    #                             f'谱面成绩标准差：{stats.std_dev:.4f}'),
+    #                          at_sender=True)
+    await chart_stats.finish(
+        MessageSegment.image(image_to_bytesio(text_to_image(chart_stats_text(music, diff_index)))))
+
+
+@add_alias.handle()
 async def add_alias_func(event: GroupMessageEvent, message: Message = CommandArg()) -> None:
     try:
         id, alias = message.extract_plain_text().split()
@@ -684,7 +727,7 @@ async def add_alias_func(event: GroupMessageEvent, message: Message = CommandArg
     await add_alias.finish(f'已为 {id}. {music.title} 添加别名“{alias}”')
 
 
-@ delete_alias.handle()
+@delete_alias.handle()
 async def delete_alias_func(bot: Bot, event: GroupMessageEvent, message: Message = CommandArg()) -> None:
     try:
         id, alias = message.extract_plain_text().split()
