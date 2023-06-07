@@ -1,11 +1,9 @@
 import random
-from pathlib import Path
 
 from nonebot.adapters.onebot.v11 import MessageSegment, Message
 from PIL import Image
 
-from .config import plugin_config
-from .image import get_cover_len4_id, image_to_bytesio
+from .image import get_cover, image_to_bytesio
 from .music import Mai, Music
 
 
@@ -44,16 +42,14 @@ class Guess:
         self.finished: bool = False
         '''是否已结束'''
 
-    def give_hint(self) -> str | Message:
+    async def give_hint(self) -> str | Message:
         if self.round > self.rounds:
             raise ValueError
         self.round += 1
         if self.round < self.rounds:
             return self.hints_shuffled[self.round - 1]
 
-        cover_path: Path = plugin_config.data_path / 'mai/cover' / f'{get_cover_len4_id(self.music.id)}.png'
-
-        image: Image.Image = Image.open(cover_path)
+        image: Image.Image = Image.open(await get_cover(self.music.id))
         w, h = image.size
         w2, h2 = w//3, h//3
         l, u = random.randrange(0, 2*w//3), random.randrange(0, 2*h//3)

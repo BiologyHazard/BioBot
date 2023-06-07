@@ -4,44 +4,19 @@ from nonebot import logger
 from nonebot.adapters.onebot.v11 import MessageSegment
 
 from .api_data import get_player_data
-from .consts import DIFFICULTY_NAME
+from .consts import DIFFICULTY_NAME, combo_rank, COMBO_RANK, sync_rank, SYNC_RANK, PLATE_TO_VERSION
 from .image import image_to_bytesio, text_to_image
 from .music import Mai, Music
 
-plate_to_version = {
-    '初': 'maimai',
-    '真': 'maimai PLUS',
-    '超': 'maimai GreeN',
-    '檄': 'maimai GreeN PLUS',
-    '橙': 'maimai ORANGE',
-    '暁': 'maimai ORANGE PLUS',
-    '晓': 'maimai ORANGE PLUS',
-    '桃': 'maimai PiNK',
-    '櫻': 'maimai PiNK PLUS',
-    '樱': 'maimai PiNK PLUS',
-    '紫': 'maimai MURASAKi',
-    '菫': 'maimai MURASAKi PLUS',
-    '堇': 'maimai MURASAKi PLUS',
-    '白': 'maimai MiLK',
-    '雪': 'MiLK PLUS',
-    '輝': 'maimai FiNALE',
-    '辉': 'maimai FiNALE',
-    '熊': 'maimai でらっくす',
-    '華': 'maimai でらっくす',
-    '華': 'maimai でらっくす PLUS',
-    '华': 'maimai でらっくす PLUS',
-    '华': 'maimai でらっくす',
-    '爽': 'maimai でらっくす Splash',
-    '煌': 'maimai でらっくす Splash',
-    '煌': 'maimai でらっくす Splash PLUS',
-}
-comboRank = ['fc', 'fc+', 'ap', 'ap+']
-combo_rank = ['fc', 'fcp', 'ap', 'app']
-syncRank = ['fs', 'fs+', 'fdx', 'fdx+']
-sync_rank = ['fs', 'fsp', 'fsd', 'fsdp']
-
 
 async def player_plate_data(payload: dict, version_han: str, target_han: str, nickname: str | None, queryer: int) -> MessageSegment | str:
+    payload['version'] = PLATE_TO_VERSION[version_han] if version_han != '霸' else PLATE_TO_VERSION['舞']
+    data = await get_player_data('plate', payload, queryer)
+    if isinstance(data, str):
+        return data
+
+    # all_need_to_play:
+
     song_played = []
     song_remain_basic = []
     song_remain_advanced = []
@@ -49,12 +24,6 @@ async def player_plate_data(payload: dict, version_han: str, target_han: str, ni
     song_remain_master = []
     song_remain_re_master = []
     song_remain_difficult = []
-
-    data = await get_player_data('plate', payload, queryer)
-    # logger.debug(repr(data))
-
-    if isinstance(data, str):
-        return data
 
     if target_han in ['将', '者']:
         for song in data['verlist']:
@@ -82,7 +51,7 @@ async def player_plate_data(payload: dict, version_han: str, target_han: str, ni
             if version_han == '舞' and song['level_index'] == 4 and not song['fc']:
                 song_remain_re_master.append([song['id'], song['level_index']])
             song_played.append([song['id'], song['level_index']])
-    elif target_han == '舞舞':
+    elif target_han == '舞':
         for song in data['verlist']:
             if song['level_index'] == 0 and song['fs'] not in ['fsd', 'fsdp']:
                 song_remain_basic.append([song['id'], song['level_index']])
@@ -162,11 +131,11 @@ Master剩余{len(song_remain_master)}首
                             data['verlist'][record_index]['achievements']) + '%'
                     elif target_han in ['極', '极', '神']:
                         if data['verlist'][record_index]['fc']:
-                            self_record = comboRank[combo_rank.index(
+                            self_record = COMBO_RANK[combo_rank.index(
                                 data['verlist'][record_index]['fc'])].upper()
                     elif target_han == '舞舞':
                         if data['verlist'][record_index]['fs']:
-                            self_record = syncRank[sync_rank.index(
+                            self_record = SYNC_RANK[sync_rank.index(
                                 data['verlist'][record_index]['fs'])].upper()
                 # logger.info(repr(s))
                 msg += f'No.{i + 1} {s[0]}. {s[1]} {s[2]} {s[3]} {s[4]} {self_record}'.strip() + \
@@ -177,13 +146,13 @@ Master剩余{len(song_remain_master)}首
             msg += f'还有{len(song_remain_difficult)}大于13.6定数的曲目，加油推分哦！\n'
     elif len(song_remain) > 0:
         for i, s in enumerate(song_remain):
-            m: Music = Mai.music_list.by_id(str(s[0]))
+            m: Music = Mai.music_list.by_id(str(s[0]), strict=True)
             ds = m.ds[s[1]]
             song_remain[i].append(ds)
         if len(song_remain) < 60:
             msg += '剩余曲目：\n'
             for i, s in enumerate(sorted(song_remain, key=lambda i: i[2])):
-                m = Mai.music_list.by_id(str(s[0]))
+                m = Mai.music_list.by_id(str(s[0]), strict=True)
                 self_record = ''
                 if [int(s[0]), s[-1]] in song_record:
                     record_index = song_record.index([int(s[0]), s[-1]])
@@ -192,11 +161,11 @@ Master剩余{len(song_remain_master)}首
                             data['verlist'][record_index]['achievements']) + '%'
                     elif target_han in ['極', '极', '神']:
                         if data['verlist'][record_index]['fc']:
-                            self_record = comboRank[combo_rank.index(
+                            self_record = COMBO_RANK[combo_rank.index(
                                 data['verlist'][record_index]['fc'])].upper()
                     elif target_han == '舞舞':
                         if data['verlist'][record_index]['fs']:
-                            self_record = syncRank[sync_rank.index(
+                            self_record = SYNC_RANK[sync_rank.index(
                                 data['verlist'][record_index]['fs'])].upper()
                 msg += f'No.{i + 1} {m.id}. {m.title} {DIFFICULTY_NAME[s[1]]} {m.ds[s[1]]} {m.charts[s[1]].stats.fit_diff:.2f} {self_record}'.strip(
                 ) + '\n'

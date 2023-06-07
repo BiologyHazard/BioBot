@@ -2,6 +2,7 @@ import asyncio
 import json
 import math
 import re
+from bisect import bisect_right
 from random import Random
 from typing import Any
 
@@ -18,15 +19,15 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
-from .api_data import get_player_data
+from .api_data import get_player_data, get_rating_ranking_data
 from .best_pic import generate
 from .config import plugin_config
-from .consts import (DIFFICULTY_NAME, LEVELS, VERSION_HAN, combo_rank,
-                     COMBO_RANK, sync_rank, syncRank)
+from .consts import (COMBO_RANK, DIFFICULTY_NAME, LEVELS, VERSION_TO_PLATE,
+                     combo_rank, sync_rank, SYNC_RANK)
 from .guess import Guess, guesses
-from .image import get_cover_len4_id, image_to_bytesio, text_to_image
+from .image import get_cover, image_to_bytesio, text_to_image
 from .music import Chart, ChartStats, Mai, Music, MusicList
-from .plate import plate_to_version, player_plate_data
+from .plate import PLATE_TO_VERSION, player_plate_data
 from .privacy import set_privacy as privacy_set_privacy
 from .stats_pic import chart_stats_text
 from .utils import get_random_inst, strftime
@@ -48,54 +49,55 @@ help_str: str = f'''
 maimai插件可用命令如下：
 
 【插件帮助】
-· {default_command_start}help maimai　　# 查看本帮助
+· {default_command_start}help maimai\t# 查看本帮助
 
 【随机乐曲】
-· {default_command_start}(今日舞萌|今日mai)　　# 查看今天的舞萌运势
-· [...]maimai[...]什么　　# 随机一首乐曲
-· 随个[dx|sd|标准][绿|黄|红|紫|白]<等级|定数>　　# 随机一首指定条件的乐曲
+· {default_command_start}(今日舞萌|今日mai)\t# 查看今天的舞萌运势
+· [...]maimai[...]什么\t# 随机一首乐曲
+· 随个[dx|sd|标准][绿|黄|红|紫|白]<等级|定数>\t# 随机一首指定条件的乐曲
 
 【查询成绩】
-· {default_command_start}(b40|b50) [<@某人|qq号|水鱼网昵称>]　　# 查询b40/b50
-· {default_command_start}乐曲成绩 <乐曲id|标题|别名> [<@某人|qq号|水鱼网昵称>]　　# 查询乐曲成绩
-· <牌子名称>进度 [<@某人|qq号|水鱼网昵称>]　　# 查询牌子进度
-# TODO: · <牌子名称>完成表 [<@某人|qq号|水鱼网昵称>]　　# 查询牌子完成表
-· <等级|定数>分数列表　　# 查询分数列表
-· <等级|定数>分数列表 <页码> [<@某人|qq号|水鱼网昵称>]
-# TODO: · <等级|定数>进度 [<@某人|qq号|水鱼网昵称>]　　# 查询制霸进度
-# TODO: · <等级|定数>完成表 [<@某人|qq号|水鱼网昵称>]　　# 查询等级完成表
+· {default_command_start}(b40|b50) [<@某人|qq号|水鱼网用户名>]\t# 查询b40/b50
+· {default_command_start}乐曲成绩 <乐曲id|标题|别名> [<@某人|qq号|水鱼网用户名>]\t# 查询乐曲成绩
+· <牌子名称>进度 [<@某人|qq号|水鱼网用户名>]\t# 查询牌子进度
+# TODO: · <牌子名称>完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询牌子完成表
+· <等级|定数>分数列表\t# 查询分数列表
+· <等级|定数>分数列表 <页码> [<@某人|qq号|水鱼网用户名>]
+# TODO: · <等级|定数>进度 [<@某人|qq号|水鱼网用户名>]\t# 查询制霸进度
+# TODO: · <等级|定数>完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询等级完成表
+· {default_command_start}rating排名 [<@某人|qq号|水鱼网用户名>]\t# 查询rating排名
 
 【查询乐曲】
-· [绿|黄|红|紫|白]id<乐曲id>　　# 通过id查询乐曲或谱面
-· {default_command_start}查歌 <乐曲标题的一部分>　　# 通过标题查询乐曲
-· <乐曲别名>是什么歌　　# 通过别名查询乐曲
-· {default_command_start}定数查歌 <定数>　　# 通过定数查询乐曲
+· [绿|黄|红|紫|白]id<乐曲id>\t# 通过id查询乐曲或谱面
+· {default_command_start}查歌 <乐曲标题的一部分>\t# 通过标题查询乐曲
+· <乐曲别名>是什么歌\t# 通过别名查询乐曲
+· {default_command_start}定数查歌 <定数>\t# 通过定数查询乐曲
 · {default_command_start}定数查歌 <定数下限> <定数上限>
-· {default_command_start}bpm查歌 <曲速>　　# 通过曲速查询乐曲
+· {default_command_start}bpm查歌 <曲速>\t# 通过曲速查询乐曲
 · {default_command_start}bpm查歌 <曲速下限> <曲速上限> [<页码>]
-· {default_command_start}曲师查歌 <艺术家> [<页码>]　　# 通过艺术家查询乐曲
-· {default_command_start}谱师查歌 <谱师> [<页码>]　　# 通过谱师查询谱面
-· {default_command_start}谱面统计 [绿|黄|红|紫|白]<乐曲id|标题|别名>　　# 查询谱面的统计信息
+· {default_command_start}曲师查歌 <艺术家> [<页码>]\t# 通过艺术家查询乐曲
+· {default_command_start}谱师查歌 <谱师> [<页码>]\t# 通过谱师查询谱面
+· {default_command_start}谱面统计 [绿|黄|红|紫|白]<乐曲id|标题|别名>\t# 查询谱面的统计信息
 
 【乐曲别名】
-· {default_command_start}(添加|删除)别名 <乐曲id> <乐曲别名>　　# 添加/删除乐曲别名
-· {default_command_start}查询别名 <乐曲id>　　# 查询乐曲别名
+· {default_command_start}(添加|删除)别名 <乐曲id> <乐曲别名>\t# 添加/删除乐曲别名
+· {default_command_start}查询别名 <乐曲id>\t# 查询乐曲别名
 
 【推分助手】
-· {default_command_start}分数线 (绿|黄|红|紫|白)<乐曲id> <分数线>　　# 详情请输入“分数线 帮助”查看
+· {default_command_start}分数线 (绿|黄|红|紫|白)<乐曲id> <分数线>\t# 详情请输入“分数线 帮助”查看
 
 【猜歌游戏】
-· {default_command_start}猜歌　　# 开始猜歌
+· {default_command_start}猜歌\t# 开始猜歌
 
 【隐私设置】
 · {default_command_start}(同意|允许|禁止|拒绝|不允许)其他人查询我的成绩
-　# 由于水鱼网api的特性，即使您在水鱼网勾选了“禁止其他人查询我的成绩”，
-　# BioBot仍可以通过qq号查询您的成绩，
-　# 如果您不希望其他人使用BioBot查询您的成绩，
-　# 可以使用上面的命令更改隐私设置。
-　# 请注意：这条命令仅在BioBot中起作用，
-　# BioBot没有能力阻止其他人通过您的qq号查询成绩，
-　# 如果您仍有顾虑，您可以选择在水鱼网中解除绑定qq号。
+  # 由于水鱼网api的特性，即使您在水鱼网勾选了“禁止其他人查询我的成绩”，
+  # BioBot仍可以通过qq号查询您的成绩，
+  # 如果您不希望其他人使用BioBot查询您的成绩，
+  # 可以使用上面的命令更改隐私设置。
+  # 请注意：这条命令仅在BioBot中起作用，
+  # BioBot没有能力阻止其他人通过您的qq号查询成绩，
+  # 如果您仍有顾虑，您可以选择在水鱼网中解除绑定qq号。
 '''.strip()
 
 __plugin_meta__ = PluginMetadata(
@@ -153,6 +155,8 @@ level_achievement = maimai_command_group.on_regex(
     r'^(?:(\d{1,2}\.\d)|(\d{1,2}\+?))分数列表\s*(\d+)?\s*(.+)?', rule=not_anonymous)
 music_score = maimai_command_group.on_command(
     '乐曲成绩', aliases={'歌曲成绩', '我的成绩', '查成绩', 'minfo'}, rule=not_anonymous)
+rating_ranking = maimai_command_group.on_command(
+    'rating排名', aliases={'我的排名', '我有多菜'}, rule=not_anonymous)
 # 查询乐曲
 query_chart = maimai_command_group.on_regex(r'^(绿|黄|红|紫|白)?\s*id\s*(\d+)')
 search_music_by_title = maimai_command_group.on_command('查歌')
@@ -197,7 +201,7 @@ search_music_by_artist_help_text: str = f'''
 
 search_music_by_charter_help_text: str = f'''
 命令格式为：
-· {default_command_start}谱师查歌 <谱师> [<页码>]　　# 通过谱师查询谱面
+· {default_command_start}谱师查歌 <谱师> [<页码>]    # 通过谱师查询谱面
 '''.strip()
 
 query_score_help_text: str = '''
@@ -227,7 +231,7 @@ async def get_payload_and_nickname(bot: Bot, event: MessageEvent, message: Messa
     if (qqid := get_at_qq(message)) is not None:
         payload['qq'] = qqid
         nickname: str = (await bot.get_stranger_info(user_id=qqid))['nickname'] or str(qqid)
-    elif user is not None:
+    elif user is not None and user.strip():
         user = user.strip()
         if user.isdigit():
             stranger_nickname: str = (await bot.get_stranger_info(user_id=int(user)))['nickname']
@@ -245,9 +249,29 @@ async def get_payload_and_nickname(bot: Bot, event: MessageEvent, message: Messa
     return payload, nickname
 
 
-def music_info(music: Music) -> Message:
+# async def get_qq_or_username(bot: Bot, event: MessageEvent, message: Message, user: str | None = None) -> tuple[int, None] | tuple[None, str]:
+#     if (qqid := get_at_qq(message)) is not None:
+#         return qqid, None
+#     elif user is not None and user.strip():
+#         user = user.strip()
+#         if user.isdigit():
+#             stranger_nickname: str = (await bot.get_stranger_info(user_id=int(user)))['nickname']
+#             if not stranger_nickname:
+#                 return None, user
+#             else:
+#                 return int(user), None
+#         else:
+#             return None, user
+#     else:
+#         return event.user_id, None
+
+
+# async def get_payload(qqid: int | None = None, username: str | None = None)
+
+
+async def music_info(music: Music) -> Message:
     return Message([
-        MessageSegment.image(f'https://www.diving-fish.com/covers/{get_cover_len4_id(music.id)}.png'),
+        MessageSegment.image(await get_cover(music.id)),
         MessageSegment.text(f'{music.id}. {music.title}\n'
                             f'艺术家：{music.artist}\n'
                             f'分类：{music.genre}\n'
@@ -265,12 +289,12 @@ def music_info_with_diff_compact(music: Music, diff: int) -> str:
     return f'{music.id}. {music.title} {DIFFICULTY_NAME[diff]} {music.level[diff]} ({music.ds[diff]})'
 
 
-def chart_info(music: Music, diff_index: int) -> Message:
+async def chart_info(music: Music, diff_index: int) -> Message:
     chart: Chart = music.charts[diff_index]
     ds: float = music.ds[diff_index]
     level: str = music.level[diff_index]
     return Message([
-        MessageSegment.image(f'https://www.diving-fish.com/covers/{get_cover_len4_id(music.id)}.png'),
+        MessageSegment.image(await get_cover(music.id)),
         MessageSegment.text(
             f'{music.id}. {music.title} {DIFFICULTY_NAME[diff_index]} {level} ({ds})\n'
             f'艺术家：{music.artist}\n'
@@ -288,7 +312,7 @@ def chart_info(music: Music, diff_index: int) -> Message:
 
 @help.handle()
 async def help_func() -> None:
-    await help.finish(MessageSegment.image(image_to_bytesio(text_to_image(help_str))))
+    await help.finish(MessageSegment.image(image_to_bytesio(text_to_image(help_str, tabs=[50]))))
 
 
 wm_list: list[str] = ['拼机', '推分', '越级', '下埋', '夜勤', '练底力', '练手法', '打旧框', '干饭', '抓绝赞', '收歌']
@@ -309,12 +333,12 @@ async def today_maimai_func(event: MessageEvent) -> None:
     lines.append('Bio提醒您：打机时不要大力拍打或滑动哦')
     lines.append('今日推荐歌曲：')
     music: Music = random_inst.choice(Mai.music_list)
-    await today_maimai.finish(Message([MessageSegment.text('\n'.join(lines))]) + music_info(music))
+    await today_maimai.finish(Message([MessageSegment.text('\n'.join(lines))]) + await music_info(music))
 
 
 @maimai_what.handle()
 async def maimai_what_func() -> None:
-    await maimai_what.finish(music_info(Mai.music_list.random()))
+    await maimai_what.finish(await music_info(Mai.music_list.random()))
 
 
 @spec_rand.handle()
@@ -336,7 +360,7 @@ async def spec_rand_func(group: tuple[str | None, str | None, str | None, str | 
     if len(music_data) == 0:
         await spec_rand.finish("没有这样的乐曲哦。")
     else:
-        await spec_rand.finish(music_info(music_data.random()))
+        await spec_rand.finish(await music_info(music_data.random()))
 
 
 @best_40.handle()
@@ -400,42 +424,21 @@ async def music_score_func(bot: Bot, event: MessageEvent, message: Message = Com
         if achievement_data['fc']:
             messages.append(f' {COMBO_RANK[combo_rank.index(achievement_data["fc"])]}')
         if achievement_data['fs']:
-            messages.append(f' {syncRank[sync_rank.index(achievement_data["fs"])]}')
+            messages.append(f' {SYNC_RANK[sync_rank.index(achievement_data["fs"])]}')
         messages.append('\n')
     await music_score.finish(''.join(messages), at_sender=True)
 
 
 @plate_process.handle()
 async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()) -> None:
-    plate_name_han, nickname = group
+    plate_name_han, user = group
     version_han, target_han = plate_name_han[0], plate_name_han[1]
 
     if plate_name_han == '真将':
         await plate_process.finish('真系没有真将哦~')
 
-    payload = dict()
-    qqid: str = event.get_user_id()
-    for message_segment in message:
-        if message_segment.type == 'at' and message_segment.data['qq'] != 'all':
-            qqid = message_segment.data['qq']
-            payload['qq'] = qqid
-            break
+    payload, nickname = await get_payload_and_nickname(bot, event, message, user)
 
-    if nickname and nickname.isdigit():
-        qqid = nickname
-        payload['qq'] = qqid
-    else:
-        payload['qq'] = qqid
-    if 'qq' not in payload:
-        payload['username'] = nickname
-
-    if qqid != event.get_user_id():
-        nickname = (await bot.get_stranger_info(user_id=int(qqid)))['nickname']
-
-    if version_han in {'霸', '舞'}:
-        payload['version'] = list(set(version for version in list(plate_to_version.values())[:-5]))
-    else:
-        payload['version'] = [plate_to_version[version_han]]
     data: MessageSegment | str = await player_plate_data(payload, version_han, target_han, nickname, event.user_id)
     await plate_process.send(data)
 
@@ -450,7 +453,7 @@ async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message
         await level_achievement.finish(f'不存在定数为{ds}的乐曲。', reply_message=True)
 
     payload, nickname = await get_payload_and_nickname(bot, event, message, user)
-    payload['version'] = list(version for version in VERSION_HAN)
+    payload['version'] = list(version for version in VERSION_TO_PLATE)
     data: dict[str, list[dict[str, Any]]] | str = await get_player_data('plate', payload, event.user_id)
     if isinstance(data, str):
         await level_achievement.finish(data, reply_message=True)
@@ -479,7 +482,7 @@ async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message
             if achievement_data['fc']:
                 messages.append(f' | {COMBO_RANK[combo_rank.index(achievement_data["fc"])]}')
             if achievement_data['fs']:
-                messages.append(f' {syncRank[sync_rank.index(achievement_data["fs"])]}')
+                messages.append(f' {SYNC_RANK[sync_rank.index(achievement_data["fs"])]}')
             messages.append('\n')
     messages.append(f'第{page + 1}页，共{pages}页')
     if pages > 1:
@@ -487,6 +490,37 @@ async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message
 
     await level_achievement.finish(
         MessageSegment.image(image_to_bytesio(text_to_image(''.join(messages)))))
+
+
+@rating_ranking.handle()
+async def rating_ranking_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
+    user: str = message.extract_plain_text().strip()
+    payload, nickname = await get_payload_and_nickname(bot, event, message, user)
+    data: dict[str, Any] | str = await get_player_data('best', payload, event.user_id)  # 先查一下b50来获取用户名和rating
+    if isinstance(data, str):
+        await rating_ranking.finish(data, reply_message=True)
+    username: str = data['username']
+    rating: int = data['rating']
+    ranking_data: list[dict[str, Any]] | str = await get_rating_ranking_data()
+    if isinstance(ranking_data, str):
+        await rating_ranking.finish(ranking_data, reply_message=True)
+
+    ranking_data.sort(key=lambda x: x['ra'])
+    count: int = len(ranking_data)
+    ranking: int = bisect_right(ranking_data, rating, key=lambda x: x['ra'])  # 实际上是倒数第几
+    await rating_ranking.finish(f'{username}的rating为{rating}\n'
+                                f'排名为{count - ranking + 1} / {count}\n'
+                                f'超越了{ranking / count:.2%}的玩家哦\n'
+                                f'在水鱼网上传了成绩的用户中\n'
+                                # f'rating排名第1的玩家是{ranking_data[0]["username"]}，rating为{ranking_data[0]["ra"]}\n'
+                                # f'rating排名第2的玩家是{ranking_data[1]["username"]}，rating为{ranking_data[1]["ra"]}\n'
+                                # f'rating排名第3的玩家是{ranking_data[2]["username"]}，rating为{ranking_data[2]["ra"]}\n'
+                                f'平均rating为{sum(x["ra"] for x in ranking_data) / count:.2f}\n'
+                                f'第一四分位数为{ranking_data[round((count - 1) * 3/4)]["ra"]}\n'
+                                f'中位数为{ranking_data[round(count / 2)]["ra"]}\n'
+                                f'第三四分位数为{ranking_data[round((count - 1) / 4)]["ra"]}',
+                                at_sender=True
+                                )
 
 
 @query_chart.handle()
@@ -497,9 +531,9 @@ async def query_chart_func(group: tuple[str | None, str] = RegexGroup()) -> None
         await query_chart.finish('未找到该乐曲。')
     if group[0] is not None:
         level_index: int = '绿黄红紫白'.index(group[0])
-        await query_chart.finish(chart_info(music, level_index))
+        await query_chart.finish(await chart_info(music, level_index))
     else:
-        await query_chart.finish(music_info(music))
+        await query_chart.finish(await music_info(music))
 
 
 @search_music_by_title.handle()
@@ -512,7 +546,7 @@ async def search_music_by_title_func(message: Message = CommandArg()) -> None:
         await search_music_by_title.finish(f'没有找到标题中含有“{name}”的乐曲呢……\n试试别名查歌（命令为“...是什么歌”）吧~')
     if len(result) == 1:
         (music, ) = result
-        await search_music_by_title.finish(music_info(music))
+        await search_music_by_title.finish(await music_info(music))
     if len(result) <= 48:
         result.sort(key=lambda music: int(music.id))
         await search_music_by_title.finish(f'查询到{len(result)}首乐曲：\n'
@@ -528,7 +562,7 @@ async def search_music_by_alias_func(group: tuple[str] = RegexGroup()) -> None:
         await search_music_by_alias.finish('没有找到这样的乐曲。')
     if len(result) == 1:
         (music, ) = result
-        await search_music_by_alias.finish(music_info(music))
+        await search_music_by_alias.finish(await music_info(music))
     if len(result) <= 48:
         await search_music_by_alias.finish(f'查询到{len(result)}首乐曲：\n'
                                            + '\n'.join(music_info_compact(music) for music in result))
@@ -662,7 +696,7 @@ async def search_music_by_charter_func(message: Message = CommandArg()) -> None:
 
 
 @chart_stats.handle()
-async def chart_stats_func(event: MessageEvent, message: Message = CommandArg()):
+async def chart_stats_func(message: Message = CommandArg()):
     plain_text: str = message.extract_plain_text().strip()
     diff_index: int = '绿黄红紫白'.find(plain_text[0])  # 未指定则为-1
     if diff_index == -1:
@@ -696,7 +730,7 @@ async def chart_stats_func(event: MessageEvent, message: Message = CommandArg())
     #                             f'谱面成绩标准差：{stats.std_dev:.4f}'),
     #                          at_sender=True)
     await chart_stats.finish(
-        MessageSegment.image(image_to_bytesio(text_to_image(chart_stats_text(music, diff_index)))))
+        MessageSegment.image(image_to_bytesio(chart_stats_text(music, diff_index))))
 
 
 @add_alias.handle()
@@ -836,7 +870,7 @@ async def guess_music_solve_func(bot: Bot, event: MessageEvent, message: str = E
     if answer.id == message or (len(matched_musics) == 1 and answer.id == matched_musics[0].id):
         guess.finished = True
         del guesses[get_event_id(bot, event)]
-        await guess_music_solve.finish('猜对了，答案是：' + music_info(answer), reply_message=True)
+        await guess_music_solve.finish('猜对了，答案是：' + await music_info(answer), reply_message=True)
     elif 2 <= len(matched_musics) <= 10:
         await guess_music_solve.finish(f'“{message}”匹配{len(matched_musics)}首乐曲：\n'
                                        + '\n'.join(music_info_compact(music) for music in matched_musics)
@@ -852,7 +886,7 @@ async def guess_music_loop(bot: Bot, event: MessageEvent, guess: Guess) -> None:
         return
 
     if guess.round < guess.rounds:
-        await guess_music_start.send(guess.give_hint())
+        await guess_music_start.send(await guess.give_hint())
     if guess.round == guess.rounds:
         await give_answer(bot, event, guess)
     else:
@@ -865,7 +899,7 @@ async def give_answer(bot: Bot, event: MessageEvent, guess: Guess) -> None:
         return
     guess.finished = True
     del guesses[get_event_id(bot, event)]
-    await guess_music_start.finish('答案是：' + music_info(guess.music))
+    await guess_music_start.finish('答案是：' + await music_info(guess.music))
 
 
 @set_privacy.handle()

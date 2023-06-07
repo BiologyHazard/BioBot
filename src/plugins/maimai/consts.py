@@ -10,7 +10,7 @@ COMBO_RANK: list[str] = ['Not FC', 'FC', 'FC+', 'AP', 'AP+']
 combo_rank: list[str] = ['', 'fc', 'fcp', 'ap', 'app']
 '''`['', 'fc', 'fcp', 'ap', 'app']`'''
 
-syncRank: list[str] = ['Not FS', 'FS', 'FS+', 'FSD', 'FSD+']
+SYNC_RANK: list[str] = ['Not FS', 'FS', 'FS+', 'FSD', 'FSD+']
 '''`['Not FS', 'FS', 'FS+', 'FSD', 'FSD+']`'''
 
 sync_rank: list[str] = ['', 'fs', 'fsp', 'fsd', 'fsdp']
@@ -37,7 +37,7 @@ GENRE_HAN: dict[str, str] = {
     'オンゲキCHUNITHM': '音击 / 中二节奏'
 }
 
-VERSION_HAN: dict[str, str] = {
+VERSION_TO_PLATE: dict[str, str] = {
     'maimai': '真',
     'maimai PLUS': '真',
     'maimai GreeN': '超',
@@ -85,3 +85,35 @@ VERSION_HAN: dict[str, str] = {
 }
 ```
 '''
+
+PLATE_TO_VERSION: dict[str, list[str]] = {
+    '真': ['maimai', 'maimai PLUS'],
+    '超': ['maimai GreeN'],
+    '檄': ['maimai GreeN PLUS'],
+    '橙': ['maimai ORANGE'],
+    '暁': ['maimai ORANGE PLUS'],
+    '晓': ['maimai ORANGE PLUS'],
+    '桃': ['maimai PiNK'],
+    '櫻': ['maimai PiNK PLUS'],
+    '樱': ['maimai PiNK PLUS'],
+    '紫': ['maimai MURASAKi'],
+    '菫': ['maimai MURASAKi PLUS'],
+    '堇': ['maimai MURASAKi PLUS'],
+    '白': ['maimai MiLK'],
+    '雪': ['MiLK PLUS'],
+    '輝': ['maimai FiNALE'],
+    '辉': ['maimai FiNALE'],
+    '舞': ['maimai', 'maimai PLUS', 'maimai GreeN',
+          'maimai GreeN PLUS', 'maimai ORANGE', 'maimai ORANGE PLUS',
+          'maimai PiNK', 'maimai PiNK PLUS', 'maimai MURASAKi',
+          'maimai MURASAKi PLUS', 'maimai MiLK', 'MiLK PLUS',
+          'maimai FiNALE'],
+    '熊': ['maimai でらっくす'],
+    '華': ['maimai でらっくす PLUS'],
+    '华': ['maimai でらっくす PLUS'],
+    '爽': ['maimai でらっくす Splash'],
+    '煌': ['maimai でらっくす Splash PLUS'],
+    '宙': ['maimai でらっくす UNiVERSE'],
+    '星': ['maimai でらっくす UNiVERSE PLUS'],
+    '祭': ['maimai でらっくす FESTiVAL'],
+}

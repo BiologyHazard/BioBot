@@ -11,7 +11,7 @@ import aiohttp
 from nonebot import logger
 
 from .config import plugin_config
-from .consts import GENRE_HAN, LEVELS, VERSION_HAN
+from .consts import GENRE_HAN, LEVELS, VERSION_TO_PLATE
 
 
 @dataclass
@@ -115,7 +115,7 @@ class Music:
             bpm=obj['basic_info']['bpm'],
             release_date=obj['basic_info']['release_date'],
             version=obj['basic_info']['from'],
-            version_han=VERSION_HAN[obj['basic_info']['from']],
+            version_han=VERSION_TO_PLATE[obj['basic_info']['from']],
             charts=[Chart.from_json(chart) for chart in obj['charts']],
             diff=list(range(len(obj['level'])))
         )

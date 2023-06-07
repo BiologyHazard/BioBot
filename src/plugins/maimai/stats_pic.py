@@ -10,6 +10,7 @@ from snapshot_phantomjs import snapshot
 from .config import plugin_config
 from .consts import DIFFICULTY_NAME, COMBO_RANK, SCORE_RANK
 from .music import Chart, ChartStats, LevelStats, Mai, Music
+from .image import text_to_image
 
 
 # def music_global_data(music: Music, diff_index: int) -> Image.Image:
@@ -132,22 +133,25 @@ def get_std_dev_text(std_dev: float) -> str:
     return ['正常', '较高', '高', '极高'][bisect_right([3.60, 4.20, 4.80], std_dev)]
 
 
-def chart_stats_text(music: Music, diff_index: int) -> str:
+def chart_stats_text(music: Music, diff_index: int):
     '''
     834. PANDORA PARADOXXX | Re:MASTER 15.0
     斜杠后为合计值，小括号内为同等级平均值，中括号内为二者之差
     【基础信息】
-    · 游玩次数：　　  11864
-    · 定数：　　　　  15.0
-    · 拟合定数：　　  15.25
-    · 平均达成率：　  82.1903% [+0.00%]
-    · 达成率标准差：  极高 5.0045% [+0.00%]
-    · 平均DX分数　　：2350.78
+    · 游玩次数：11864
+    # · 白15平均游玩次数：11864 [+0.00] [+0.00%]
+    # · 白谱平均游玩次数：
+    # · 等级15平均游玩次数
+    · 定数：15.0
+    · 拟合定数：15.25
+    · 平均达成率：82.1903% [+0.00%]
+    · 达成率标准差：极高 5.0045% [+0.00%]
+    · 平均DX分数：2350.78
     · 平均DX分数比例：58.39% [+0.00%]
-    · SSS占比：　　  1.50% [+0.00%]
-    · SSS+占比：　　 0.59% [+0.00%]
-    · FC占比：　　　　1.30% [+0.00%]
-    · AP占比：　　　　0.08% [+0.00%]
+    · SSS占比：1.50% [+0.00%]
+    · SSS+占比：0.59% [+0.00%]
+    · FC占比：1.30% [+0.00%]
+    · AP占比：0.08% [+0.00%]
 
     【达成率分布】
     · SSS+ 0.59% / 0.59% (0.59% / 0.59%) [+0.00% / +0.00%]
@@ -185,21 +189,21 @@ def chart_stats_text(music: Music, diff_index: int) -> str:
             # sum(stats.fc_dist[i:]) / stats.count - sum(level_stats.fc_dist[i:]),
         ))
 
-    return (
+    return text_to_image((
         f'''{music.id}. {music.title} | {DIFFICULTY_NAME[diff_index]} {music.ds[diff_index]}
 # 斜杠后为合计值，小括号内为同等级平均值，中括号内为二者之差
 【基础信息】
-· 游玩次数：        {stats.count} ({level_stats.avg_count:.2f}) [{stats.count - level_stats.avg_count:+.2f}] [{stats.count / level_stats.avg_count - 1:+.2%}]
-· 定数：            {music.ds[diff_index]:.1f}
-· 拟合定数：        {stats.fit_diff:.2f}
-· 平均达成率：      {stats.avg_achievement:.4f}% ({level_stats.avg_achievement:.4f}%) [{stats.avg_achievement - level_stats.avg_achievement:+.4f}%]
-· 达成率标准差：    {get_std_dev_text(stats.std_dev)} {stats.std_dev:.2f}% ({level_stats.avg_std_dev:.2f}%) [{stats.std_dev - level_stats.avg_std_dev:+.2f}%]
-· 平均DX分数：      {stats.avg_dx_score:.2f}
-· 平均DX分数比例：  {stats.avg_dx_score / chart.max_dx_score:.2%} ({level_stats.avg_dx_score_ratio:.2%}) [{stats.avg_dx_score / chart.max_dx_score - level_stats.avg_dx_score_ratio:+.2%}]
-· SSS占比：         {score_rank_data[12][2]:.2%} ({score_rank_data[12][4]:.2%}) [{score_rank_data[12][2] - score_rank_data[12][4]:+.2%}]
-· SSS+占比：        {score_rank_data[13][2]:.2%} ({score_rank_data[13][4]:.2%}) [{score_rank_data[13][2] - score_rank_data[13][4]:+.2%}]
-· FC占比：          {combo_rank_data[1][2]:.2%} ({combo_rank_data[1][4]:.2%}) [{combo_rank_data[1][2] - combo_rank_data[1][4]:+.2%}]
-· AP占比：          {combo_rank_data[3][2]:.2%} ({combo_rank_data[3][4]:.2%}) [{combo_rank_data[3][2] - combo_rank_data[3][4]:+.2%}]
+· 游玩次数：\t{stats.count} ({level_stats.avg_count:.2f}) [{stats.count - level_stats.avg_count:+.2f}] [{stats.count / level_stats.avg_count - 1:+.2%}]
+· 定数：\t{music.ds[diff_index]:.1f}
+· 拟合定数：\t{stats.fit_diff:.2f}
+· 平均达成率：\t{stats.avg_achievement:.4f}% ({level_stats.avg_achievement:.4f}%) [{stats.avg_achievement - level_stats.avg_achievement:+.4f}%]
+· 达成率标准差：\t{get_std_dev_text(stats.std_dev)} {stats.std_dev:.2f}% ({level_stats.avg_std_dev:.2f}%) [{stats.std_dev - level_stats.avg_std_dev:+.2f}%]
+· 平均DX分数：\t{stats.avg_dx_score:.2f}
+· 平均DX分数比例：\t{stats.avg_dx_score / chart.max_dx_score:.2%} ({level_stats.avg_dx_score_ratio:.2%}) [{stats.avg_dx_score / chart.max_dx_score - level_stats.avg_dx_score_ratio:+.2%}]
+· SSS占比：\t{score_rank_data[12][2]:.2%} ({score_rank_data[12][4]:.2%}) [{score_rank_data[12][2] - score_rank_data[12][4]:+.2%}]
+· SSS+占比：\t{score_rank_data[13][2]:.2%} ({score_rank_data[13][4]:.2%}) [{score_rank_data[13][2] - score_rank_data[13][4]:+.2%}]
+· FC占比：\t{combo_rank_data[1][2]:.2%} ({combo_rank_data[1][4]:.2%}) [{combo_rank_data[1][2] - combo_rank_data[1][4]:+.2%}]
+· AP占比：\t{combo_rank_data[3][2]:.2%} ({combo_rank_data[3][4]:.2%}) [{combo_rank_data[3][2] - combo_rank_data[3][4]:+.2%}]
 
 【达成率分布】
 '''
@@ -209,4 +213,6 @@ def chart_stats_text(music: Music, diff_index: int) -> str:
 【全连分布】
 '''
         + '\n'.join(f'· {r:6}{a:7.2%} /{b:7.2%} ({c:7.2%} /{d:7.2%}) [{a-c:+7.2%} /{b-d:+7.2%}]' for r, a, b, c, d in reversed(combo_rank_data))
+    ),
+        tabs=[18]
     )
