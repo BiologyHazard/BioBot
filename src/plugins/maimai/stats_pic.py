@@ -1,5 +1,6 @@
 from bisect import bisect_right
 from typing import Any
+from itertools import accumulate
 
 import pyecharts.options as opts
 from PIL import Image
@@ -193,26 +194,26 @@ def chart_stats_text(music: Music, diff_index: int):
         f'''{music.id}. {music.title} | {DIFFICULTY_NAME[diff_index]} {music.ds[diff_index]}
 # 斜杠后为合计值，小括号内为同等级平均值，中括号内为二者之差
 【基础信息】
-· 游玩次数：\t{stats.count} ({level_stats.avg_count:.2f}) [{stats.count - level_stats.avg_count:+.2f}] [{stats.count / level_stats.avg_count - 1:+.2%}]
-· 定数：\t{music.ds[diff_index]:.1f}
-· 拟合定数：\t{stats.fit_diff:.2f}
-· 平均达成率：\t{stats.avg_achievement:.4f}% ({level_stats.avg_achievement:.4f}%) [{stats.avg_achievement - level_stats.avg_achievement:+.4f}%]
-· 达成率标准差：\t{get_std_dev_text(stats.std_dev)} {stats.std_dev:.2f}% ({level_stats.avg_std_dev:.2f}%) [{stats.std_dev - level_stats.avg_std_dev:+.2f}%]
-· 平均DX分数：\t{stats.avg_dx_score:.2f}
-· 平均DX分数比例：\t{stats.avg_dx_score / chart.max_dx_score:.2%} ({level_stats.avg_dx_score_ratio:.2%}) [{stats.avg_dx_score / chart.max_dx_score - level_stats.avg_dx_score_ratio:+.2%}]
-· SSS占比：\t{score_rank_data[12][2]:.2%} ({score_rank_data[12][4]:.2%}) [{score_rank_data[12][2] - score_rank_data[12][4]:+.2%}]
-· SSS+占比：\t{score_rank_data[13][2]:.2%} ({score_rank_data[13][4]:.2%}) [{score_rank_data[13][2] - score_rank_data[13][4]:+.2%}]
-· FC占比：\t{combo_rank_data[1][2]:.2%} ({combo_rank_data[1][4]:.2%}) [{combo_rank_data[1][2] - combo_rank_data[1][4]:+.2%}]
-· AP占比：\t{combo_rank_data[3][2]:.2%} ({combo_rank_data[3][4]:.2%}) [{combo_rank_data[3][2] - combo_rank_data[3][4]:+.2%}]
+· 游玩次数：\t\t{stats.count} ({level_stats.avg_count:.2f}) [{stats.count - level_stats.avg_count:+.2f}] [{stats.count / level_stats.avg_count - 1:+.2%}]
+· 定数：\t\t{music.ds[diff_index]:.1f}
+· 拟合定数：\t\t{stats.fit_diff:.2f}
+· 平均达成率：\t\t{stats.avg_achievement:.4f}% ({level_stats.avg_achievement:.4f}%) [{stats.avg_achievement - level_stats.avg_achievement:+.4f}%]
+· 达成率标准差：\t\t{get_std_dev_text(stats.std_dev)} {stats.std_dev:.2f}% ({level_stats.avg_std_dev:.2f}%) [{stats.std_dev - level_stats.avg_std_dev:+.2f}%]
+· 平均DX分数：\t\t{stats.avg_dx_score:.2f}
+· 平均DX分数比例：\t\t{stats.avg_dx_score / chart.max_dx_score:.2%} ({level_stats.avg_dx_score_ratio:.2%}) [{stats.avg_dx_score / chart.max_dx_score - level_stats.avg_dx_score_ratio:+.2%}]
+· SSS占比：\t\t{score_rank_data[12][2]:.2%} ({score_rank_data[12][4]:.2%}) [{score_rank_data[12][2] - score_rank_data[12][4]:+.2%}]
+· SSS+占比：\t\t{score_rank_data[13][2]:.2%} ({score_rank_data[13][4]:.2%}) [{score_rank_data[13][2] - score_rank_data[13][4]:+.2%}]
+· FC占比：\t\t{combo_rank_data[1][2]:.2%} ({combo_rank_data[1][4]:.2%}) [{combo_rank_data[1][2] - combo_rank_data[1][4]:+.2%}]
+· AP占比：\t\t{combo_rank_data[3][2]:.2%} ({combo_rank_data[3][4]:.2%}) [{combo_rank_data[3][2] - combo_rank_data[3][4]:+.2%}]
 
 【达成率分布】
 '''
-        + '\n'.join(f'· {r:6}{a:7.2%} /{b:7.2%} ({c:7.2%} /{d:7.2%}) [{a-c:+7.2%} /{b-d:+7.2%}]' for r, a, b, c, d in reversed(score_rank_data))
+        + '\n'.join(f'· {r}\t{a:.2%} /\0\t{b:.2%}\0\t({c:.2%} /\0\t{d:.2%})\0\t[{a-c:+.2%} /\0\t{b-d:+.2%}]\0' for r, a, b, c, d in reversed(score_rank_data))
         + '''
 
 【全连分布】
 '''
-        + '\n'.join(f'· {r:6}{a:7.2%} /{b:7.2%} ({c:7.2%} /{d:7.2%}) [{a-c:+7.2%} /{b-d:+7.2%}]' for r, a, b, c, d in reversed(combo_rank_data))
+        + '\n'.join(f'· {r}\t{a:.2%} /\0\t{b:.2%}\0\t({c:.2%} /\0\t{d:.2%})\0\t[{a-c:+.2%} /\0\t{b-d:+.2%}]\0' for r, a, b, c, d in reversed(combo_rank_data))
     ),
-        tabs=[18]
+        tabs=list(accumulate([9, 4, 5, 4.5, 5, 4.5])),
     )

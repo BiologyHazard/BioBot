@@ -30,7 +30,7 @@ def text_to_image(text: str,
                   font_path=plugin_config.text_font_path,
                   font_size: int = 24,
                   tabs: list[float] | None = None,
-                  border: float = 0.5,
+                  border: float = 1.0,
                   row_spacing: float = 0.2,
                   ) -> PILImage:
     font: FreeTypeFont = ImageFont.truetype(str(font_path), font_size)
@@ -39,7 +39,7 @@ def text_to_image(text: str,
         tabs = [0]
     else:
         tabs.insert(0, 0)
-    one_space_pixel: float = font.getlength(' ' * 64) / 64
+    one_space_pixel: float = font.getlength('　')
     # tabs_pixels: list[int] = [0] + [font.getlength(' ' * x) for x in tabs]
 
     max_width: float = 0
@@ -48,7 +48,10 @@ def text_to_image(text: str,
         segments: list[str] = line.split('\t')
         max_line_height = max(max_line_height, font.getbbox(line)[3])
         for i, segment in enumerate(segments):
-            w: int = font.getlength(segment)
+            if not segment.endswith('\0'):
+                w: int = font.getlength(segment)
+            else:
+                w = 0
             if i >= len(tabs):
                 raise ValueError('Not Enough Tabs')
             max_width = max(max_width, tabs[i] * one_space_pixel + w)
@@ -63,7 +66,13 @@ def text_to_image(text: str,
     for line in lines:
         segments: list[str] = line.split('\t')
         for i, segment in enumerate(segments):
-            draw.text((border * font_size + tabs[i] * one_space_pixel - 1/2, y - 1/2), segment, font=font, fill='black')
+            if not segment.endswith('\0'):
+                anchor: str = 'la'
+            else:
+                anchor = 'ra'
+                segment: str = segment[:-1]
+            draw.text((border * font_size + tabs[i] * one_space_pixel, y), segment,
+                      fill='black', font=font, anchor=anchor)
         y += max_line_height + row_spacing * font_size
     return image
 
@@ -80,18 +89,21 @@ async def get_user_logo(qq: int) -> PILImage:
         return Image.open(BytesIO(await response.read()))
 
 
-def get_cover_len4_id(music_id: str) -> str:
-    return f'{int(music_id) % 10000 :04d}'
+def get_cover_filename(music_id: str) -> str:
+    num = int(music_id)
+    if 10000 < num <= 11000:
+        num -= 10000
+    return f'{num:05d}.png'
 
 
-async def get_cover(music_id: str) -> bytes:
+async def get_music_cover(music_id: str) -> BytesIO:
     '''获取封面'''
-    filename: str = f'{get_cover_len4_id(music_id)}.png'
+    filename = get_cover_filename(music_id)
     cover_path: Path = plugin_config.cover_path / filename
     if cover_path.is_file():
         async with aiofiles.open(cover_path, 'rb') as fp:
             # 从本地图片读取
-            return await fp.read()
+            return BytesIO(await fp.read())
 
     async with aiohttp.request('GET', f'https://www.diving-fish.com/covers/{filename}') as response:
         if response.status == 200:
@@ -99,8 +111,8 @@ async def get_cover(music_id: str) -> bytes:
             async with aiofiles.open(cover_path, 'wb') as fp:
                 await fp.write(cover_bytes)
             # 从水鱼网下载
-            return cover_bytes
+            return BytesIO(cover_bytes)
 
-    async with aiofiles.open(plugin_config.cover_path / '0000.png', 'rb') as fp:
-        # 返回'0000.png'
-        return await fp.read()
+    async with aiofiles.open(plugin_config.cover_path / '00000.png', 'rb') as fp:
+        # 返回'00000.png'
+        return BytesIO(await fp.read())

@@ -51,7 +51,7 @@ async def player_plate_data(payload: dict, version_han: str, target_han: str, ni
             if version_han == '舞' and song['level_index'] == 4 and not song['fc']:
                 song_remain_re_master.append([song['id'], song['level_index']])
             song_played.append([song['id'], song['level_index']])
-    elif target_han == '舞':
+    elif target_han == '舞舞':
         for song in data['verlist']:
             if song['level_index'] == 0 and song['fs'] not in ['fsd', 'fsdp']:
                 song_remain_basic.append([song['id'], song['level_index']])

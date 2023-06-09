@@ -3,7 +3,7 @@ import random
 from nonebot.adapters.onebot.v11 import MessageSegment, Message
 from PIL import Image
 
-from .image import get_cover, image_to_bytesio
+from .image import image_to_bytesio
 from .music import Mai, Music
 
 
@@ -26,7 +26,7 @@ class Guess:
         self.hints: list[str] = [
             f'这首乐曲 Expert 难度的等级是 {music.level[2]} ({music.ds[2]})',
             f'这首乐曲 Master 难度的等级是 {music.level[3]} ({music.ds[3]})',
-            f'这首乐曲的流派是 {music.genre_han}',
+            f'这首乐曲的流派是 {music.genre}',
             f'这首乐曲的版本是 {music.version}（{music.version_han}代）',
             f'这首乐曲的艺术家是 {music.artist}',
             f'这首乐曲{"不" if music.type == "SD" else ""}是 DX 谱面',
@@ -49,7 +49,7 @@ class Guess:
         if self.round < self.rounds:
             return self.hints_shuffled[self.round - 1]
 
-        image: Image.Image = Image.open(await get_cover(self.music.id))
+        image: Image.Image = Image.open(await self.music.get_cover())
         w, h = image.size
         w2, h2 = w//3, h//3
         l, u = random.randrange(0, 2*w//3), random.randrange(0, 2*h//3)

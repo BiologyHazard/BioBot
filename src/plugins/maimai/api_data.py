@@ -4,10 +4,10 @@ import aiohttp
 
 from .privacy import query_privacy
 
-T_project = Literal['best', 'plate', 'ranking']
+T_project = Literal['best', 'plate']
 
 
-async def get_player_data(project: T_project, payload: dict[str, Any], queryer: int) -> dict[str, Any] | str:
+async def get_player_data(project: T_project, payload: dict[str, Any], queryer: int | None = None) -> dict[str, Any] | str:
     """
     获取用户数据，获取失败时返回字符串
     - `project` : 项目

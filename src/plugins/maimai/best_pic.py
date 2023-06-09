@@ -5,7 +5,7 @@ from typing import Dict, List, Literal, Optional, Tuple, Union, overload
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .image import get_cover, get_user_logo
+from .image import get_music_cover, get_user_logo
 from .consts import *
 from .music import Mai
 from .api_data import get_player_data
@@ -102,14 +102,14 @@ class ChartInfo(object):
 class BestList(object):
 
     def __init__(self, size: int):
-        self.data = []
+        self.data: list[ChartInfo] = []
         self.size = size
 
     def push(self, elem: ChartInfo):
         if len(self.data) >= self.size and elem < self.data[-1]:
             return
         self.data.append(elem)
-        self.data.sort()
+        self.data.sort(key=lambda x: x.ra)
         self.data.reverse()
         while (len(self.data) > self.size):
             del self.data[-1]
@@ -179,7 +179,7 @@ class DrawBest:
         return ''.join(sList)
 
     def _dxScore(self, info: ChartInfo) -> Tuple[int, int]:
-        value: int = Mai.music_list.by_id(str(info.id)).charts[info.level].notes
+        value: int = Mai.music_list.by_id(str(info.id), strict=True).charts[info.level].notes
         dx = info.dxscore / (value * 3) * 100
         if dx <= 85:
             result = (0, 0)
@@ -263,7 +263,7 @@ class DrawBest:
             else:
                 x += 404
 
-            cover = Image.open(await get_cover(info.id)).resize((135, 135))
+            cover = Image.open(await get_music_cover(info.id)).resize((135, 135))
             version = Image.open(os.path.join(self.maimai_dir, f'UI_RSL_MBase_Parts_{info.type}.png')).resize((55, 19))
             rate = Image.open(os.path.join(self.maimai_dir, f'UI_TTR_PhotoParts_{rankPic[info.rate]}.png')).resize((80, 50))
 

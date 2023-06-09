@@ -1,17 +1,19 @@
 import asyncio
 import copy
+from io import BytesIO
 import json
 import random
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Literal, Self, overload
+from typing import Any, Literal, Self, Sequence, overload
 
 import aiofiles
 import aiohttp
 from nonebot import logger
 
 from .config import plugin_config
-from .consts import GENRE_HAN, LEVELS, VERSION_TO_PLATE
+from .consts import LEVELS, VERSION_TO_PLATE
+from .image import get_music_cover
 
 
 @dataclass
@@ -36,6 +38,19 @@ class ChartStats:
             std_dev=obj['std_dev'],
             dist=[int(x) for x in obj['dist']],
             fc_dist=[int(x) for x in obj['fc_dist']],
+        )
+
+    @classmethod
+    def empty(cls) -> Self:
+        return cls(
+            count=0,
+            diff='0',
+            fit_diff=0,
+            avg_achievement=0,
+            avg_dx_score=0,
+            std_dev=0,
+            dist=[],
+            fc_dist=[],
         )
 
         # self.count: int = int(obj['cnt'])
@@ -90,7 +105,7 @@ class Music:
     has_remaster: bool
     artist: str
     genre: str
-    genre_han: str
+    # genre_han: str
     bpm: float
     release_date: str
     version: str
@@ -111,7 +126,7 @@ class Music:
             has_remaster=(len(obj['level']) == 5),
             artist=obj['basic_info']['artist'],
             genre=obj['basic_info']['genre'],
-            genre_han=GENRE_HAN[obj['basic_info']['genre']],
+            # genre_han=GENRE_HAN[obj['basic_info']['genre']],
             bpm=obj['basic_info']['bpm'],
             release_date=obj['basic_info']['release_date'],
             version=obj['basic_info']['from'],
@@ -119,6 +134,9 @@ class Music:
             charts=[Chart.from_json(chart) for chart in obj['charts']],
             diff=list(range(len(obj['level'])))
         )
+
+    async def get_cover(self) -> BytesIO:
+        return await get_music_cover(self.id)
 
 
 def _cross(checker: list[Any], elem: Any | tuple[Any, Any] | list[Any] | None, diff: list[int]) -> tuple[bool, list[int]]:
@@ -221,14 +239,15 @@ class MusicList(list[Music]):
 
     def filter(self,
                *,
-               level: str | list[str] | None = None,
-               ds: float | list[float] | tuple[float, float] | None = None,
+               level: str | Sequence[str] | None = None,
+               ds: float | Sequence[float] | tuple[float, float] | None = None,
                title_search: str | None = None,
                artist_search: str | None = None,
                charter_search: str | None = None,
-               genre: str | list[str] | None = None,
-               bpm: float | list[float] | tuple[float, float] | None = None,
-               type_: str | list[str] | None = None,
+               genre: str | Sequence[str] | None = None,
+               bpm: float | Sequence[float] | tuple[float, float] | None = None,
+               type_: str | Sequence[str] | None = None,
+               version: str | Sequence[str] | None = None,
                diff: list[int] | None = None,
                ) -> Self:
         new_list = self.__class__()
@@ -246,6 +265,8 @@ class MusicList(list[Music]):
             if not _in_or_equal(music.genre, genre):
                 continue
             if not _in_or_equal(music.type, type_):
+                continue
+            if not _in_or_equal(music.version, version):
                 continue
             if not _in_or_equal(music.bpm, bpm):
                 continue
@@ -320,13 +341,24 @@ class Mai:
         #     chart_stats = obj.json()
         cls.music_list = MusicList.from_json(music_data)
         for music in cls.music_list:
-            for i, stats_dict in enumerate(chart_stats['charts'][music.id]):
-                if stats_dict:
-                    music.charts[i].stats = ChartStats.from_json(stats_dict)
+            if music.id in chart_stats['charts']:
+                for i, stats_dict in enumerate(chart_stats['charts'][music.id]):
+                    if stats_dict:
+                        music.charts[i].stats = ChartStats.from_json(stats_dict)
+
+            #     for i in range(music.diff_num):
+            #         stats_dict = chart_stats['charts'][music.id][i]
+            #         if stats_dict:
+            #             music.charts[i].stats = ChartStats.from_json(stats_dict)
+            #         else:
+            #             music.charts[i].stats = ChartStats.empty()
+            # else:
+            #     for i in range(music.diff_num):
+            #         music.charts[i].stats = ChartStats.empty()
 
         cls.hot_music_list = MusicList(
             sorted(cls.music_list,
-                   key=lambda music: sum(chart.stats.count for chart in music.charts),
+                   key=lambda music: sum(chart.stats.count if hasattr(chart, 'stats') else 0 for chart in music.charts),
                    reverse=True)[:128]
         )
 
@@ -339,7 +371,7 @@ class Mai:
                 level: str = music.level[i]
                 count[level] += 1
                 chart: Chart = music.charts[i]
-                stats: ChartStats = chart.stats
+                stats: ChartStats = chart.stats if hasattr(chart, 'stats') else ChartStats.empty()
                 count_sum[level] += stats.count
                 std_dev_sum[level] += stats.std_dev
                 dx_score_ratio_sum[level] += stats.avg_dx_score / chart.max_dx_score

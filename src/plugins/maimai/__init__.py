@@ -19,15 +19,16 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
+from .achievement_pic import generate_achievement_pic
 from .api_data import get_player_data, get_rating_ranking_data
 from .best_pic import generate
 from .config import plugin_config
-from .consts import (COMBO_RANK, DIFFICULTY_NAME, LEVELS, VERSION_TO_PLATE,
-                     combo_rank, sync_rank, SYNC_RANK)
+from .consts import (COMBO_RANK, DIFFICULTY_NAME, LEVELS, SYNC_RANK,
+                     VERSION_TO_PLATE, combo_rank, sync_rank)
 from .guess import Guess, guesses
-from .image import get_cover, image_to_bytesio, text_to_image
+from .image import image_to_bytesio, text_to_image
 from .music import Chart, ChartStats, Mai, Music, MusicList
-from .plate import PLATE_TO_VERSION, player_plate_data
+from .plate import player_plate_data
 from .privacy import set_privacy as privacy_set_privacy
 from .stats_pic import chart_stats_text
 from .utils import get_random_inst, strftime
@@ -64,10 +65,12 @@ maimai插件可用命令如下：
 · <等级|定数>分数列表\t# 查询分数列表
 · <等级|定数>分数列表 <页码> [<@某人|qq号|水鱼网用户名>]
 # TODO: · <等级|定数>进度 [<@某人|qq号|水鱼网用户名>]\t# 查询制霸进度
-# TODO: · <等级|定数>完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询等级完成表
+# TODO: · <等级|定数>[<目标>]完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询等级完成表
+    例：14+SSS完成表  # “目标”可以是连击评价或达成率评价，默认为"FC"
 · {default_command_start}rating排名 [<@某人|qq号|水鱼网用户名>]\t# 查询rating排名
 
 【查询乐曲】
+# TODO: · <等级>定数表\t# 查询定数表
 · [绿|黄|红|紫|白]id<乐曲id>\t# 通过id查询乐曲或谱面
 · {default_command_start}查歌 <乐曲标题的一部分>\t# 通过标题查询乐曲
 · <乐曲别名>是什么歌\t# 通过别名查询乐曲
@@ -150,7 +153,9 @@ spec_rand = maimai_command_group.on_regex(
 best_40 = maimai_command_group.on_command('b40', aliases={'best40'}, rule=not_anonymous)
 best_50 = maimai_command_group.on_command('b50', aliases={'best50'}, rule=not_anonymous)
 plate_process = maimai_command_group.on_regex(
-    r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽舞](?:[極极将神舞]|舞舞)|霸者)进度\s*(.*)', rule=not_anonymous)
+    r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞](?:[極极将神舞]|舞舞)|霸者)进度\s*(.*)', rule=not_anonymous)
+plate_process_pic = maimai_command_group.on_regex(
+    r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞](?:[極极将神舞]|舞舞)|霸者)完成表\s*(.*)', rule=not_anonymous)
 level_achievement = maimai_command_group.on_regex(
     r'^(?:(\d{1,2}\.\d)|(\d{1,2}\+?))分数列表\s*(\d+)?\s*(.+)?', rule=not_anonymous)
 music_score = maimai_command_group.on_command(
@@ -271,7 +276,7 @@ async def get_payload_and_nickname(bot: Bot, event: MessageEvent, message: Messa
 
 async def music_info(music: Music) -> Message:
     return Message([
-        MessageSegment.image(await get_cover(music.id)),
+        MessageSegment.image(await music.get_cover()),
         MessageSegment.text(f'{music.id}. {music.title}\n'
                             f'艺术家：{music.artist}\n'
                             f'分类：{music.genre}\n'
@@ -294,7 +299,7 @@ async def chart_info(music: Music, diff_index: int) -> Message:
     ds: float = music.ds[diff_index]
     level: str = music.level[diff_index]
     return Message([
-        MessageSegment.image(await get_cover(music.id)),
+        MessageSegment.image(await music.get_cover()),
         MessageSegment.text(
             f'{music.id}. {music.title} {DIFFICULTY_NAME[diff_index]} {level} ({ds})\n'
             f'艺术家：{music.artist}\n'
@@ -312,7 +317,7 @@ async def chart_info(music: Music, diff_index: int) -> Message:
 
 @help.handle()
 async def help_func() -> None:
-    await help.finish(MessageSegment.image(image_to_bytesio(text_to_image(help_str, tabs=[50]))))
+    await help.finish(MessageSegment.image(image_to_bytesio(text_to_image(help_str, tabs=[30]))))
 
 
 wm_list: list[str] = ['拼机', '推分', '越级', '下埋', '夜勤', '练底力', '练手法', '打旧框', '干饭', '抓绝赞', '收歌']
@@ -432,15 +437,27 @@ async def music_score_func(bot: Bot, event: MessageEvent, message: Message = Com
 @plate_process.handle()
 async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()) -> None:
     plate_name_han, user = group
-    version_han, target_han = plate_name_han[0], plate_name_han[1]
+    version_han, goal_han = plate_name_han[0], plate_name_han[1]
+    if goal_han == '舞':
+        goal_han = '舞舞'
 
     if plate_name_han == '真将':
         await plate_process.finish('真系没有真将哦~')
 
     payload, nickname = await get_payload_and_nickname(bot, event, message, user)
 
-    data: MessageSegment | str = await player_plate_data(payload, version_han, target_han, nickname, event.user_id)
-    await plate_process.send(data)
+    data: MessageSegment | str = await player_plate_data(payload, version_han, goal_han, nickname, event.user_id)
+    await plate_process.finish(data)
+
+
+@plate_process_pic.handle()
+async def plate_process_pic_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()) -> None:
+    plate_name_han, user = group
+
+    payload, nickname = await get_payload_and_nickname(bot, event, message, user)
+
+    data: MessageSegment | str = await generate_achievement_pic('plate', payload, plate_name_han, event.user_id)
+    await plate_process.finish(data)
 
 
 @level_achievement.handle()

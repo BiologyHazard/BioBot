@@ -14,8 +14,9 @@ class Config(BaseModel):
     '''加载插件时会建目录，因此该目录原则上存在'''
     cover_path: Path = data_path / 'mai/cover'
     pic_path: Path = data_path / 'mai/pic'
-    text_font_path: Path = data_path / 'fonts/SourceHanMonoSC-Regular.otf'
+    text_font_path: Path = data_path / 'fonts/SourceHanSans.otf'
     songs_per_page: PositiveInt = 25
+    max_show_count: PositiveInt = 128
 
 
 plugin_config: Config = Config.parse_obj(get_driver().config)

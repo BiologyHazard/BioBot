@@ -23,4 +23,5 @@ def set_privacy(user_id: int, enable: bool) -> None:
 
 
 def query_privacy(user_id: int) -> bool:
+    '''`True`表示允许，`False`表示不允许'''
     return not user_id in disabled_users

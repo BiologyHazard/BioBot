@@ -28,14 +28,14 @@ BaseRa: list[float] = [0.0, 5.0, 6.0, 7.0, 7.5, 8.5, 9.5, 10.5, 12.5, 12.7, 13.0
 BaseRaSpp: list[float] = [7.0, 8.0, 9.6, 11.2, 12.0, 13.6, 15.2, 16.8, 20.0, 20.3, 20.8, 21.1, 21.6, 22.4]
 '''`[7.0, 8.0, 9.6, 11.2, 12.0, 13.6, 15.2, 16.8, 20.0, 20.3, 20.8, 21.1, 21.6, 22.4]`'''
 
-GENRE_HAN: dict[str, str] = {
-    'POPSアニメ': '流行 & 动漫',
-    'maimai': '舞萌',
-    'niconicoボーカロイド': 'niconico & VOCALOID',
-    '東方Project': '东方Project',
-    'ゲームバラエティ': '其他游戏',
-    'オンゲキCHUNITHM': '音击 / 中二节奏'
-}
+# GENRE_HAN: dict[str, str] = {
+#     'POPSアニメ': '流行 & 动漫',
+#     'maimai': '舞萌',
+#     'niconicoボーカロイド': 'niconico & VOCALOID',
+#     '東方Project': '东方Project',
+#     'ゲームバラエティ': '其他游戏',
+#     'オンゲキCHUNITHM': '音击 / 中二节奏'
+# }
 
 VERSION_TO_PLATE: dict[str, str] = {
     'maimai': '真',
