@@ -21,7 +21,7 @@ from nonebot.rule import Rule
 
 from .achievement_pic import generate_achievement_pic
 from .api_data import get_player_data, get_rating_ranking_data
-from .best_pic import generate
+from .best50 import generate
 from .config import plugin_config
 from .consts import (COMBO_RANK, DIFFICULTY_NAME, LEVELS, SYNC_RANK,
                      VERSION_TO_PLATE, combo_rank, sync_rank)
@@ -58,7 +58,7 @@ maimai插件可用命令如下：
 · 随个[dx|sd|标准][绿|黄|红|紫|白]<等级|定数>\t# 随机一首指定条件的乐曲
 
 【查询成绩】
-· {default_command_start}(b40|b50) [<@某人|qq号|水鱼网用户名>]\t# 查询b40/b50
+· {default_command_start}b50 [<@某人|qq号|水鱼网用户名>]\t# 查询b50
 · {default_command_start}乐曲成绩 <乐曲id|标题|别名> [<@某人|qq号|水鱼网用户名>]\t# 查询乐曲成绩
 · <牌子名称>进度 [<@某人|qq号|水鱼网用户名>]\t# 查询牌子进度
 # TODO: · <牌子名称>完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询牌子完成表
@@ -150,7 +150,6 @@ maimai_what = maimai_command_group.on_regex(r'maimai.*什么', flags=re.RegexFla
 spec_rand = maimai_command_group.on_regex(
     r'[随来给]个(dx|sd|标准)?(绿|黄|红|紫|白)?(?:(\d{1,2}\.\d)|(\d{1,2}\+?))', flags=re.RegexFlag.IGNORECASE)
 # 查询成绩
-best_40 = maimai_command_group.on_command('b40', aliases={'best40'}, rule=not_anonymous)
 best_50 = maimai_command_group.on_command('b50', aliases={'best50'}, rule=not_anonymous)
 plate_process = maimai_command_group.on_regex(
     r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞](?:[極极将神舞]|舞舞)|霸者)进度\s*(.*)', rule=not_anonymous)
@@ -241,12 +240,12 @@ async def get_payload_and_nickname(bot: Bot, event: MessageEvent, message: Messa
         if user.isdigit():
             stranger_nickname: str = (await bot.get_stranger_info(user_id=int(user)))['nickname']
             if not stranger_nickname:
-                payload['nickname'] = nickname = user
+                payload['username'] = nickname = user
             else:
                 payload['qq'] = int(user)
                 nickname = stranger_nickname
         else:
-            payload['nickname'] = nickname = user
+            payload['username'] = nickname = user
     else:
         payload['qq'] = event.user_id
         nickname = (await bot.get_stranger_info(user_id=event.user_id))['nickname'] or str(qqid)
@@ -368,29 +367,12 @@ async def spec_rand_func(group: tuple[str | None, str | None, str | None, str | 
         await spec_rand.finish(await music_info(music_data.random()))
 
 
-@best_40.handle()
 @best_50.handle()
-async def best_pic_func(event: MessageEvent, matcher: Matcher, message: Message = CommandArg()) -> None:
-    if not message:  # b40
-        payload = {'qq': event.user_id}
-    else:
-        specific_qq: int | None = get_at_qq(message)
-        if specific_qq is None:  # b40 name
-            username: str = message.extract_plain_text().strip()
-            if username.isdigit():
-                payload: dict[str, Any] = {'qq': int(username)}
-            else:
-                payload = {'username': username}
-        else:  # b40 @xxxx
-            payload = {'qq': specific_qq}
-
-    if type(matcher) is best_50:
-        payload['b50'] = True
+async def best_pic_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
+    payload, nickname = await get_payload_and_nickname(bot, event, message, message.extract_plain_text())
 
     result = await generate(payload, event.user_id)
-    if isinstance(result, str):
-        await matcher.finish(result)
-    await matcher.finish(MessageSegment.image(image_to_bytesio(result)))
+    await best_50.finish(result)
 
 
 @music_score.handle()

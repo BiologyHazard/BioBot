@@ -1,15 +1,15 @@
-from .music import Chart
+from typing import Any
 import math
 import os
-from typing import Dict, List, Literal, Optional, Tuple, Union, overload
+from typing import Literal, overload
 
+from nonebot.adapters.onebot.v11 import MessageSegment
 from PIL import Image, ImageDraw, ImageFont
 
-from .image import get_music_cover, get_user_logo
-from .consts import *
-from .music import Mai
 from .api_data import get_player_data
-
+from .consts import *
+from .image import get_music_cover, get_user_logo, image_to_bytesio
+from .music import Mai
 
 static = 'data/maimai'
 
@@ -28,10 +28,10 @@ class DrawText:
              pos_y: int,
              size: int,
              text: str,
-             color: Tuple[int, int, int, int] = (255, 255, 255, 255),
+             color: tuple[int, int, int, int] = (255, 255, 255, 255),
              anchor: str = 'lt',
              stroke_width: int = 0,
-             stroke_fill: Tuple[int, int, int, int] = (0, 0, 0, 0),
+             stroke_fill: tuple[int, int, int, int] = (0, 0, 0, 0),
              multiline: bool = False):
 
         font = ImageFont.truetype(self._font, size)
@@ -46,10 +46,10 @@ class DrawText:
                              size: int,
                              text: str,
                              po: int = 2,
-                             color: Tuple[int, int, int, int] = (255, 255, 255, 255),
+                             color: tuple[int, int, int, int] = (255, 255, 255, 255),
                              anchor: str = 'lt',
                              stroke_width: int = 0,
-                             stroke_fill: Tuple[int, int, int, int] = (0, 0, 0, 0)):
+                             stroke_fill: tuple[int, int, int, int] = (0, 0, 0, 0)):
 
         font = ImageFont.truetype(self._font, size)
         self._img.text((pos_x + po, pos_y + po), str(text), (0, 0, 0, 128), font, anchor, stroke_width=stroke_width, stroke_fill=stroke_fill)
@@ -126,27 +126,18 @@ class DrawBest:
                  addRating: int,
                  rankRating: int,
                  plate: str,
-                 qqId: Optional[Union[int, str]] = None,
-                 b50: Optional[bool] = False) -> None:
-        self.sdBest = sdBest
-        self.dxBest = dxBest
-        self.userName = userName
-        self.addRating = addRating
-        self.rankRating = rankRating
-        self.Rating = addRating + rankRating
-        self.plate = plate
-        self.qqId = qqId
-        self.b50 = b50
-        if self.b50:
-            self.Rating = 0
-            for sd in sdBest:
-                sd: ChartInfo
-                self.Rating += computeRa(sd.ds, sd.achievement, True)
-            for dx in dxBest:
-                dx: ChartInfo
-                self.Rating += computeRa(dx.ds, dx.achievement, True)
-        self.cover_dir = os.path.join(static, 'mai', 'cover')
-        self.maimai_dir = os.path.join(static, 'mai', 'pic')
+                 qqId: int | None = None,
+                 ) -> None:
+        self.sdBest: BestList = sdBest
+        self.dxBest: BestList = dxBest
+        self.userName: str = userName
+        self.addRating: int = addRating
+        self.rankRating: int = rankRating
+        self.Rating: int = rankRating
+        self.plate: str = plate
+        self.qqId: int | None = qqId
+        self.cover_dir: str = os.path.join(static, 'mai', 'cover')
+        self.maimai_dir: str = os.path.join(static, 'mai', 'pic')
 
     def _getCharWidth(self, o) -> int:
         widths = [
@@ -178,7 +169,7 @@ class DrawBest:
                 sList.append(ch)
         return ''.join(sList)
 
-    def _dxScore(self, info: ChartInfo) -> Tuple[int, int]:
+    def _dxScore(self, info: ChartInfo) -> tuple[int, int]:
         value: int = Mai.music_list.by_id(str(info.id), strict=True).charts[info.level].notes
         dx = info.dxscore / (value * 3) * 100
         if dx <= 85:
@@ -200,52 +191,39 @@ class DrawBest:
             num = '01'
         elif self.Rating < 2000:
             num = '02'
-        elif self.Rating < (3000 if not self.b50 else 4000):
+        elif self.Rating < 4000:
             num = '03'
-        elif self.Rating < (4000 if not self.b50 else 7000):
+        elif self.Rating < 7000:
             num = '04'
-        elif self.Rating < (5000 if not self.b50 else 10000):
+        elif self.Rating < 10000:
             num = '05'
-        elif self.Rating < (6000 if not self.b50 else 12000):
+        elif self.Rating < 12000:
             num = '06'
-        elif self.Rating < (7000 if not self.b50 else 13000):
+        elif self.Rating < 13000:
             num = '07'
-        elif self.Rating < (8000 if not self.b50 else 14000):
+        elif self.Rating < 14000:
             num = '08'
-        elif self.Rating < (8500 if not self.b50 else 14500):
+        elif self.Rating < 14500:
             num = '09'
-        elif self.b50 and self.Rating < 15000:
+        elif self.Rating < 15000:
             num = '10'
         else:
             num = '11'
         return f'UI_CMN_DXRating_{num}.png'
 
     def _findMatchLevel(self) -> str:
-        if self.b50:
-            ra = [1000, 1200, 1400, 1500, 1600, 1700, 1800, 1850, 1900, 1950, 2000, 2010, 2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100]
-            for n, v in enumerate(ra):
-                if self.addRating < v:
-                    return f'UI_DNM_DaniPlate_{n:02d}.png'
-                elif n == (len(ra) - 1) and self.addRating >= v:
-                    return f'UI_DNM_DaniPlate_{n:02d}.png'
-        else:
-            ra = [250, 500, 750, 1000, 1200, 1400, 1500, 1600, 1700, 1800, 1850, 1900, 1950, 2000, 2010, 2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100]
-            for n, v in enumerate(ra):
-                if self.addRating < v:
-                    return f'UI_CMN_MatchLevel_{n + 1:02d}.png'
-                elif n == (len(ra) - 1) and self.addRating >= v:
-                    return f'UI_CMN_MatchLevel_{n + 1:02d}.png'
-
+        ra = [1000, 1200, 1400, 1500, 1600, 1700, 1800, 1850, 1900, 1950, 2000, 2010, 2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100]
+        for n, v in enumerate(ra):
+            if self.addRating < v:
+                return f'UI_DNM_DaniPlate_{n:02d}.png'
+            elif n == (len(ra) - 1) and self.addRating >= v:
+                return f'UI_DNM_DaniPlate_{n:02d}.png'
         raise ValueError
 
-    async def whiledraw(self, data: BestList, type: bool, b50: bool = False) -> None:
-        # y为第一排纵向坐标，dy为各排间距
-        if b50:
-            y = 430 if type else 1670
-            dy = 170
-        else:
-            y = 500 if type else 1500
-            dy = 190
+    async def whiledraw(self, data: BestList, type: bool) -> None:
+        # y0为第一排纵向坐标，dy为各排间距
+        y0 = 430 if type else 1670
+        dy = 170
 
         TITLE_COLOR = [(14, 117, 54, 255), (199, 69, 12, 255), (192, 32, 56, 255), (103, 20, 141, 255), (230, 230, 230, 255)]
         TEXT_COLOR = [(14, 117, 54, 255), (199, 69, 12, 255), (175, 0, 50, 255), (103, 20, 141, 255), (103, 20, 141, 255)]
@@ -257,11 +235,8 @@ class DrawBest:
 
         for num, info in enumerate(data.data):
             info: ChartInfo
-            if num % 5 == 0:
-                x = 100
-                y += dy if num != 0 else 0
-            else:
-                x += 404
+            x: int = 100 + (num % 5) * 404
+            y: int = y0 + (num // 5) * dy
 
             cover = Image.open(await get_music_cover(info.id)).resize((135, 135))
             version = Image.open(os.path.join(self.maimai_dir, f'UI_RSL_MBase_Parts_{info.type}.png')).resize((55, 19))
@@ -291,10 +266,9 @@ class DrawBest:
             r = self._tb.get_box(p, 35)
             self._tb.draw(x + 155, y + 70, 35, p, TEXT_COLOR[info.level], anchor='ld')
             self._tb.draw(x + 155 + r[2], y + 68, 25, f'.{s}%', TEXT_COLOR[info.level], anchor='ld')
-            self._tb.draw(x + 155, y + 125, 22, f'Rating {info.ds} -> {computeRa(info.ds, info.achievement, True) if self.b50 else info.ra}', TEXT_COLOR[info.level], anchor='lm')
+            self._tb.draw(x + 155, y + 125, 22, f'Rating {info.ds} -> {info.ra}', TEXT_COLOR[info.level], anchor='lm')
 
-    async def draw(self):
-
+    async def draw(self) -> Image.Image:
         meiryo = os.path.join(static, 'meiryo.ttc')
         siyuan = os.path.join(static, 'SourceHanSansSC-Bold.otf')
         Torus_SemiBold = os.path.join(static, 'Torus SemiBold.otf')
@@ -306,7 +280,7 @@ class DrawBest:
         logo = Image.open(os.path.join(self.maimai_dir, 'logo.png')).resize((378, 172))
         dx_rating = Image.open(os.path.join(self.maimai_dir, self._findRaPic())).resize((425, 80))
         Name = Image.open(os.path.join(self.maimai_dir, 'Name.png'))
-        MatchLevel = Image.open(os.path.join(self.maimai_dir, self._findMatchLevel())).resize((134, 55) if self.b50 else (128, 58))
+        MatchLevel = Image.open(os.path.join(self.maimai_dir, self._findMatchLevel())).resize((134, 55))
         rating = Image.open(os.path.join(self.maimai_dir, 'UI_CMN_Shougou_Rainbow.png')).resize((454, 50))
         self._diff = [basic, advanced, expert, master, remaster]
 
@@ -326,8 +300,7 @@ class DrawBest:
             self._im.alpha_composite(Image.new('RGBA', (203, 203), (255, 255, 255, 255)), (404, 114))
             self._im.alpha_composite(qqLogo.convert('RGBA').resize((201, 201)), (405, 115))
         self._im.alpha_composite(dx_rating, (620, 108))
-        self.Rating = f'{self.Rating:05d}'
-        for n, i in enumerate(self.Rating):
+        for n, i in enumerate(f'{self.Rating:05d}'):
             if n == 0 and i == 0:
                 continue
             self._im.alpha_composite(Image.open(os.path.join(self.maimai_dir, f'UI_NUM_Drating_{i}.png')), (820 + 33 * n, 133))
@@ -341,113 +314,28 @@ class DrawBest:
         self._tb = DrawText(text_im, Torus_SemiBold)
 
         self._meiryo.draw(635, 235, 40, self.userName, (0, 0, 0, 255), 'lm')
-        self._meiryo.draw(847, 300, 22, f'底分：{self.rankRating} + 段位分：{self.addRating}' if not self.b50 else 'Simulation of New Rating System', (0, 0, 0, 255), 'mm', 3, (255, 255, 255, 255))
+        self._meiryo.draw(847, 300, 22, f'底分：{self.rankRating}', (0, 0, 0, 255), 'mm', 3, (255, 255, 255, 255))
         self._meiryo.draw(900, 2365, 35, f'Designed by Yuri-YuzuChaN & BlueDeer233 | Generated by BioBot', (103, 20, 141, 255), 'mm', 3, (255, 255, 255, 255))
 
-        await self.whiledraw(self.sdBest, True, self.b50)
-        await self.whiledraw(self.dxBest, False, self.b50)
+        await self.whiledraw(self.sdBest, True)
+        await self.whiledraw(self.dxBest, False)
 
         return self._im
 
 
-@overload
-def computeRa(ds: float, achievement: float, spp: bool = False, israte: Literal[False] = ...) -> int:
-    ...
-
-
-@overload
-def computeRa(ds: float, achievement: float, spp: bool = False, israte: Literal[True] = ...) -> tuple[int, str]:
-    ...
-
-
-def computeRa(ds: float, achievement: float, spp: bool = False, israte: bool = False) -> Union[int, Tuple[int, str]]:
-    baseRa = 22.4 if spp else 14.0
-    rate = 'SSSp'
-    if achievement < 50:
-        baseRa = 7.0 if spp else 0.0
-        rate = 'D'
-    elif achievement < 60:
-        baseRa = 8.0 if spp else 5.0
-        rate = 'C'
-    elif achievement < 70:
-        baseRa = 9.6 if spp else 6.0
-        rate = 'B'
-    elif achievement < 75:
-        baseRa = 11.2 if spp else 7.0
-        rate = 'BB'
-    elif achievement < 80:
-        baseRa = 12.0 if spp else 7.5
-        rate = 'BBB'
-    elif achievement < 90:
-        baseRa = 13.6 if spp else 8.5
-        rate = 'A'
-    elif achievement < 94:
-        baseRa = 15.2 if spp else 9.5
-        rate = 'AA'
-    elif achievement < 97:
-        baseRa = 16.8 if spp else 10.5
-        rate = 'AAA'
-    elif achievement < 98:
-        baseRa = 20.0 if spp else 12.5
-        rate = 'S'
-    elif achievement < 99:
-        baseRa = 20.3 if spp else 12.7
-        rate = 'Sp'
-    elif achievement < 99.5:
-        baseRa = 20.8 if spp else 13.0
-        rate = 'SS'
-    elif achievement < 100:
-        baseRa = 21.1 if spp else 13.2
-        rate = 'SSp'
-    elif achievement < 100.5:
-        baseRa = 21.6 if spp else 13.5
-        rate = 'SSS'
-
-    if israte:
-        data = (math.floor(ds * (min(100.5, achievement) / 100) * baseRa), rate)
-    else:
-        data = math.floor(ds * (min(100.5, achievement) / 100) * baseRa)
-
-    return data
-
-
-def generateAchievementList(ds: float, spp: bool = False):
-    _achievementList = []
-    for index, acc in enumerate(achievementList):
-        if index == len(achievementList) - 1:
-            continue
-        _achievementList.append(acc)
-        c_acc = (computeRa(ds, achievementList[index]) + 1) / ds / (BaseRaSpp[index + 1] if spp else BaseRa[index + 1]) * 100
-        c_acc = math.ceil(c_acc * 10000) / 10000
-        while c_acc < achievementList[index + 1]:
-            _achievementList.append(c_acc)
-            c_acc = (computeRa(ds, c_acc + 0.0001) + 1) / ds / (BaseRaSpp[index + 1] if spp else BaseRa[index + 1]) * 100
-            c_acc = math.ceil(c_acc * 10000) / 10000
-    _achievementList.append(100.5)
-    return _achievementList
-
-
-async def generate(payload: dict, queryer: int) -> Union[Image.Image, str]:
-    obj = await get_player_data('best', payload, queryer)
-    if isinstance(obj, str):
-        return obj
-    qqId = None
-    b50 = False
-    if 'qq' in payload:
-        qqId = payload['qq']
-    if 'b50' in payload:
-        b50 = True
-        sd_best = BestList(35)
-    else:
-        sd_best = BestList(25)
+async def generate(payload: dict, queryer: int) -> MessageSegment | str:
+    payload['b50'] = True
+    data: dict[str, Any] | str = await get_player_data('best', payload, queryer)
+    if isinstance(data, str):
+        return data
+    qqid: int | None = payload['qq'] if 'qq' in payload else None
+    sd_best = BestList(35)
     dx_best = BestList(15)
 
-    dx: List[Dict] = obj['charts']['dx']
-    sd: List[Dict] = obj['charts']['sd']
-    for c in sd:
+    for c in data['charts']['sd']:
         sd_best.push(ChartInfo.from_json(c))
-    for c in dx:
+    for c in data['charts']['dx']:
         dx_best.push(ChartInfo.from_json(c))
-    draw_best = DrawBest(sd_best, dx_best, obj['nickname'], obj['additional_rating'], obj['rating'], obj['plate'], qqId, b50)
-    pic = await draw_best.draw()
-    return pic
+    draw_best = DrawBest(sd_best, dx_best, data['nickname'], data['additional_rating'], data['rating'], data['plate'], qqid)
+    pic: Image.Image = await draw_best.draw()
+    return MessageSegment.image(image_to_bytesio(pic))
