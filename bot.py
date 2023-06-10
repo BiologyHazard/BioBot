@@ -39,14 +39,16 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.kfccrazythu')
     nonebot.load_plugin('src.plugins.choose')
     nonebot.load_plugin('src.plugins.wordle')
-    nonebot.load_plugin('src.plugins.memes')
-    nonebot.load_plugin('src.plugins.petpet')
+    nonebot.load_plugin('src.plugins.handle')
+    # nonebot.load_plugin('src.plugins.memes')
+    # nonebot.load_plugin('src.plugins.petpet')
     # nonebot.load_plugin('src.plugins.wordcloud')
 
     nonebot.load_plugin('nonebot_plugin_emojimix')
     nonebot.load_plugin('nonebot_plugin_abstract')
     nonebot.load_plugin('nonebot_plugin_makemidi')
     nonebot.load_plugin('nonebot_plugin_wordcloud')
+    nonebot.load_plugin('nonebot_plugin_memes')
 
     # nonebot.load_plugins('src/plugins')]
     # nonebot.load_plugin('nonebot_plugin_help')
