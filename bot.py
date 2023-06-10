@@ -40,8 +40,6 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.choose')
     nonebot.load_plugin('src.plugins.wordle')
     nonebot.load_plugin('src.plugins.handle')
-    # nonebot.load_plugin('src.plugins.memes')
-    # nonebot.load_plugin('src.plugins.petpet')
     # nonebot.load_plugin('src.plugins.wordcloud')
 
     nonebot.load_plugin('nonebot_plugin_emojimix')
