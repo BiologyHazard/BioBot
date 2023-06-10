@@ -1,3 +1,4 @@
+import math
 import asyncio
 import copy
 from io import BytesIO
@@ -14,6 +15,10 @@ from nonebot import logger
 from .config import plugin_config
 from .consts import LEVELS, VERSION_TO_PLATE
 from .image import get_music_cover
+
+
+def compute_rating(ds: float, achievement: float) -> int:
+    ...
 
 
 @dataclass
