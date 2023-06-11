@@ -194,10 +194,10 @@ class DrawBest:
             self._tb.draw(x + 155, y + 125, 22, f'Rating {info.ds} -> {info.ra}', TEXT_COLOR[info.level], anchor='lm')
 
     async def draw(self) -> Image.Image:
-        meiryo: Path = plugin_config.data_path / 'fonts/meiryo.ttc'
-        siyuanb: Path = plugin_config.data_path / 'fonts/SourceHanSansSC-Bold.otf'
-        siyuan: Path = plugin_config.data_path / 'fonts/SourceHanSans.otf'
-        Torus_SemiBold: Path = plugin_config.data_path / 'fonts/Torus SemiBold.otf'
+        meiryo: Path = plugin_config.font_path / 'meiryo.ttc'
+        siyuanb: Path = plugin_config.font_path / 'SourceHanSansSC-Bold.otf'
+        siyuan: Path = plugin_config.font_path / 'SourceHanSans.otf'
+        Torus_SemiBold: Path = plugin_config.font_path / 'Torus SemiBold.otf'
         basic: Image.Image = Image.open(plugin_config.pic_path / 'b40_score_basic.png')
         advanced: Image.Image = Image.open(plugin_config.pic_path / 'b40_score_advanced.png')
         expert: Image.Image = Image.open(plugin_config.pic_path / 'b40_score_expert.png')
@@ -264,5 +264,5 @@ async def generate_b50(payload: dict, queryer: int) -> MessageSegment | str:
     qqid: int | None = payload['qq'] if 'qq' in payload else None
     sd_best: list[ChartInfo] = [ChartInfo.from_json(c) for c in data['charts']['sd']]
     dx_best: list[ChartInfo] = [ChartInfo.from_json(c) for c in data['charts']['dx']]
-    draw_best = DrawBest(sd_best, dx_best, data['nickname'], data['additional_rating'], data['rating'], data['plate'], qqid)
+    draw_best = DrawBest(sd_best, dx_best, data['nickname'], data['rating'], data['additional_rating'], data['plate'], qqid)
     return MessageSegment.image(image_to_bytesio(await draw_best.draw()))

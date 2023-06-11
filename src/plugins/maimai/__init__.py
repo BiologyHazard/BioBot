@@ -61,11 +61,12 @@ maimai插件可用命令如下：
 · {default_command_start}乐曲成绩 <乐曲id|标题|别名> [<@某人|qq号|水鱼网用户名>]\t# 查询乐曲成绩
 · <牌子名称>进度 [<@某人|qq号|水鱼网用户名>]\t# 查询牌子进度
 # TODO: · <牌子名称>完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询牌子完成表
+# TODO: · <等级|定数>进度 [<@某人|qq号|水鱼网用户名>]\t# 查询制霸进度
+# TODO: · <等级|定数|版本|难度>[<目标>]完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询完成表
+    例：14+SSS完成表，14.0FSD完成表，舞代AP完成表，紫谱完成表（紫谱FC完成表）
+    # “目标”可以是连击评价、同步率评价或达成率评价，默认为"FC"
 · <等级|定数>分数列表\t# 查询分数列表
 · <等级|定数>分数列表 <页码> [<@某人|qq号|水鱼网用户名>]
-# TODO: · <等级|定数>进度 [<@某人|qq号|水鱼网用户名>]\t# 查询制霸进度
-# TODO: · <等级|定数>[<目标>]完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询等级完成表
-    例：14+SSS完成表  # “目标”可以是连击评价或达成率评价，默认为"FC"
 · {default_command_start}rating排名 [<@某人|qq号|水鱼网用户名>]\t# 查询rating排名
 
 【查询乐曲】
@@ -152,8 +153,13 @@ spec_rand = maimai_command_group.on_regex(
 best_50 = maimai_command_group.on_command('b50', aliases={'best50'}, rule=not_anonymous)
 plate_process = maimai_command_group.on_regex(
     r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞](?:[極极将神舞]|舞舞)|霸者)进度\s*(.*)', rule=not_anonymous)
+# plate_process_pic = maimai_command_group.on_regex(
+#     r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞霸]代?|\d{1,2}\.\d|\d{1,2}\+?|[绿黄红紫白]谱?)([極极将神舞者]|舞舞|D|C|B{1,3}|A{1,3}|S{1,3}[p+]?|F[CS][p+]?|AP[p+]?|FSD\+?|FDX\+?)完成表\s*(.*)', rule=not_anonymous)
 plate_process_pic = maimai_command_group.on_regex(
-    r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞](?:[極极将神舞]|舞舞)|霸者)完成表\s*(.*)', rule=not_anonymous)
+    r'^(?:([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞]代?|霸(?=者))|(\d{1,2}\.\d)|(\d{1,2}\+?)|([绿黄红紫白])谱?)'
+    r'(([極极将神舞]|舞舞|(?<=霸)者)|(D|C|B{1,3}|A{1,3}|S{1,3}[p+]?)|(FC[p+]?|AP[p+]?)|(FSD?[p+]?|FDX[p+]?))?'
+    r'完成表\s*(.*)',
+    flags=re.RegexFlag.IGNORECASE, rule=not_anonymous)
 level_achievement = maimai_command_group.on_regex(
     r'^(?:(\d{1,2}\.\d)|(\d{1,2}\+?))分数列表\s*(\d+)?\s*(.+)?', rule=not_anonymous)
 music_score = maimai_command_group.on_command(
@@ -419,11 +425,6 @@ async def music_score_func(bot: Bot, event: MessageEvent, message: Message = Com
 async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()) -> None:
     plate_name_han, user = group
     version_han, goal_han = plate_name_han[0], plate_name_han[1]
-    if goal_han == '舞':
-        goal_han = '舞舞'
-
-    if plate_name_han == '真将':
-        await plate_process.finish('真系没有真将哦~')
 
     payload, nickname = await get_payload_and_nickname(bot, event, message, user)
 
@@ -432,12 +433,17 @@ async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = E
 
 
 @plate_process_pic.handle()
-async def plate_process_pic_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()) -> None:
-    plate_name_han, user = group
-
+async def plate_process_pic_func(
+        bot: Bot,
+        event: MessageEvent,
+        message: Message = EventMessage(),
+        group: tuple[str | None, str | None, str | None, str | None,
+                     str | None, str | None, str | None, str | None, str | None, str] = RegexGroup(),
+) -> None:
+    user = group[-1]
     payload, nickname = await get_payload_and_nickname(bot, event, message, user)
 
-    data: MessageSegment | str = await generate_achievement_pic('plate', payload, plate_name_han, event.user_id)
+    data: MessageSegment | str = await generate_achievement_pic(payload, group, event.user_id)
     await plate_process.finish(data)
 
 
