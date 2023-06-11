@@ -13,7 +13,7 @@ import aiohttp
 from nonebot import logger
 
 from .config import plugin_config
-from .consts import LEVELS, VERSION_TO_PLATE
+from .consts import LEVELS, PLATE_TO_VERSION, VERSION_TO_PLATE
 from .image import get_music_cover
 
 
@@ -210,6 +210,11 @@ class MusicList(list[Music]):
     def by_id(self, name: str, strict: Literal[True] = ...) -> Music: ...
 
     def by_id(self, name: str, strict: bool = False) -> Music | None:
+        # if hasattr(self, 'id_to_index') and self._id_to_index[name].id == name:
+        #     return self._id_to_index[name]
+        # else:
+        #     self._id_to_index: dict[str, Music] = {music.id: music for music in self}
+
         if name and name.isdigit():
             for music in self:
                 if music.id == name:
@@ -218,11 +223,54 @@ class MusicList(list[Music]):
             raise ValueError(f'Music of id{name} not found.')
         return None
 
-    # def by_title(self, music_title: str) -> Music | None:
-    #     for music in self:
-    #         if music.title == music_title:
-    #             return music
-    #     return None
+    def by_title(self, name: str) -> Self:
+        name = name.strip().replace(' ', '').lower()
+        if not name:
+            return self.__class__()
+        return self.__class__(music for music in self
+                              if name.replace(' ', '').lower() in music.title.replace(' ', '').lower())
+
+    def by_type(self, name: str) -> Self:
+        return self.__class__(music for music in self
+                              if name == music.type)
+
+    def by_ds(self, name: float | Sequence[float] | tuple[float, float]) -> list[tuple[Music, int]]:
+        if isinstance(name, float):
+            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
+                    if math.isclose(name, music.ds[diff_index])]
+        elif isinstance(name, tuple) and len(name) == 2:
+            x, y = name
+            if x > y:
+                return []
+            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
+                    if x <= music.ds[diff_index] <= y]
+        elif isinstance(name, Sequence):
+            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
+                    if any(math.isclose(ds, music.ds[diff_index]) for ds in name)]
+        else:
+            raise TypeError("type of param 'name' must be float | Sequence[float] | tuple[float, float]")
+
+    def by_level(self, name: str | Sequence[str] | tuple[str, str]) -> list[tuple[Music, int]]:
+        if isinstance(name, str):
+            if name not in LEVELS:
+                return []
+            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
+                    if name == music.level[diff_index]]
+        elif isinstance(name, tuple) and len(name) == 2:
+            x, y = name
+            if x not in LEVELS or y not in LEVELS:
+                return []
+            x_index: int = LEVELS.index(x)
+            y_index: int = LEVELS.index(y)
+            if x > y:
+                return []
+            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
+                    if x_index <= LEVELS.index(music.level[diff_index]) <= y_index]
+        elif isinstance(name, Sequence):
+            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
+                    if any(level == music.level[diff_index] for level in name)]
+        else:
+            raise TypeError("type of param 'name' must be str | Sequence[str] | tuple[str, str]")
 
     def by_alias(self, name: str) -> Self:
         '''标题的字串也可以，对大小写和空格不敏感'''
@@ -238,6 +286,57 @@ class MusicList(list[Music]):
             return self.__class__([music])
         else:
             return self.by_alias(name)
+
+    def by_artist(self, name: str) -> Self:
+        name = name.strip().replace(' ', '').lower()
+        if not name:
+            return self.__class__()
+        return self.__class__(music for music in self
+                              if name in music.artist.replace(' ', '').lower())
+
+    def by_charter(self, name: str) -> list[tuple[Music, int]]:
+        name = name.strip().replace(' ', '').lower()
+        if not name:
+            return []
+        return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
+                if name in music.charts[diff_index].charter.replace(' ', '').lower()]
+
+    def by_genre(self, name: str) -> Self:
+        return self.__class__(music for music in self
+                              if name == music.genre)
+
+    def by_bpm(self, name: float | Sequence[float] | tuple[float, float]) -> Self:
+        if isinstance(name, float):
+            return self.__class__(music for music in self
+                                  if math.isclose(name, music.bpm))
+        elif isinstance(name, tuple) and len(name) == 2:
+            x, y = name
+            if x > y:
+                return self.__class__()
+            return self.__class__(music for music in self
+                                  if x <= music.bpm <= y)
+        elif isinstance(name, Sequence):
+            return self.__class__(music for music in self
+                                  if any(math.isclose(bpm, music.bpm) for bpm in name))
+        else:
+            raise TypeError("type of param 'name' must be float | Sequence[float] | tuple[float, float]")
+
+    def by_version(self, name: str | Sequence[str]) -> Self:
+        if isinstance(name, str):
+            if name in VERSION_TO_PLATE:
+                return self.__class__(music for music in self if name == music.version)
+            elif name in PLATE_TO_VERSION:
+                return self.by_version(PLATE_TO_VERSION[name])
+            return self.__class__()
+        else:
+            versions: list[str] = []
+            for version in name:
+                if version in VERSION_TO_PLATE:
+                    versions.append(version)
+                elif version in PLATE_TO_VERSION:
+                    versions.extend(PLATE_TO_VERSION[version])
+            return self.__class__(music for music in self
+                                  if any(version == music.version for version in versions))
 
     def random(self) -> Music:
         return random.choice(self)

@@ -17,7 +17,7 @@ class Config(BaseModel):
     font_path: DirectoryPath = data_path / 'fonts'
     text_font_path: FilePath = data_path / 'fonts/SourceHanSans.otf'
     songs_per_page: PositiveInt = 25
-    max_show_count: PositiveInt = 192
+    # max_show_count: PositiveInt = 192
 
 
 plugin_config: Config = Config.parse_obj(get_driver().config)

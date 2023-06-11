@@ -156,7 +156,7 @@ plate_process = maimai_command_group.on_regex(
 # plate_process_pic = maimai_command_group.on_regex(
 #     r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞霸]代?|\d{1,2}\.\d|\d{1,2}\+?|[绿黄红紫白]谱?)([極极将神舞者]|舞舞|D|C|B{1,3}|A{1,3}|S{1,3}[p+]?|F[CS][p+]?|AP[p+]?|FSD\+?|FDX\+?)完成表\s*(.*)', rule=not_anonymous)
 plate_process_pic = maimai_command_group.on_regex(
-    r'^(?:([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞]代?|霸(?=者))|(\d{1,2}\.\d)|(\d{1,2}\+?)|([绿黄红紫白])谱?)'
+    r'^(?:([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞]代?|霸(?=者))|(\d{1,2}\.\d)|(\d{1,2}\+?)|([绿黄红紫白])谱)'
     r'(([極极将神舞]|舞舞|(?<=霸)者)|(D|C|B{1,3}|A{1,3}|S{1,3}[p+]?)|(FC[p+]?|AP[p+]?)|(FSD?[p+]?|FDX[p+]?))?'
     r'完成表\s*(.*)',
     flags=re.RegexFlag.IGNORECASE, rule=not_anonymous)
@@ -411,8 +411,8 @@ async def music_score_func(bot: Bot, event: MessageEvent, message: Message = Com
 
     messages: list[str] = [f'{nickname}的乐曲成绩\n'
                            f'{music.id}. {music.title}\n']
-    for achievement_data in sorted(player_data, key=lambda x: x['level_index']):
-        messages.append(f'{DIFFICULTY_NAME[achievement_data["level_index"]]} {music.ds[achievement_data["level_index"]]} | {achievement_data["achievements"]:.4f}% → ???????')
+    for achievement_data in sorted(player_data, key=lambda x: x['diff_index']):
+        messages.append(f'{DIFFICULTY_NAME[achievement_data["diff_index"]]} {music.ds[achievement_data["diff_index"]]} | {achievement_data["achievements"]:.4f}% → ???????')
         if achievement_data['fc']:
             messages.append(f' | {COMBO_RANK[combo_rank.index(achievement_data["fc"])]}')
         if achievement_data['fs']:
@@ -482,7 +482,7 @@ async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message
     for i, (music, achievement_data) in enumerate(sorted(achievement_list,
                                                          key=lambda x: x[1]['achievements'], reverse=True)):
         if page * plugin_config.songs_per_page <= i < (page + 1) * plugin_config.songs_per_page:
-            messages.append(f'No.{i+1} | {achievement_data["achievements"]:.4f}% | {music.id}. {music.title} | {DIFFICULTY_NAME[achievement_data["level_index"]]} {music.ds[achievement_data["level_index"]]}')
+            messages.append(f'No.{i+1} | {achievement_data["achievements"]:.4f}% | {music.id}. {music.title} | {DIFFICULTY_NAME[achievement_data["diff_index"]]} {music.ds[achievement_data["diff_index"]]}')
             if achievement_data['fc']:
                 messages.append(f' | {COMBO_RANK[combo_rank.index(achievement_data["fc"])]}')
             if achievement_data['fs']:
@@ -534,8 +534,8 @@ async def query_chart_func(group: tuple[str | None, str] = RegexGroup()) -> None
     if music is None:
         await query_chart.finish(f'没有找到id为{music_id}的乐曲呢……')
     if level_han is not None:
-        level_index: int = '绿黄红紫白'.index(level_han)
-        await query_chart.finish(await chart_info(music, level_index))
+        diff_index: int = '绿黄红紫白'.index(level_han)
+        await query_chart.finish(await chart_info(music, diff_index))
     else:
         await query_chart.finish(await music_info(music))
 
@@ -600,9 +600,9 @@ async def search_music_by_inner_func(message: Message = CommandArg()) -> None:
     messages: list[str] = []
     i: int = 0
     for music in sorted(result, key=lambda i: (i.ds, i.id)):
-        for level_index in music.diff:
+        for diff_index in music.diff:
             if page * plugin_config.songs_per_page <= i < (page + 1) * plugin_config.songs_per_page:
-                messages.append(music_info_with_diff_compact(music, level_index))
+                messages.append(music_info_with_diff_compact(music, diff_index))
             i += 1
     if pages > 1:
         if isinstance(ds, float):

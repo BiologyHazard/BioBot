@@ -30,56 +30,56 @@ async def player_plate_data(payload: dict, version_han: str, goal_han: str, nick
 
     if goal_han in ['将', '者']:
         for song in data['verlist']:
-            if song['level_index'] == 0 and song['achievements'] < (100.0 if goal_han == '将' else 80.0):
-                song_remain_basic.append([song['id'], song['level_index']])
-            if song['level_index'] == 1 and song['achievements'] < (100.0 if goal_han == '将' else 80.0):
-                song_remain_advanced.append([song['id'], song['level_index']])
-            if song['level_index'] == 2 and song['achievements'] < (100.0 if goal_han == '将' else 80.0):
-                song_remain_expert.append([song['id'], song['level_index']])
-            if song['level_index'] == 3 and song['achievements'] < (100.0 if goal_han == '将' else 80.0):
-                song_remain_master.append([song['id'], song['level_index']])
-            if version_han in ['舞', '霸'] and song['level_index'] == 4 and song['achievements'] < (100.0 if goal_han == '将' else 80.0):
-                song_remain_re_master.append([song['id'], song['level_index']])
-            song_played.append([song['id'], song['level_index']])
+            if song['diff_index'] == 0 and song['achievements'] < (100.0 if goal_han == '将' else 80.0):
+                song_remain_basic.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 1 and song['achievements'] < (100.0 if goal_han == '将' else 80.0):
+                song_remain_advanced.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 2 and song['achievements'] < (100.0 if goal_han == '将' else 80.0):
+                song_remain_expert.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 3 and song['achievements'] < (100.0 if goal_han == '将' else 80.0):
+                song_remain_master.append([song['id'], song['diff_index']])
+            if version_han in ['舞', '霸'] and song['diff_index'] == 4 and song['achievements'] < (100.0 if goal_han == '将' else 80.0):
+                song_remain_re_master.append([song['id'], song['diff_index']])
+            song_played.append([song['id'], song['diff_index']])
     elif goal_han in ['極', '极']:
         for song in data['verlist']:
-            if song['level_index'] == 0 and not song['fc']:
-                song_remain_basic.append([song['id'], song['level_index']])
-            if song['level_index'] == 1 and not song['fc']:
-                song_remain_advanced.append([song['id'], song['level_index']])
-            if song['level_index'] == 2 and not song['fc']:
-                song_remain_expert.append([song['id'], song['level_index']])
-            if song['level_index'] == 3 and not song['fc']:
-                song_remain_master.append([song['id'], song['level_index']])
-            if version_han == '舞' and song['level_index'] == 4 and not song['fc']:
-                song_remain_re_master.append([song['id'], song['level_index']])
-            song_played.append([song['id'], song['level_index']])
+            if song['diff_index'] == 0 and not song['fc']:
+                song_remain_basic.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 1 and not song['fc']:
+                song_remain_advanced.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 2 and not song['fc']:
+                song_remain_expert.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 3 and not song['fc']:
+                song_remain_master.append([song['id'], song['diff_index']])
+            if version_han == '舞' and song['diff_index'] == 4 and not song['fc']:
+                song_remain_re_master.append([song['id'], song['diff_index']])
+            song_played.append([song['id'], song['diff_index']])
     elif goal_han == '舞舞':
         for song in data['verlist']:
-            if song['level_index'] == 0 and song['fs'] not in ['fsd', 'fsdp']:
-                song_remain_basic.append([song['id'], song['level_index']])
-            if song['level_index'] == 1 and song['fs'] not in ['fsd', 'fsdp']:
-                song_remain_advanced.append([song['id'], song['level_index']])
-            if song['level_index'] == 2 and song['fs'] not in ['fsd', 'fsdp']:
-                song_remain_expert.append([song['id'], song['level_index']])
-            if song['level_index'] == 3 and song['fs'] not in ['fsd', 'fsdp']:
-                song_remain_master.append([song['id'], song['level_index']])
-            if version_han == '舞' and song['level_index'] == 4 and song['fs'] not in ['fsd', 'fsdp']:
-                song_remain_re_master.append([song['id'], song['level_index']])
-            song_played.append([song['id'], song['level_index']])
+            if song['diff_index'] == 0 and song['fs'] not in ['fsd', 'fsdp']:
+                song_remain_basic.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 1 and song['fs'] not in ['fsd', 'fsdp']:
+                song_remain_advanced.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 2 and song['fs'] not in ['fsd', 'fsdp']:
+                song_remain_expert.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 3 and song['fs'] not in ['fsd', 'fsdp']:
+                song_remain_master.append([song['id'], song['diff_index']])
+            if version_han == '舞' and song['diff_index'] == 4 and song['fs'] not in ['fsd', 'fsdp']:
+                song_remain_re_master.append([song['id'], song['diff_index']])
+            song_played.append([song['id'], song['diff_index']])
     elif goal_han == '神':
         for song in data['verlist']:
-            if song['level_index'] == 0 and song['fc'] not in ['ap', 'app']:
-                song_remain_basic.append([song['id'], song['level_index']])
-            if song['level_index'] == 1 and song['fc'] not in ['ap', 'app']:
-                song_remain_advanced.append([song['id'], song['level_index']])
-            if song['level_index'] == 2 and song['fc'] not in ['ap', 'app']:
-                song_remain_expert.append([song['id'], song['level_index']])
-            if song['level_index'] == 3 and song['fc'] not in ['ap', 'app']:
-                song_remain_master.append([song['id'], song['level_index']])
-            if version_han == '舞' and song['level_index'] == 4 and song['fc'] not in ['ap', 'app']:
-                song_remain_re_master.append([song['id'], song['level_index']])
-            song_played.append([song['id'], song['level_index']])
+            if song['diff_index'] == 0 and song['fc'] not in ['ap', 'app']:
+                song_remain_basic.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 1 and song['fc'] not in ['ap', 'app']:
+                song_remain_advanced.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 2 and song['fc'] not in ['ap', 'app']:
+                song_remain_expert.append([song['id'], song['diff_index']])
+            if song['diff_index'] == 3 and song['fc'] not in ['ap', 'app']:
+                song_remain_master.append([song['id'], song['diff_index']])
+            if version_han == '舞' and song['diff_index'] == 4 and song['fc'] not in ['ap', 'app']:
+                song_remain_re_master.append([song['id'], song['diff_index']])
+            song_played.append([song['id'], song['diff_index']])
     for music in Mai.music_list:
         if music.version in payload['version']:
             if [int(music.id), 0] not in song_played:
@@ -118,7 +118,7 @@ Master剩余{len(song_remain_master)}首
         song_remain_expert) + len(song_remain_master) + len(song_remain_re_master)
     song_remain: list[list] = song_remain_basic + song_remain_advanced + \
         song_remain_expert + song_remain_master + song_remain_re_master
-    song_record = [[s['id'], s['level_index']] for s in data['verlist']]
+    song_record = [[s['id'], s['diff_index']] for s in data['verlist']]
     if version_han in ['舞', '霸']:
         msg += f'Re:Master剩余{len(song_remain_re_master)}首\n'
     msg += f'总共剩余{song_remain_count}首\n理想状态下共需单刷{ceil(song_remain_count / 3)}局\n约需{song_remain_count * 4 if song_remain_count * 4 < 60 else f"{song_remain_count * 4 // 60}小时{song_remain_count * 4 % 60}"}分钟\n'
