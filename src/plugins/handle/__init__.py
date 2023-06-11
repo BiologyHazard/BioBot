@@ -48,7 +48,7 @@ __plugin_meta__ = PluginMetadata(
         "每个格子的 汉字、声母、韵母、声调 都会独立进行颜色的指示。\n"
         "当四个格子都为青色时，你便赢得了游戏！\n"
         "可发送“结束”结束游戏；可发送“提示”查看提示。\n"
-        "使用 --strict 选项开启成语检查，即猜测的短语必须是成语，如：@我 猜成语 --strict"
+        "使用 --nonstrict 选项关闭成语检查，即猜测的短语不必须是成语，如：@我 猜成语 --nonstrict"
     ),
     extra={
         "unique_name": "handle",
@@ -62,7 +62,7 @@ __plugin_meta__ = PluginMetadata(
 parser = ArgumentParser("handle", description="猜成语")
 parser.add_argument("--hint", action="store_true", help="提示")
 parser.add_argument("--stop", action="store_true", help="结束游戏")
-parser.add_argument("--strict", action="store_true", help="严格模式，即判断是否是成语")
+parser.add_argument("--nonstrict", action="store_true", help="严格模式，即判断是否是成语")
 parser.add_argument("idiom", nargs="?", type=str, default="", help="成语")
 
 
@@ -70,7 +70,7 @@ parser.add_argument("idiom", nargs="?", type=str, default="", help="成语")
 class Options:
     hint: bool = False
     stop: bool = False
-    strict: bool = False
+    nonstrict: bool = False
     idiom: str = ""
 
 
@@ -228,7 +228,7 @@ async def handle_handle(
 
     cid = get_cid(bot, event)
     if not games.get(cid, None):
-        game = Handle(*random_idiom(), strict=options.strict)
+        game = Handle(*random_idiom(), strict=not options.nonstrict)
         games[cid] = game
         set_timeout(matcher, cid)
         await send(f"你有{game.times}次机会猜一个四字成语，请发送成语", game.draw())
