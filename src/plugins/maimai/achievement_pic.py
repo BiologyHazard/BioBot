@@ -142,22 +142,18 @@ async def generate_achievement_pic(
 
         for chart_info in data['verlist']:
             if str(chart_info['id']) == music.id and chart_info['level_index'] == level_index:
-                chart_info: dict[str, Any] = chart_info
+                if combo is not None:
+                    if combo.upper() in COMBO_RANK:
+                        combo_goal_index: int = COMBO_RANK.index(combo.upper())
+                    else:
+                        combo_goal_index = combo_rank.index(combo.lower())
+                    music_combo_index: int = combo_rank.index(chart_info['fc'])
+                    if music_combo_index >= combo_goal_index:
+                        combo_image: Image.Image = Image.open(_COMBO_PIC_PATHS[music_combo_index])
+                        w, h = combo_image.size
+                        image.alpha_composite(combo_image,
+                                              (round((x0 + col * (1 + col_spacing) + 1/2) * image_pixels - w/2),
+                                               round((y0 + y + 1/2) * image_pixels - h/2)))
                 break
-        else:
-            raise ValueError
-
-        if combo is not None:
-            if combo.upper() in COMBO_RANK:
-                combo_goal_index: int = COMBO_RANK.index(combo.upper())
-            else:
-                combo_goal_index = combo_rank.index(combo.lower())
-            music_combo_index: int = combo_rank.index(chart_info['fc'])
-            if music_combo_index >= combo_goal_index:
-                combo_image: Image.Image = Image.open(_COMBO_PIC_PATHS[music_combo_index])
-                w, h = combo_image.size
-                image.alpha_composite(combo_image,
-                                      (round((x0 + col * (1 + col_spacing) + 1/2) * image_pixels - w/2),
-                                       round((y0 + y + 1/2) * image_pixels - h/2)))
 
     return MessageSegment.image(image_to_bytesio(image))

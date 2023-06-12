@@ -59,7 +59,7 @@ class ChartInfo:
         return cls(
             id=data['song_id'],
             title=data['title'],
-            level=data['diff_index'],
+            level=data['level_index'],
             achievement=data['achievements'],
             dxscore=data['dxScore'],
             rate=score_rank.index(data['rate']),
