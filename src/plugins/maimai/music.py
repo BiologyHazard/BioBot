@@ -7,18 +7,21 @@ import random
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Literal, Self, Sequence, overload
+from bisect import bisect_right
 
 import aiofiles
 import aiohttp
 from nonebot import logger
 
 from .config import plugin_config
-from .consts import LEVELS, PLATE_TO_VERSION, VERSION_TO_PLATE
+from .consts import LEVELS, PLATE_TO_VERSION, VERSION_TO_PLATE, achievementList, BaseRaSpp
 from .image import get_music_cover
 
 
 def compute_rating(ds: float, achievement: float) -> int:
-    ...
+    # '''虽然理论上来说直接用浮点数不会出事，但是还是保险起见'''
+    # achievement_10000 = round(achievement * 10000)
+    return math.floor(ds * min(achievement, 100.5000) * BaseRaSpp[bisect_right(achievementList, achievement)])
 
 
 @dataclass
@@ -57,18 +60,6 @@ class ChartStats:
             dist=[],
             fc_dist=[],
         )
-
-        # self.count: int = int(obj['cnt'])
-        # self.diff: str = obj['diff']
-        # self.fit_diff: float = obj['fit_diff']
-        # self.avg_achievement: float = obj['avg']
-        # self.avg_dx_score: float = obj['avg_dx']
-        # self.std_dev: float = obj['std_dev']
-        # self.dist: list[int] = [int(x) for x in obj['dist']]
-        # self.fc_dist: list[int] = [int(x) for x in obj['fc_dist']]
-
-    # def __repr__(self) -> str:
-    #     return f'''{self.__class__.__name__}({', '.join(f'{k}={repr(v)}' for k, v in self.__dict__.items())})'''
 
 
 @dataclass
@@ -235,6 +226,7 @@ class MusicList(list[Music]):
                               if name == music.type)
 
     def by_ds(self, name: float | Sequence[float] | tuple[float, float]) -> list[tuple[Music, int]]:
+        '''这里浮点数不会出事'''
         if isinstance(name, float):
             return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
                     if math.isclose(name, music.ds[diff_index])]
@@ -306,6 +298,7 @@ class MusicList(list[Music]):
                               if name == music.genre)
 
     def by_bpm(self, name: float | Sequence[float] | tuple[float, float]) -> Self:
+        '''bpm都是整数，浮点数不会出事（大概）'''
         if isinstance(name, float):
             return self.__class__(music for music in self
                                   if math.isclose(name, music.bpm))

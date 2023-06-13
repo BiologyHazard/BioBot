@@ -1,3 +1,4 @@
+from .music import compute_rating
 import asyncio
 import json
 import math
@@ -60,13 +61,13 @@ maimai插件可用命令如下：
 · {default_command_start}b50 [<@某人|qq号|水鱼网用户名>]\t# 查询b50
 · {default_command_start}乐曲成绩 <乐曲id|标题|别名> [<@某人|qq号|水鱼网用户名>]\t# 查询乐曲成绩
 · <牌子名称>进度 [<@某人|qq号|水鱼网用户名>]\t# 查询牌子进度
-# TODO: · <牌子名称>完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询牌子完成表
+· <牌子名称>完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询牌子完成表
 # TODO: · <等级|定数>进度 [<@某人|qq号|水鱼网用户名>]\t# 查询制霸进度
-# TODO: · <等级|定数|版本|难度>[<目标>]完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询完成表
+· <等级|定数|版本|难度>[<目标>]完成表 [<@某人|qq号|水鱼网用户名>]\t# 查询完成表
     例：14+SSS完成表，14.0FSD完成表，舞代AP完成表，紫谱完成表（紫谱FC完成表）
-    # “目标”可以是连击评价、同步率评价或达成率评价，默认为"FC"
-· <等级|定数>分数列表\t# 查询分数列表
-· <等级|定数>分数列表 <页码> [<@某人|qq号|水鱼网用户名>]
+    # “目标”可以是连击评价、同步率评价或达成率评价，默认为"A"
+· <等级|定数>成绩列表\t# 查询成绩列表
+· <等级|定数>成绩列表 <页码> [<@某人|qq号|水鱼网用户名>]
 · {default_command_start}rating排名 [<@某人|qq号|水鱼网用户名>]\t# 查询rating排名
 
 【查询乐曲】
@@ -155,15 +156,15 @@ plate_process = maimai_command_group.on_regex(
     r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞](?:[極极将神舞]|舞舞)|霸者)进度\s*(.*)', rule=not_anonymous)
 # plate_process_pic = maimai_command_group.on_regex(
 #     r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞霸]代?|\d{1,2}\.\d|\d{1,2}\+?|[绿黄红紫白]谱?)([極极将神舞者]|舞舞|D|C|B{1,3}|A{1,3}|S{1,3}[p+]?|F[CS][p+]?|AP[p+]?|FSD\+?|FDX\+?)完成表\s*(.*)', rule=not_anonymous)
-plate_process_pic = maimai_command_group.on_regex(
+process_pic = maimai_command_group.on_regex(
     r'^(?:([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞]代?|霸(?=者))|(\d{1,2}\.\d)|(\d{1,2}\+?)|([绿黄红紫白])谱)'
     r'(([極极将神舞]|舞舞|(?<=霸)者)|(D|C|B{1,3}|A{1,3}|S{1,3}[p+]?)|(FC[p+]?|AP[p+]?)|(FSD?[p+]?|FDX[p+]?))?'
     r'完成表\s*(.*)',
     flags=re.RegexFlag.IGNORECASE, rule=not_anonymous)
 level_achievement = maimai_command_group.on_regex(
-    r'^(?:(\d{1,2}\.\d)|(\d{1,2}\+?))分数列表\s*(\d+)?\s*(.+)?', rule=not_anonymous)
+    r'^(?:(\d{1,2}\.\d)|(\d{1,2}\+?))(?:成绩|分数)列表\s*(\d+)?\s*(.+)?', rule=not_anonymous)
 music_score = maimai_command_group.on_command(
-    '乐曲成绩', aliases={'歌曲成绩', '我的成绩', '查成绩', 'minfo'}, rule=not_anonymous)
+    '乐曲成绩', aliases={'歌曲成绩', '我的成绩', '查成绩', 'minfo', '查分', '乐曲分数', '歌曲分数'}, rule=not_anonymous)
 rating_ranking = maimai_command_group.on_command(
     'rating排名', aliases={'我的排名', '我有多菜'}, rule=not_anonymous)
 # 查询乐曲
@@ -411,8 +412,10 @@ async def music_score_func(bot: Bot, event: MessageEvent, message: Message = Com
 
     messages: list[str] = [f'{nickname}的乐曲成绩\n'
                            f'{music.id}. {music.title}\n']
-    for achievement_data in sorted(player_data, key=lambda x: x['diff_index']):
-        messages.append(f'{DIFFICULTY_NAME[achievement_data["diff_index"]]} {music.ds[achievement_data["diff_index"]]} | {achievement_data["achievements"]:.4f}% → ???????')
+    for achievement_data in sorted(player_data, key=lambda x: x['level_index']):
+        level_index: int = achievement_data['level_index']
+        achievement: float = achievement_data['achievements']
+        messages.append(f'{DIFFICULTY_NAME[level_index]} {music.ds[level_index]} | {achievement:.4f}% → {compute_rating(music.ds[level_index], achievement)}')
         if achievement_data['fc']:
             messages.append(f' | {COMBO_RANK[combo_rank.index(achievement_data["fc"])]}')
         if achievement_data['fs']:
@@ -432,8 +435,8 @@ async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = E
     await plate_process.finish(data)
 
 
-@plate_process_pic.handle()
-async def plate_process_pic_func(
+@process_pic.handle()
+async def process_pic_func(
         bot: Bot,
         event: MessageEvent,
         message: Message = EventMessage(),
@@ -444,7 +447,7 @@ async def plate_process_pic_func(
     payload, nickname = await get_payload_and_nickname(bot, event, message, user)
 
     data: MessageSegment | str = await generate_achievement_pic(payload, group, event.user_id)
-    await plate_process.finish(data)
+    await process_pic.finish(data)
 
 
 @level_achievement.handle()
@@ -466,9 +469,8 @@ async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message
     if ds is not None:
         for achievement_data in data['verlist']:
             music: Music = Mai.music_list.by_id(str(achievement_data['id']), strict=True)
-            for music_ds in music.ds:
-                if math.isclose(music_ds, float(ds)):
-                    achievement_list.append((music, achievement_data))
+            if math.isclose(music.ds[achievement_data['level_index']], float(ds)):
+                achievement_list.append((music, achievement_data))
     else:
         for achievement_data in data['verlist']:
             if achievement_data['level'] == level:
@@ -482,7 +484,7 @@ async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message
     for i, (music, achievement_data) in enumerate(sorted(achievement_list,
                                                          key=lambda x: x[1]['achievements'], reverse=True)):
         if page * plugin_config.songs_per_page <= i < (page + 1) * plugin_config.songs_per_page:
-            messages.append(f'No.{i+1} | {achievement_data["achievements"]:.4f}% | {music.id}. {music.title} | {DIFFICULTY_NAME[achievement_data["diff_index"]]} {music.ds[achievement_data["diff_index"]]}')
+            messages.append(f'No.{i+1} | {achievement_data["achievements"]:.4f}% | {music.id}. {music.title} | {DIFFICULTY_NAME[achievement_data["level_index"]]} {music.ds[achievement_data["level_index"]]}')
             if achievement_data['fc']:
                 messages.append(f' | {COMBO_RANK[combo_rank.index(achievement_data["fc"])]}')
             if achievement_data['fs']:
@@ -545,7 +547,7 @@ async def search_music_by_title_func(message: Message = CommandArg()) -> None:
     name: str = message.extract_plain_text()
     if not name:
         await search_music_by_title.finish('请输入要查询的乐曲。')
-    result: MusicList = Mai.music_list.filter(title_search=name)
+    result: MusicList = Mai.music_list.by_title(name)
     if not result:
         await search_music_by_title.finish(f'没有找到标题中含有“{name}”的乐曲呢……\n试试别名查歌（命令为“...是什么歌”）吧~')
     if len(result) == 1:
@@ -591,7 +593,7 @@ async def search_music_by_inner_func(message: Message = CommandArg()) -> None:
     except ValueError:
         await search_music_by_inner.finish(search_music_by_inner_help_text)
 
-    result: MusicList = Mai.music_list.filter(ds=ds)
+    result: list[tuple[Music, int]] = Mai.music_list.by_ds(ds)
     if not result:
         await search_music_by_inner.finish('没有找到符合条件的乐曲。', reply_message=True)
 
@@ -599,11 +601,9 @@ async def search_music_by_inner_func(message: Message = CommandArg()) -> None:
     page = max(min(page, pages - 1), 0)
     messages: list[str] = []
     i: int = 0
-    for music in sorted(result, key=lambda i: (i.ds, i.id)):
-        for diff_index in music.diff:
-            if page * plugin_config.songs_per_page <= i < (page + 1) * plugin_config.songs_per_page:
-                messages.append(music_info_with_diff_compact(music, diff_index))
-            i += 1
+    for i, (music, diff_index) in enumerate(sorted(result, key=lambda i: (i[0].ds[i[1]], i[0].id))):
+        if page * plugin_config.songs_per_page <= i < (page + 1) * plugin_config.songs_per_page:
+            messages.append(music_info_with_diff_compact(music, diff_index))
     if pages > 1:
         if isinstance(ds, float):
             messages.append(f'第{page + 1}页，共{pages}页，发送“定数查歌 {ds} {ds} <页码>”查看其他页')
@@ -629,7 +629,7 @@ async def search_music_by_tempo_func(message: Message = CommandArg()) -> None:
     except ValueError:
         await search_music_by_tempo.finish(search_music_by_tempo_help_text, reply_message=True)
 
-    result: MusicList = Mai.music_list.filter(bpm=bpm)
+    result: MusicList = Mai.music_list.by_bpm(bpm)
     if not result:
         await search_music_by_tempo.finish(f'没有找到符合条件的乐曲。', reply_message=True)
 
@@ -662,7 +662,7 @@ async def search_music_by_artist_func(message: Message = CommandArg()) -> None:
         name: str = args[0]
         page = int(args[1]) - 1
 
-    results: MusicList = Mai.music_list.filter(artist_search=name)
+    results: MusicList = Mai.music_list.by_artist(name)
     if not results:
         await search_music_by_artist.finish(f'没有找到艺术家为“{name}”的乐曲呢……', reply_message=True)
 
@@ -692,17 +692,19 @@ async def search_music_by_charter_func(message: Message = CommandArg()) -> None:
         name: str = args[0]
         page = int(args[1]) - 1
 
-    results: MusicList = Mai.music_list.filter(charter_search=name)
-    if not results:
+    # result: MusicList = Mai.music_list.filter(charter_search=name)
+    result: list[tuple[Music, int]] = Mai.music_list.by_charter(name)
+    if not result:
         await search_music_by_charter.finish(f'没有找到谱师为“{name}”的谱面呢……', reply_message=True)
 
-    pages: int = math.ceil(len(results) / plugin_config.songs_per_page)
+    pages: int = math.ceil(len(result) / plugin_config.songs_per_page)
     page = max(min(page, pages - 1), 0)
     messages: list[str] = []
-    for i, music in enumerate(results):
+    for i, (music, diff_index) in enumerate(result):
         if page * plugin_config.songs_per_page <= i < (page + 1) * plugin_config.songs_per_page:
-            diff_charter = zip([DIFFICULTY_NAME[i] for i in music.diff], [music.charts[d].charter for d in music.diff])
-            messages.append(f'No. {i+1} | {music.id}. {music.title} | {" | ".join([f"{difficulty_name} {charter}" for difficulty_name, charter in diff_charter])}')
+            # diff_charter = zip([DIFFICULTY_NAME[i] for i in music.diff], [music.charts[d].charter for d in music.diff])
+            # messages.append(f'No. {i+1} | {music.id}. {music.title} | {" | ".join([f"{difficulty_name} {charter}" for difficulty_name, charter in diff_charter])}')
+            messages.append(f'No. {i+1} | {music.id}. {music.title} | {DIFFICULTY_NAME[diff_index]} {music.ds[diff_index]} {music.charts[diff_index].charter}')
     if pages > 1:
         messages.append(f'第{page + 1}页，共{pages}页，发送“谱师查歌 {name} <页码>”查看其他页')
     else:
@@ -711,7 +713,7 @@ async def search_music_by_charter_func(message: Message = CommandArg()) -> None:
 
 
 @chart_stats.handle()
-async def chart_stats_func(message: Message = CommandArg()):
+async def chart_stats_func(message: Message = CommandArg()) -> None:
     plain_text: str = message.extract_plain_text().strip()
     diff_index: int = '绿黄红紫白'.find(plain_text[0])  # 未指定则为-1
     if diff_index == -1:
