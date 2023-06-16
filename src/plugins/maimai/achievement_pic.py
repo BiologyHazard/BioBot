@@ -1,5 +1,4 @@
 import math
-import random
 from bisect import bisect_left, bisect_right
 from pathlib import Path
 from typing import Any
@@ -12,7 +11,7 @@ from .api_data import get_player_data
 from .config import plugin_config
 from .consts import (COMBO_RANK, SCORE_RANK, SYNC_RANK, VERSION_TO_PLATE,
                      achievementList, combo_rank, score_rank, sync_rank)
-from .image import background_image, image_to_bytesio, image_resize_by
+from .image import background_image, image_to_bytesio, image_resize_to
 from .music import Mai, Music
 
 _COMBO_FILENAME: list[str] = ['', 'FC', 'FCp', 'AP', 'APp']
@@ -151,10 +150,10 @@ async def generate_achievement_pic(
     image_width: float = border_left + (1 + col_spacing) * (num_per_line - 1) + border_right
     image_height: float = y + border_down
     # 绘制背景图
-    image: Image.Image = background_image(image_width * cover_pixels, image_height * cover_pixels, cover_pixels)
+    image: Image.Image = background_image(image_width * cover_pixels, image_height * cover_pixels, cover_pixels * 2)
     # 画logo和写字
-    logo_image: Image.Image = image_resize_by(Image.open(plugin_config.pic_path / 'BioBot/logo.png'),
-                                              0.01 * cover_pixels)
+    logo_image: Image.Image = image_resize_to(Image.open(plugin_config.pic_path / 'BioBot/logo.png'),
+                                              (9.73 * cover_pixels, None))
     image.alpha_composite(logo_image, (round(-1.3 * cover_pixels),
                                        round(0.7 * cover_pixels)))
     header_font: ImageFont.FreeTypeFont = ImageFont.truetype(str(plugin_config.text_font_path),
@@ -165,9 +164,9 @@ async def generate_achievement_pic(
     # 加载其他公用资源
     mask: Image.Image = Image.new('RGBA', (round((1 + 2 * color_block_border) * cover_pixels),
                                            round((1 + 2 * color_block_border) * cover_pixels)), '#00000080')
-    dx_image: Image.Image = image_resize_by(Image.open(plugin_config.pic_path /
+    dx_image: Image.Image = image_resize_to(Image.open(plugin_config.pic_path /
                                                        'UI_UPE_Infoicon_DeluxeMode.png'),
-                                            0.0052 * cover_pixels)
+                                            (0.6084 * cover_pixels, None))
 
     # 写字
     bottom_font: ImageFont.FreeTypeFont = ImageFont.truetype(str(plugin_config.text_font_path),
@@ -202,8 +201,7 @@ async def generate_achievement_pic(
         cover: Image.Image = Image.open(await music.get_cover()).resize((round(cover_pixels), round(cover_pixels)))
         image.alpha_composite(cover, (round((x - 1/2) * cover_pixels), round((y - 1/2) * cover_pixels)))
         if music.type == 'DX':
-            w, h = dx_image.size
-            image.alpha_composite(dx_image, (round((x + 1/2) * cover_pixels - w),
+            image.alpha_composite(dx_image, (round((x + 1/2) * cover_pixels - dx_image.width),
                                              round((y - 1/2) * cover_pixels)))
         # 寻找成绩
         chart_info: dict[str, Any] | None = None

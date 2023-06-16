@@ -95,17 +95,16 @@ class Music:
     type: str
     ds: list[float]
     level: list[str]
-    diff_num: int
-    has_remaster: bool
+    diff_num: int = field(init=False)
+    has_remaster: bool = field(init=False)
     artist: str
     genre: str
-    # genre_han: str
     bpm: float
     release_date: str
     version: str
-    version_han: str
+    version_han: str = field(init=False)
     charts: list[Chart]
-    diff: list[int]
+    diff: list[int] = field(init=False)
     aliases: dict[str, dict[str, Any]] = field(init=False)
 
     @classmethod
@@ -116,18 +115,19 @@ class Music:
             type=obj['type'],
             ds=obj['ds'],
             level=obj['level'],
-            diff_num=len(obj['level']),
-            has_remaster=(len(obj['level']) == 5),
             artist=obj['basic_info']['artist'],
             genre=obj['basic_info']['genre'],
-            # genre_han=GENRE_HAN[obj['basic_info']['genre']],
             bpm=obj['basic_info']['bpm'],
             release_date=obj['basic_info']['release_date'],
             version=obj['basic_info']['from'],
-            version_han=VERSION_TO_PLATE[obj['basic_info']['from']],
             charts=[Chart.from_json(chart) for chart in obj['charts']],
-            diff=list(range(len(obj['level'])))
         )
+
+    def __post_init__(self) -> None:
+        self.diff_num = len(self.level)
+        self.has_remaster = self.diff_num == 5
+        self.diff = list(range(self.diff_num))
+        self.version_han = VERSION_TO_PLATE[self.version]
 
     async def get_cover(self) -> BytesIO:
         return await get_music_cover(self.id)
