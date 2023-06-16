@@ -124,6 +124,8 @@ async def look_answer_func(event: MessageEvent) -> NoReturn:
 
 @check_answer.handle()
 async def check_answer_func(message: str = EventPlainText()) -> None:
+    for k, v in replace_dict.items():
+        message = message.replace(k, v)
     try:
         result: float = round(eval(message, {}, {}), 2)
     except SyntaxError:
