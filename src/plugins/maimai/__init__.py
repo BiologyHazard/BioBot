@@ -322,7 +322,7 @@ async def chart_info(music: Music, diff_index: int) -> Message:
 
 @help.handle()
 async def help_func() -> None:
-    await help.finish(MessageSegment.image(image_to_bytesio(text_to_image(help_str, tabs=[30]))))
+    await help.finish(MessageSegment.image(image_to_bytesio(text_to_image(help_str, tabs=[35]))))
 
 
 wm_list: list[str] = ['拼机', '推分', '越级', '下埋', '夜勤', '练底力', '练手法', '打旧框', '干饭', '抓绝赞', '收歌']

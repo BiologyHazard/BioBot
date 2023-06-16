@@ -1,3 +1,5 @@
+import random
+import math
 from io import BytesIO
 
 import aiohttp
@@ -12,6 +14,14 @@ from pathlib import Path
 
 def image_resize_by(image: Image.Image, size: float) -> Image.Image:
     return image.resize((round(image.width * size), round(image.height * size)))
+
+
+def image_resize_to(image: Image.Image, size: tuple[float, None] | tuple[None, float], *args, **kwargs) -> Image.Image:
+    w, h = image.size
+    if size[1] is None:
+        return image.resize((round(size[0]), round(size[0] * h / w)), *args, **kwargs)
+    else:
+        return image.resize((round(size[1] * w / h), round(size[1])), *args, **kwargs)
 
 
 def draw_text(img_pil, text, offset_x) -> None:
@@ -63,7 +73,8 @@ def text_to_image(text: str,
     image_height: float = (max_line_height * len(lines)
                            + row_spacing * font_size * (len(lines) - 1)
                            + border * font_size * 2)
-    image: PILImage = Image.new('RGB', (round(image_width), round(image_height)), color='white')
+    # image: PILImage = Image.new('RGB', (round(image_width), round(image_height)), color='white')
+    image: Image.Image = background_image(image_width, image_height, font_size * 3)
     draw: PILImageDraw = ImageDraw.Draw(image)
 
     y: float = border * font_size
@@ -120,3 +131,32 @@ async def get_music_cover(music_id: str) -> BytesIO:
     async with aiofiles.open(plugin_config.cover_path / '00000.png', 'rb') as fp:
         # 返回'00000.png'
         return BytesIO(await fp.read())
+
+
+def background_image(image_width: float, image_height: float, cover_pixels: float) -> Image.Image:
+    image: Image.Image = (
+        Image.open(plugin_config.pic_path / 'BioBot/background.png')
+        .resize((round(image_width), round(image_height)))
+    )
+    top_image: Image.Image = image_resize_by(Image.open(plugin_config.pic_path / 'BioBot/top.png'),
+                                             0.0009 * image_width)
+    bottom_image: Image.Image = image_resize_by(Image.open(plugin_config.pic_path / 'BioBot/bottom.png'),
+                                                0.0009 * image_width)
+    left_image: Image.Image = image_resize_by(Image.open(plugin_config.pic_path / 'BioBot/left.png'),
+                                              0.018 * cover_pixels)
+    right_image: Image.Image = image_resize_by(Image.open(plugin_config.pic_path / 'BioBot/right.png'),
+                                               0.018 * cover_pixels)
+    ground_image: Image.Image = image_resize_by(Image.open(plugin_config.pic_path / 'BioBot/bubbles.png'),
+                                                0.0008 * image_width)
+    for i in range(math.ceil(image.height / ground_image.height)):
+        # 反正最大容许偏移量就是这么多，我也解释不明白
+        image.alpha_composite(ground_image,
+                              (round(-(0.0008 * 1693 - 1) * random.random() * image_width),
+                               i * ground_image.height))
+    for i in range(math.ceil(image.height / left_image.height)):
+        image.alpha_composite(left_image, (0, i * left_image.height))
+    for i in range(math.ceil(image.height / right_image.height)):
+        image.alpha_composite(right_image, (image.width - right_image.width, i * right_image.height))
+    image.alpha_composite(top_image, (round(-0.15 * image_width), 0))
+    image.alpha_composite(bottom_image, (round(-0.15 * image_width), image.height - bottom_image.height))
+    return image
