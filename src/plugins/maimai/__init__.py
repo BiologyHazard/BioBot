@@ -157,8 +157,8 @@ plate_process = maimai_command_group.on_regex(
 # plate_process_pic = maimai_command_group.on_regex(
 #     r'^([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞霸]代?|\d{1,2}\.\d|\d{1,2}\+?|[绿黄红紫白]谱?)([極极将神舞者]|舞舞|D|C|B{1,3}|A{1,3}|S{1,3}[p+]?|F[CS][p+]?|AP[p+]?|FSD\+?|FDX\+?)完成表\s*(.*)', rule=not_anonymous)
 process_pic = maimai_command_group.on_regex(
-    r'^(?:([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞]代?|霸(?=者))|(\d{1,2}\.\d)|(\d{1,2}\+?)|([绿黄红紫白])谱)'
-    r'(([極极将神舞]|舞舞|(?<=霸)者)|(D|C|B{1,3}|A{1,3}|S{1,3}[p+]?)|(FC[p+]?|AP[p+]?)|(FSD?[p+]?|FDX[p+]?))?'
+    r'^(([真超檄橙暁晓桃櫻樱紫菫堇白雪輝辉熊華华爽煌宙星祭舞]代?|霸(?=者))|(\d{1,2}\.\d)|(\d{1,2}\+?)|([绿黄红紫白]谱))'
+    r'(([極极将神舞]|舞舞|(?<=霸)者)|(D|C|B{1,3}|A{1,3}|S{1,3}[p+]?)|(FC[p+]?|AP[p+]?)|(FSD?[p+]?|FDX[p+]?)|)'
     r'完成表\s*(.*)',
     flags=re.RegexFlag.IGNORECASE, rule=not_anonymous)
 level_achievement = maimai_command_group.on_regex(
@@ -440,8 +440,8 @@ async def process_pic_func(
         bot: Bot,
         event: MessageEvent,
         message: Message = EventMessage(),
-        group: tuple[str | None, str | None, str | None, str | None,
-                     str | None, str | None, str | None, str | None, str | None, str] = RegexGroup(),
+        group: tuple[str, str | None, str | None, str | None, str | None,
+                     str, str | None, str | None, str | None, str | None, str] = RegexGroup(),
 ) -> None:
     user = group[-1]
     payload, nickname = await get_payload_and_nickname(bot, event, message, user)

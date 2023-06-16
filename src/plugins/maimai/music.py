@@ -21,7 +21,7 @@ from .image import get_music_cover
 def compute_rating(ds: float, achievement: float) -> int:
     # '''虽然理论上来说直接用浮点数不会出事，但是还是保险起见'''
     # achievement_10000 = round(achievement * 10000)
-    return math.floor(ds * min(achievement, 100.5000) * BaseRaSpp[bisect_right(achievementList, achievement)])
+    return math.floor(ds * min(achievement, 100.5000) * BaseRaSpp[bisect_right(achievementList, achievement)] / 100)
 
 
 @dataclass

@@ -10,6 +10,10 @@ from .config import plugin_config
 from pathlib import Path
 
 
+def image_resize_by(image: Image.Image, size: float) -> Image.Image:
+    return image.resize((round(image.width * size), round(image.height * size)))
+
+
 def draw_text(img_pil, text, offset_x) -> None:
     draw: PILImageDraw = ImageDraw.Draw(img_pil)
     font: FreeTypeFont = ImageFont.truetype(str(plugin_config.text_font_path), 48)
