@@ -81,11 +81,10 @@ class DrawBest:
                  plate: str,
                  qqid: int | None = None,
                  ) -> None:
-        self.sdBest: list[ChartInfo] = sorted(sd_best, key=lambda x: x.ra, reverse=True)
-        self.dxBest: list[ChartInfo] = sorted(dx_best, key=lambda x: x.ra, reverse=True)
-        self.userName: str = username
-        self.addRating: int = additional_rating
-        self.rankRating: int = rating
+        self.sd_best: list[ChartInfo] = sorted(sd_best, key=lambda x: x.ra, reverse=True)
+        self.ds_best: list[ChartInfo] = sorted(dx_best, key=lambda x: x.ra, reverse=True)
+        self.username: str = username
+        self.additional_rating: int = additional_rating
         self.rating: int = rating
         self.plate: str = plate
         self.qqid: int | None = qqid
@@ -142,8 +141,8 @@ class DrawBest:
         return f'UI_CMN_DXRating_{n+1:02d}.png'
 
     def _findMatchLevel(self) -> str:
-        n: int = bisect_right([250, 500, 750, 1000, 1200, 1400, 1500, 1600, 1700, 1800, 1850, 1900, 1950, 2000, 2010, 2020, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100], self.addRating)
-        return f'UI_CMN_MatchLevel_{n+1:02d}.png'
+        n: int = self.additional_rating if self.additional_rating <= 10 else self.additional_rating + 1
+        return f'UI_DNM_DaniPlate_{n:02d}.png'
 
     async def whiledraw(self, data: list[ChartInfo], type: bool) -> None:
         # y0为第一排纵向坐标，dy为各排间距
@@ -188,9 +187,14 @@ class DrawBest:
                 title = self._changeColumnWidth(title, 15) + '...'
             self._siyuanb.draw(x + 155, y + 20, 20, title, TITLE_COLOR[info.level], anchor='lm')
             p, s = f'{info.achievement:.4f}'.split('.')
-            r = self._tb.get_box(p, 35)
-            self._tb.draw(x + 155, y + 70, 35, p, TEXT_COLOR[info.level], anchor='ld')
-            self._tb.draw(x + 155 + r[2], y + 68, 25, f'.{s}%', TEXT_COLOR[info.level], anchor='ld')
+            r = self._tb.get_box(p, 40)
+            self._tb.draw(x + 155, y + 73, 38, p, TEXT_COLOR[info.level], anchor='ld')
+            self._tb.draw(x + 155 + r[2], y + 71, 28, f'.{s}%', TEXT_COLOR[info.level], anchor='ld')
+            # p, s = f'{info.achievement:.4f}'.split('.')
+            # r = self._tb.get_box(p, 35)
+            # self._tb.draw(x + 155, y + 70, 35, p, TEXT_COLOR[info.level], anchor='ld')
+            # self._tb.draw(x + 155 + r[2], y + 68, 25, f'.{s}%', TEXT_COLOR[info.level], anchor='ld')
+            # self._tb.draw(x + 155, y + 70, 35, f'{info.achievement:.4f}%', TEXT_COLOR[info.level], anchor='ld')
             self._tb.draw(x + 155, y + 125, 22, f'Rating {info.ds} -> {info.ra}', TEXT_COLOR[info.level], anchor='lm')
 
     async def draw(self) -> Image.Image:
@@ -203,7 +207,7 @@ class DrawBest:
         expert: Image.Image = Image.open(plugin_config.pic_path / 'b40_score_expert.png')
         master: Image.Image = Image.open(plugin_config.pic_path / 'b40_score_master.png')
         remaster: Image.Image = Image.open(plugin_config.pic_path / 'b40_score_remaster.png')
-        logo: Image.Image = Image.open(plugin_config.pic_path / 'logo.png').resize((378, 172))
+        logo: Image.Image = Image.open(plugin_config.pic_path / 'BioBot/logo.png').resize((567, 172))
         dx_rating: Image.Image = Image.open(plugin_config.pic_path / self._findRaPic()).resize((425, 80))
         Name: Image.Image = Image.open(plugin_config.pic_path / 'Name.png')
         # MatchLevel = Image.open(os.path.join(self.maimai_dir, self._findMatchLevel())).resize((134, 55))
@@ -214,7 +218,7 @@ class DrawBest:
         # 作图
         self._im = Image.open(plugin_config.pic_path / 'b40_bg.png').convert('RGBA')
 
-        self._im.alpha_composite(logo, (5, 130))
+        self._im.alpha_composite(logo, (-72, 130))
         if self.plate:
             plate = Image.open(plugin_config.pic_path / f'{self.plate}.png').resize((1420, 230))
         else:
@@ -230,7 +234,8 @@ class DrawBest:
         for n, i in enumerate(f'{self.rating:05d}'):
             if i == 0:
                 continue
-            self._im.alpha_composite(Image.open(plugin_config.pic_path / f'UI_NUM_Drating_{i}.png'), (820 + 33 * n, 133))
+            self._im.alpha_composite(Image.open(plugin_config.pic_path / f'UI_NUM_Drating_{i}.png'),
+                                     (round(821 + 33.5 * n), 133))
         self._im.alpha_composite(Name, (620, 200))
         self._im.alpha_composite(MatchLevel, (935, 205))
         self._im.alpha_composite(rating, (620, 275))
@@ -242,15 +247,15 @@ class DrawBest:
         self._tb = DrawText(text_im, Torus_SemiBold)
 
         # self._meiryo.draw(635, 235, 40, self.userName, (0, 0, 0, 255), 'lm')
-        self._siyuan.draw(635, 232, 40, self.userName, (0, 0, 0, 255), 'lm')
-        _sd_rating: int = sum(music.ra for music in self.sdBest)
-        _dx_rating: int = sum(music.ra for music in self.dxBest)
+        self._siyuan.draw(635, 232, 40, self.username, (0, 0, 0, 255), 'lm')
+        _sd_rating: int = sum(music.ra for music in self.sd_best)
+        _dx_rating: int = sum(music.ra for music in self.ds_best)
         # self._meiryo.draw(847, 300, 22, f'历史版本: {_sd_rating} + DX 2023: {_dx_rating}', (0, 0, 0, 255), 'mm', 3, (255, 255, 255, 255))
-        self._siyuan.draw(847, 296, 22, f'历史版本: {_sd_rating} + DX 2023: {_dx_rating}', (0, 0, 0, 255), 'mm', 3, (255, 255, 255, 255))
+        self._siyuan.draw(847, 296, 25, f'历史版本: {_sd_rating} + DX 2023: {_dx_rating}', (0, 0, 0, 255), 'mm', 3, (255, 255, 255, 255))
         self._meiryo.draw(900, 2365, 35, f'Designed by Yuri-YuzuChaN & BlueDeer233 | Generated by BioBot', (103, 20, 141, 255), 'mm', 3, (255, 255, 255, 255))
 
-        await self.whiledraw(self.sdBest, True)
-        await self.whiledraw(self.dxBest, False)
+        await self.whiledraw(self.sd_best, True)
+        await self.whiledraw(self.ds_best, False)
 
         return self._im
 

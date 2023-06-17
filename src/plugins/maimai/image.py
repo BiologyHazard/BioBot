@@ -43,7 +43,7 @@ def text_to_image(text: str,
                   font_path=plugin_config.text_font_path,
                   font_size: float = 24.0,
                   tabs: list[float] | None = None,
-                  border: float = 1.0,
+                  border: float = 1.625,
                   row_spacing: float = 0.2,
                   *args,
                   **kwargs,
@@ -111,7 +111,6 @@ def get_cover_filename(music_id: str) -> str:
     return f'{num:05d}.png'
 
 
-@lru_cache
 async def get_music_cover(music_id: str) -> BytesIO:
     '''获取封面'''
     filename = get_cover_filename(music_id)
