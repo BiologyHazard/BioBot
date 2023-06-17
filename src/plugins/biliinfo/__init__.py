@@ -30,6 +30,6 @@ async def show_info_func(message: str = EventPlainText()):
     # for rj in rj_list:
     #     await bot.send(event=event, message=rj)
     #     await asyncio.sleep(b_sleep_time)
-    groups: list[T_group] = re.findall(r'(?:b23\.(?:tv|wtf)\/)?(BV1\w{2}4\w1\w7\w{2})|(b23\.(?:tv|wtf)\/\w{7})|(av\d{1,12})', message)
+    groups: list[T_group] = re.findall(r'(?:b23\.(?:tv|wtf)\/)?(?:(BV1\w{2}4\w1\w7\w{2})|(av\d{1,12}))|(b23\.(?:tv|wtf)\/\w{7})', message)
     for group in groups[:plugin_config.biliinfo_max_count]:
         await asyncio.gather(show_info.send(await group_to_info(group)), asyncio.sleep(plugin_config.biliinfo_sleep_time))

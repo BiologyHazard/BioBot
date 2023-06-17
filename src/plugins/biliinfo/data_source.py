@@ -107,7 +107,7 @@ async def get_video_info(av: int) -> Message:
 
 
 async def group_to_info(group: T_group) -> Message:
-    bv, b23, str_av = group
+    bv, str_av, b23 = group
     if bv:
         av: int = bv_to_av(bv)
     elif b23:
