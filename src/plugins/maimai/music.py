@@ -404,7 +404,7 @@ class Mai:
             logger.info('正在获取乐曲信息...')
             try:
                 async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as response:
-                    assert response.status == 200
+                    response.raise_for_status()
                     obj: Any = await response.json()
                     async with aiofiles.open(plugin_config.data_path / 'music_data.json', 'w', encoding='utf-8') as fp:
                         await fp.write(json.dumps(obj, ensure_ascii=False))
@@ -418,7 +418,7 @@ class Mai:
             logger.info('正在获取谱面统计...')
             try:
                 async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as response:
-                    assert response.status == 200
+                    response.raise_for_status()
                     obj: Any = await response.json()
                     async with aiofiles.open(plugin_config.data_path / 'chart_stats.json', 'w', encoding='utf-8') as fp:
                         await fp.write(json.dumps(obj, ensure_ascii=False))

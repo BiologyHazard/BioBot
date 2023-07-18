@@ -358,17 +358,17 @@ async def spec_rand_func(group: tuple[str | None, str | None, str | None, str | 
         ds = float(ds)
         assert math.isfinite(ds), ValueError
     if music_type is not None:
-        if music_type.lower() == "dx":
-            music_type = "DX"
-        elif music_type.lower() == "sd" or group[0] == "标准":
-            music_type = "SD"
+        if music_type.lower() == 'dx':
+            music_type = 'DX'
+        elif music_type.lower() == 'sd' or group[0] == '标准':
+            music_type = 'SD'
     if diff is None:
         diff_index = None
     else:
         diff_index = ['绿黄红紫白'.index(diff)]
     music_data: MusicList = Mai.music_list.filter(level=level, ds=ds, diff=diff_index, type_=music_type)
     if len(music_data) == 0:
-        await spec_rand.finish("没有这样的乐曲哦。")
+        await spec_rand.finish('没有这样的乐曲哦。')
     else:
         await spec_rand.finish(await music_info(music_data.random()))
 
@@ -557,7 +557,7 @@ async def search_music_by_title_func(message: Message = CommandArg()) -> None:
         result.sort(key=lambda music: int(music.id))
         await search_music_by_title.finish(f'查询到{len(result)}首乐曲：\n'
                                            + '\n'.join(music_info_compact(music) for music in result))
-    await search_music_by_title.finish(f"结果过多（{len(result)}条），请缩小查询范围。")
+    await search_music_by_title.finish(f'结果过多（{len(result)}条），请缩小查询范围。')
 
 
 @search_music_by_alias.handle()
@@ -870,9 +870,7 @@ async def score_line_func(message: Message = CommandArg()):
 async def guess_music_start_func(bot: Bot, event: MessageEvent) -> None:
     if is_now_playing_guess_music(bot, event):
         await guess_music_start.finish('该群已有正在进行的猜歌', reply_message=True)
-    # guess = Guess(Mai.music_list.by_id('8'))
     guess = Guess()
-    # guess.ROUNDS = 1
     guesses[get_event_id(bot, event)] = guess
     await guess_music_start.send(
         '我将从热门乐曲中选择一首乐曲，每隔8秒描述它的特征\n'

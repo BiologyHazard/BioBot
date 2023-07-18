@@ -41,11 +41,11 @@ async def generate_achievement_pic(
      user,
      ) = group
 
+    cover_pixels: float = 96.0
     num_per_line: int = 12
     header_font_size: float = 1.4
     row_font_size: float = 0.75
     bottom_font_size: float = 0.3
-    cover_pixels: float = 96.0
     color_block_border: float = 0.06
     col_spacing: float = 0.3
     row_spacing: float = 0.4

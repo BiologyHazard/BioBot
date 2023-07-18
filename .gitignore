@@ -8,6 +8,7 @@ __pycache__
 /go-cqhttp*
 /data
 /logs
+/unidbg-fetch-qsign-*
 /BioBot.zip
 /config.yml
 /device.json

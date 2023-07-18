@@ -100,8 +100,7 @@ async def player_plate_data(payload: dict, version_han: str, goal_han: str, nick
     song_remain_re_master = sorted(
         song_remain_re_master, key=lambda i: int(i[0]))
     for song in song_remain_basic + song_remain_advanced + song_remain_expert + song_remain_master + song_remain_re_master:
-        music: Music | None = Mai.music_list.by_id(str(song[0]))
-        assert music is not None
+        music: Music = Mai.music_list.by_id(str(song[0]), strict=True)
         if music.ds[song[1]] > 13.6:
             song_remain_difficult.append(
                 [music.id, music.title, DIFFICULTY_NAME[song[1]], music.ds[song[1]], f'{music.charts[song[1]].stats.fit_diff:.2f}', song[1]])
