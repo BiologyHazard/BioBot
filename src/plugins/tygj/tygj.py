@@ -1,6 +1,6 @@
 import datetime
 import json
-import time
+from typing import Self
 from pathlib import Path
 
 from .config import data_path
@@ -31,13 +31,13 @@ class Tygj:
         self.time: int = time
 
     @classmethod
-    def load_from_file(cls, path: Path) -> 'Tygj | None':
+    def load_from_file(cls, path: Path) -> Self | None:
         if not path.exists():
             return None
         else:
             return cls(**json.loads(data_path.read_text()))
 
-    def save_to_file(self, path: Path) -> 'Tygj':
+    def save_to_file(self, path: Path) -> Self:
         if not path.parent.exists():
             path.parent.mkdir()
         path.write_text(json.dumps(self.__dict__, ensure_ascii=False, indent=4))
@@ -45,4 +45,4 @@ class Tygj:
 
     @staticmethod
     def in_business_hours(event_time: float) -> bool:
-        return 10 <= datetime.datetime.fromtimestamp(event_time).hour < 22
+        return 9 <= datetime.datetime.fromtimestamp(event_time).hour < 22
