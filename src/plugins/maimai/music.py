@@ -3,6 +3,7 @@ import asyncio
 import copy
 from io import BytesIO
 import json
+import time
 import random
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -89,6 +90,27 @@ class Chart:
 
 
 @dataclass
+class AliasInfo:
+    group: int
+    qqid: int
+    nickname: str
+    card: str
+    role: str
+    time: int
+
+    @classmethod
+    def from_json(cls, obj: dict[str, Any]) -> Self:
+        return cls(
+            group=obj['group'],
+            qqid=obj['qqid'],
+            nickname=obj['nickname'],
+            card=obj['card'],
+            role=obj['role'],
+            time=obj['time'],
+        )
+
+
+@dataclass
 class Music:
     id: str
     title: str
@@ -105,7 +127,7 @@ class Music:
     version_han: str = field(init=False)
     charts: list[Chart]
     diff: list[int] = field(init=False)
-    aliases: dict[str, dict[str, Any]] = field(init=False)
+    aliases: dict[str, AliasInfo] = field(init=False)
 
     @classmethod
     def from_json(cls, obj: dict[str, Any]) -> Self:
@@ -345,6 +367,7 @@ class MusicList(list[Music]):
                version: str | Sequence[str] | None = None,
                diff: list[int] | None = None,
                ) -> Self:
+        logger.warning('MusicList.filter() method is deprecated. Use MusicList.by_*() instead.')
         new_list = self.__class__()
         for music in self:
             diff2: list[int] = diff if diff is not None else list(range(music.diff_num))
@@ -464,9 +487,11 @@ class Mai:
         for music in cls.music_list:
             for i in range(music.diff_num):
                 level: str = music.level[i]
-                count[level] += 1
                 chart: Chart = music.charts[i]
-                stats: ChartStats = chart.stats if hasattr(chart, 'stats') else ChartStats.empty()
+                if not hasattr(chart, 'stats'):
+                    continue
+                count[level] += 1
+                stats: ChartStats = chart.stats
                 count_sum[level] += stats.count
                 std_dev_sum[level] += stats.std_dev
                 dx_score_ratio_sum[level] += stats.avg_dx_score / chart.max_dx_score
@@ -486,10 +511,30 @@ class Mai:
     @classmethod
     async def get_aliases(cls) -> None:
         logger.info('正在获取别名信息...')
-        async with aiofiles.open(plugin_config.data_path / 'aliases.json', 'r', encoding='utf-8') as fp:
-            obj: dict = json.loads(await fp.read())
-        for music in cls.music_list:
-            if music.id in obj:
-                music.aliases = obj[music.id]['aliases']
-            else:
-                music.aliases = {}
+        if (plugin_config.data_path / 'aliases.json').is_file():
+            async with aiofiles.open(plugin_config.data_path / 'aliases.json', 'r', encoding='utf-8') as fp:
+                obj: dict = json.loads(await fp.read())
+            for music in cls.music_list:
+                if music.id in obj:
+                    music.aliases = {alias: AliasInfo.from_json(alias_info)
+                                     for alias, alias_info in obj[music.id]['aliases'].items()}
+                else:
+                    music.aliases = {}
+
+        try:
+            async with aiohttp.request('GET', 'https://api.yuzuai.xyz/maimaidx/MaimaiDXAlias') as response:
+                response.raise_for_status()
+                obj = await response.json()
+                async with aiofiles.open(plugin_config.data_path / 'aliases_from_yuzuai_api.json', 'w', encoding='utf-8') as fp:
+                    await fp.write(json.dumps(obj, ensure_ascii=False))
+        except Exception:
+            logger.warning('别名信息获取失败，请检查网络环境。已切换至本地暂存文件。')
+            async with aiofiles.open(plugin_config.data_path / 'aliases_from_yuzuai_api.json', 'r', encoding='utf-8') as fp:
+                obj = json.loads(await fp.read())
+
+        for music_id, aliases_dict in obj.items():
+            music: Music = cls.music_list.by_id(music_id, strict=True)
+            for alias in aliases_dict['Alias']:
+                if alias.strip().lower() == music.title.strip().lower():
+                    continue
+                music.aliases[alias] = AliasInfo(group=0, qqid=0, nickname='Yuzuai API', card='Yuzuai API', role='owner', time=int(time.time()))

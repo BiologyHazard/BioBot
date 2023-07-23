@@ -1,4 +1,3 @@
-from .music import compute_rating
 import asyncio
 import json
 import math
@@ -27,7 +26,8 @@ from .consts import (COMBO_RANK, DIFFICULTY_NAME, LEVELS, SYNC_RANK,
                      VERSION_TO_PLATE, combo_rank, sync_rank)
 from .guess import Guess, guesses
 from .image import image_to_bytesio, text_to_image
-from .music import Chart, ChartStats, Mai, Music, MusicList
+from .music import (AliasInfo, Chart, ChartStats, Mai, Music, MusicList,
+                    compute_rating)
 from .plate import player_plate_data
 from .privacy import set_privacy as privacy_set_privacy
 from .stats_pic import chart_stats_text
@@ -767,7 +767,7 @@ async def add_alias_func(event: GroupMessageEvent, message: Message = CommandArg
                                          'card': event.sender.card,
                                          'role': event.sender.role,
                                          'time': event.time, }
-    music.aliases[alias] = info
+    music.aliases[alias] = AliasInfo.from_json(info)
     async with aiofiles.open(plugin_config.data_path / 'aliases.json', 'r', encoding='utf-8') as fp:
         aliases = json.loads(await fp.read())
     if id not in aliases:
@@ -789,9 +789,9 @@ async def delete_alias_func(bot: Bot, event: GroupMessageEvent, message: Message
         await delete_alias.finish(f'没有id为{id}的乐曲。')
     if alias not in music.aliases:
         await delete_alias.finish(f'该别名不存在。')
-    if music.aliases[alias]['group'] != event.group_id:
+    if music.aliases[alias].group != event.group_id:
         await delete_alias.finish(f'别名“{alias}”由非本群的成员添加，不可在本群删除。')
-    if (music.aliases[alias]['role'] in ('owner', 'admin')
+    if (music.aliases[alias].role in ('owner', 'admin')
             and not await (SUPERUSER | GROUP_OWNER | GROUP_ADMIN)(bot, event)):
         await delete_alias.finish(f'别名“{alias}”由群管理员添加，只可由群管理员删除。')
 
@@ -823,7 +823,7 @@ async def query_alias_func(message: Message = CommandArg()) -> None:
         #     info_str: str = f'{info["card"] or info["nickname"]} ({info["qqid"]})'
         # else:
         #     info_str = '非本群的成员'
-        result.append(f'{i+1}. {alias}  # 由{info["card"] or info["nickname"]} ({info["qqid"]}) 于{strftime(info["time"])}设置')
+        result.append(f'{i+1}. {alias}  # 由{info.card or info.nickname} ({info.qqid}) 于{strftime(info.time)}设置')
     await query_alias.finish('\n'.join(result))
 
 

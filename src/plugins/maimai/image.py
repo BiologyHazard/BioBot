@@ -1,5 +1,4 @@
 from nonebot import logger
-from functools import lru_cache
 import random
 import math
 from io import BytesIO
@@ -134,7 +133,6 @@ async def get_music_cover(music_id: str) -> BytesIO:
         return BytesIO(await fp.read())
 
 
-@lru_cache
 def background_image(width: float, height: float, side_pixels: float, alpha: float = 1) -> Image.Image:
     image: Image.Image = (
         Image.open(plugin_config.pic_path / 'BioBot/background.png')
