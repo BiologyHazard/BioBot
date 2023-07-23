@@ -16,7 +16,7 @@
 
 1. 安装enchant
 
-    `yum install enchant`
+    `$ yum install enchant`
 
 1. 下载meme资源
 
