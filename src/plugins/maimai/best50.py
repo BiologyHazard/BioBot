@@ -9,8 +9,8 @@ from PIL import Image, ImageDraw, ImageFont
 from .api_data import get_player_data
 from .config import plugin_config
 from .consts import combo_rank, score_rank, sync_rank
-from .image import get_music_cover, get_user_logo, image_to_bytesio
-from .music import Mai
+from .image import get_user_logo, image_to_bytesio
+from .music import Mai, get_music_cover
 
 
 class DrawText:

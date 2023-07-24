@@ -18,7 +18,7 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
-from .achievement_pic import generate_achievement_pic
+from .achievement_pic import generate_achievement_pic, generate_inner_level_pic
 from .api_data import get_player_data, get_rating_ranking_data
 from .best50 import generate_b50
 from .config import plugin_config
@@ -42,8 +42,8 @@ default_command_start: str = tuple(driver.config.command_start)[0]
 # 【如何阅读本帮助】
 # · "|" 表示“或”
 # · 尖括号"<>" 表示需要一个参数
-# · 方括号"[]" 表示“可选”
-# · "(A|B)" 表示“A或B”
+# · 方括号"[]" 表示可选
+# · "(A|B)" 表示"A"或"B"
 help_str: str = f'''
 欢迎使用 BioBot 的 maimai插件！
 本插件魔改自 Diving-Fish/mai-bot 和 Yuri-YuzuChaN/maimaiDX
@@ -71,7 +71,7 @@ maimai插件可用命令如下：
 · {default_command_start}rating排名 [<@某人|qq号|水鱼网用户名>]\t# 查询rating排名
 
 【查询乐曲】
-# TODO: · <等级>定数表\t# 查询定数表
+· <等级>定数表\t# 查询定数表
 · [绿|黄|红|紫|白]id<乐曲id>\t# 通过id查询乐曲或谱面
 · {default_command_start}查歌 <乐曲标题的一部分>\t# 通过标题查询乐曲
 · <乐曲别名>是什么歌\t# 通过别名查询乐曲
@@ -91,7 +91,8 @@ maimai插件可用命令如下：
 · {default_command_start}分数线 (绿|黄|红|紫|白)<乐曲id> <分数线>\t# 详情请输入“分数线 帮助”查看
 
 【猜歌游戏】
-· {default_command_start}猜歌\t# 开始猜歌
+· {default_command_start}猜歌\t# 开始猜歌，只会从最热门的128首乐曲中随机
+· {default_command_start}猜歌不限热门\t# 开始猜歌，会从所有乐曲中随机
 
 【隐私设置】
 · {default_command_start}(同意|允许|禁止|拒绝|不允许)其他人查询我的成绩
@@ -143,7 +144,10 @@ def is_now_playing_guess_music(bot: Bot, event: MessageEvent) -> bool:
 
 maimai_command_group = MatcherGroup(priority=3, block=False)
 # 插件帮助
-help = maimai_command_group.on_command('help maimai', rule=no_command_arg)
+help = maimai_command_group.on_command(
+    'help maimai',
+    aliases={'help mai', 'maimai help', 'mai help', '帮助maimai', '帮助mai', 'maimai帮助', 'mai帮助'},
+    rule=no_command_arg)
 # 随机乐曲
 today_maimai = maimai_command_group.on_command(
     '今日舞萌', aliases={'今日mai', 'jrwm', '今日乌蒙'}, rule=no_command_arg & not_anonymous)
@@ -168,6 +172,7 @@ music_score = maimai_command_group.on_command(
 rating_ranking = maimai_command_group.on_command(
     'rating排名', aliases={'我的排名', '我有多菜'}, rule=not_anonymous)
 # 查询乐曲
+inner_level_pic = maimai_command_group.on_regex(r'^(\d{1,2}\+?)定数表')
 query_chart = maimai_command_group.on_regex(r'^(绿|黄|红|紫|白)?\s*id\s*(\d+)')
 search_music_by_title = maimai_command_group.on_command('查歌')
 search_music_by_alias = maimai_command_group.on_regex(r'(.*)(?:是什么歌|是啥歌)')
@@ -185,7 +190,7 @@ query_alias = maimai_command_group.on_command('查询别名', rule=not_anonymous
 # 推分助手
 score_line = maimai_command_group.on_command('分数线')
 # 猜歌游戏
-guess_music_start = maimai_command_group.on_command('猜歌', rule=no_command_arg)
+guess_music_start = maimai_command_group.on_command('猜歌')
 guess_music_solve = maimai_command_group.on_message(rule=is_now_playing_guess_music)
 # 隐私设置
 set_privacy = maimai_command_group.on_keyword(
@@ -525,8 +530,16 @@ async def rating_ranking_func(bot: Bot, event: MessageEvent, message: Message = 
                                 f'第一四分位数为{ranking_data[round((count - 1) * 3/4)]["ra"]}\n'
                                 f'中位数为{ranking_data[round(count / 2)]["ra"]}\n'
                                 f'第三四分位数为{ranking_data[round((count - 1) / 4)]["ra"]}',
-                                at_sender=True
+                                at_sender=True,
                                 )
+
+
+@inner_level_pic.handle()
+async def inner_level_pic_func(group: tuple[str] = RegexGroup()) -> None:
+    (level,) = group
+    if level not in LEVELS:
+        await inner_level_pic.finish(f'不存在等级为{level}的乐曲。', reply_message=True)
+    await inner_level_pic.finish(MessageSegment.image(image_to_bytesio(await generate_inner_level_pic(level))))
 
 
 @query_chart.handle()
@@ -867,13 +880,19 @@ async def score_line_func(message: Message = CommandArg()):
 
 
 @guess_music_start.handle()
-async def guess_music_start_func(bot: Bot, event: MessageEvent) -> None:
+async def guess_music_start_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
     if is_now_playing_guess_music(bot, event):
         await guess_music_start.finish('该群已有正在进行的猜歌', reply_message=True)
-    guess = Guess()
+    if '不限热门' in message.extract_plain_text():
+        hot: bool = False
+        text0: str = '所有'
+    else:
+        hot = True
+        text0 = '热门'
+    guess = Guess(hot=hot)
     guesses[get_event_id(bot, event)] = guess
     await guess_music_start.send(
-        '我将从热门乐曲中选择一首乐曲，每隔8秒描述它的特征\n'
+        f'我将从{text0}乐曲中选择一首乐曲，每隔8秒描述它的特征\n'
         '请输入乐曲的 id 或 标题 或 别名（不区分大小写）进行猜歌\n'
         'DX乐谱和标准乐谱视为两首乐曲\n'
         '猜歌时查歌等其他命令依然可用'
@@ -906,7 +925,8 @@ async def guess_music_loop(bot: Bot, event: MessageEvent, guess: Guess) -> None:
         return
 
     if guess.round < guess.rounds:
-        await guess_music_start.send(await guess.give_hint())
+        for message in await guess.give_hint():
+            await guess_music_start.send(message)
     if guess.round == guess.rounds:
         await give_answer(bot, event, guess)
     else:

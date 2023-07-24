@@ -1,14 +1,11 @@
-from nonebot import logger
-import random
 import math
+import random
 from io import BytesIO
 
 import aiohttp
-import aiofiles
 from PIL import Image, ImageDraw, ImageFont
-from .config import plugin_config
-from pathlib import Path
 
+from .config import plugin_config
 
 # def image_resize_by(image: Image.Image, size: float) -> Image.Image:
 #     return image.resize((round(image.width * size), round(image.height * size)))
@@ -102,35 +99,6 @@ async def get_user_logo(qq: int) -> Image.Image:
     async with aiohttp.request('GET', f'http://q1.qlogo.cn/g?b=qq&nk={qq}&s=640') as response:
         response.raise_for_status()
         return Image.open(BytesIO(await response.read()))
-
-
-def get_cover_filename(music_id: str) -> str:
-    num = int(music_id)
-    if 10000 < num <= 11000:
-        num -= 10000
-    return f'{num:05d}.png'
-
-
-async def get_music_cover(music_id: str) -> BytesIO:
-    '''获取封面'''
-    filename = get_cover_filename(music_id)
-    cover_path: Path = plugin_config.cover_path / filename
-    if cover_path.is_file():
-        async with aiofiles.open(cover_path, 'rb') as fp:
-            # 从本地图片读取
-            return BytesIO(await fp.read())
-
-    async with aiohttp.request('GET', f'https://www.diving-fish.com/covers/{filename}') as response:
-        if response.status == 200:
-            cover_bytes: bytes = await response.read()
-            async with aiofiles.open(cover_path, 'wb') as fp:
-                await fp.write(cover_bytes)
-            # 从水鱼网下载
-            return BytesIO(cover_bytes)
-
-    async with aiofiles.open(plugin_config.cover_path / '00000.png', 'rb') as fp:
-        # 返回'00000.png'
-        return BytesIO(await fp.read())
 
 
 def background_image(width: float, height: float, side_pixels: float, alpha: float = 1) -> Image.Image:

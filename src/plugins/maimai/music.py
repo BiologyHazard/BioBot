@@ -1,22 +1,24 @@
-import math
 import asyncio
 import copy
-from io import BytesIO
 import json
-import time
+import math
 import random
+import time
+from bisect import bisect_right
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import lru_cache
+from io import BytesIO
+from pathlib import Path
 from typing import Any, Literal, Self, Sequence, overload
-from bisect import bisect_right
 
 import aiofiles
 import aiohttp
 from nonebot import logger
 
 from .config import plugin_config
-from .consts import LEVELS, PLATE_TO_VERSION, VERSION_TO_PLATE, achievementList, BaseRaSpp
-from .image import get_music_cover
+from .consts import (LEVELS, PLATE_TO_VERSION, VERSION_TO_PLATE, BaseRaSpp,
+                     achievementList)
 
 
 def compute_rating(ds: float, achievement: float) -> int:
@@ -110,6 +112,44 @@ class AliasInfo:
         )
 
 
+def get_cover_filename(music_id: str) -> str:
+    num = int(music_id)
+    if 10000 < num <= 11000:
+        num -= 10000
+    return f'{num:05d}.png'
+
+
+@lru_cache
+async def get_music_cover(music_id: str) -> BytesIO:
+    '''获取封面'''
+    filename = get_cover_filename(music_id)
+    cover_path: Path = plugin_config.cover_path / filename
+    if cover_path.is_file():
+        async with aiofiles.open(cover_path, 'rb') as fp:
+            # 从本地图片读取
+            return BytesIO(await fp.read())
+
+    async with aiohttp.request('GET', f'https://www.diving-fish.com/covers/{filename}') as response:
+        if response.status == 200:
+            cover_bytes: bytes = await response.read()
+            async with aiofiles.open(cover_path, 'wb') as fp:
+                await fp.write(cover_bytes)
+            # 从水鱼网下载
+            return BytesIO(cover_bytes)
+
+    async with aiofiles.open(plugin_config.cover_path / '00000.png', 'rb') as fp:
+        # 返回'00000.png'
+        return BytesIO(await fp.read())
+
+
+@lru_cache
+async def get_music_audio(music_id: str) -> BytesIO | None:
+    if music_id not in Mai.audio_path:
+        return None
+    async with aiofiles.open(plugin_config.chart_path / Mai.audio_path[music_id], 'rb') as fp:
+        return BytesIO(await fp.read())
+
+
 @dataclass
 class Music:
     id: str
@@ -153,6 +193,9 @@ class Music:
 
     async def get_cover(self) -> BytesIO:
         return await get_music_cover(self.id)
+
+    async def get_audio(self) -> BytesIO | None:
+        return await get_music_audio(self.id)
 
 
 def _cross(checker: list[Any], elem: Any | tuple[Any, Any] | list[Any] | None, diff: list[int]) -> tuple[bool, list[int]]:
@@ -507,6 +550,12 @@ class Mai:
                 dist=level_diff_data['dist'],
                 fc_dist=level_diff_data['fc_dist'],
             )
+
+        if (plugin_config.data_path / 'audio_path.json').is_file():
+            async with aiofiles.open(plugin_config.data_path / 'audio_path.json', 'r', encoding='utf-8') as fp:
+                cls.audio_path: dict[str, str] = json.loads(await fp.read())
+        else:
+            cls.audio_path = {}
 
     @classmethod
     async def get_aliases(cls) -> None:
