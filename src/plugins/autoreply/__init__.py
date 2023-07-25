@@ -10,9 +10,10 @@
 '''
 
 
-from nonebot import MatcherGroup, get_driver, on_message
+from .image import text_to_image, image_to_bytesio
+from nonebot import MatcherGroup, get_driver, on_message, logger
 from nonebot.adapters.onebot.v11 import (GROUP_ADMIN, GROUP_OWNER, Bot, MessageEvent,
-                                         GroupMessageEvent, Message)
+                                         GroupMessageEvent, Message, MessageSegment)
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
 from nonebot.params import (CommandArg, CommandStart, EventMessage, EventToMe)
@@ -51,7 +52,6 @@ forget_no_permission_text: str = f'管理员添加的自动回复只能由管理
 
 forget_all_no_permission_text: str = '只有管理员才能删除全部回复语！'
 
-query_failed_text: str = f'不存在该触发词！'
 query_no_permission_text: str = f'只有管理员可以查询回复语！'
 
 
@@ -65,10 +65,11 @@ async def should_reply(event: GroupMessageEvent, message: Message = EventMessage
     return await autoreply.get_reply(event.group_id, str(message)) is not None
 
 
-autoreply_command_group = MatcherGroup(rule=with_command_start_or_to_me, block=False, priority=5)
+# autoreply_command_group = MatcherGroup(rule=with_command_start_or_to_me, block=False, priority=5)
+autoreply_command_group = MatcherGroup(block=False, priority=5)
 learn: type[Matcher] = autoreply_command_group.on_command('学习')
-forget: type[Matcher] = autoreply_command_group.on_command('忘记', {'删除'})
-forget_all: type[Matcher] = autoreply_command_group.on_command('忘记全部')
+forget: type[Matcher] = autoreply_command_group.on_command('忘记', aliases={'删除'})
+forget_all: type[Matcher] = autoreply_command_group.on_command('忘记全部', aliases={'删除全部'})
 query: type[Matcher] = autoreply_command_group.on_command('查询')
 query_all: type[Matcher] = autoreply_command_group.on_command('查询全部')
 reply: type[Matcher] = on_message(rule=should_reply, block=False, priority=15)
@@ -80,6 +81,7 @@ driver: Driver = get_driver()
 @driver.on_bot_connect
 async def on_bot_connect_func(bot: Bot) -> None:
     '''bot连接成功时运行，获取群自动回复列表'''
+    logger.info('正在获取自动回复列表...')
     group_list: list[dict] = await bot.get_group_list()
     for group_dict in group_list:
         await autoreply.load_from_file(group_dict['group_id'])
@@ -168,11 +170,12 @@ async def query_func(bot: Bot, event: MessageEvent, message: Message = CommandAr
     if not await (GROUP_OWNER | GROUP_ADMIN | SUPERUSER)(bot, event):
         await query.finish(query_no_permission_text, at_sender=True)
 
-    query_result: str | None = await autoreply.query_reply(event.group_id, str(message))
-    if query_result is None:
-        await query.finish(query_failed_text, at_sender=True)
+    query_result: str = await autoreply.query_reply(event.group_id, str(message))
 
-    await query.finish(Message(query_result), at_sender=True)
+    if len(query_result) < 256:
+        await query.finish(Message(query_result), at_sender=True)
+    else:
+        await query.finish(MessageSegment.image(image_to_bytesio(text_to_image(query_result))))
 
 
 @query_all.handle()
@@ -183,7 +186,12 @@ async def query_all_func(bot: Bot, event: MessageEvent) -> None:
     if not await (GROUP_OWNER | GROUP_ADMIN | SUPERUSER)(bot, event):
         await query.finish(query_no_permission_text, at_sender=True)
 
-    await query_all.finish(Message(await autoreply.query_all_reply(event.group_id)), at_sender=True)
+    query_result: str = await autoreply.query_all_reply(event.group_id)
+
+    if len(query_result) < 256:
+        await query.finish(Message(query_result), at_sender=True)
+    else:
+        await query.finish(MessageSegment.image(image_to_bytesio(text_to_image(query_result))))
 
 
 @reply.handle()

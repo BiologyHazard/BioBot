@@ -1,5 +1,4 @@
 import json
-import os
 import random
 import time
 from collections import defaultdict
@@ -7,17 +6,17 @@ from enum import Enum
 
 import aiofiles
 from nonebot import logger
-from nonebot.adapters.onebot.v11 import Message
+from nonebot.adapters.onebot.v11 import Message, MessageSegment
 from nonebot.adapters.onebot.v11.event import Sender
 
-from . import config
+from .config import plugin_config
+from pathlib import Path
 
 sender_dict_T = dict[str, int | str | None]
 reply_dict_T = dict[str, sender_dict_T]
 group_dict_T = defaultdict[str, reply_dict_T]
 main_dict_T = defaultdict[int, group_dict_T]
 
-data_path: str = config.data_path
 
 main_dict: main_dict_T = defaultdict(lambda: defaultdict(dict))
 
@@ -63,17 +62,14 @@ async def load_from_file(group_id: int) -> None:
     if group_id in main_dict:
         return
 
-    if not os.path.exists(data_path):
-        os.makedirs(data_path)
-
-    file_path: str = os.path.join(data_path, f'{group_id}.json')
-    if os.path.exists(file_path):
+    file_path: Path = plugin_config.data_path / f'{group_id}.json'
+    if file_path.is_file():
         async with aiofiles.open(file_path, 'r', encoding='utf-8') as fp:
             main_dict[group_id] = defaultdict(dict, json.loads(await fp.read()))
 
 
 async def _save_to_file(group_id: int) -> None:
-    file_path: str = os.path.join(data_path, f'{group_id}.json')
+    file_path: Path = plugin_config.data_path / f'{group_id}.json'
     async with aiofiles.open(file_path, 'w', encoding='utf-8') as file:
         await file.write(json.dumps(main_dict[group_id], ensure_ascii=False))
 
@@ -134,11 +130,11 @@ async def forget_all_autoreply(group_id: int, raw_trigger_message: str) -> tuple
     return (ResultCode.FORGET_SUCCESS, num)
 
 
-async def query_reply(group_id: int, raw_message: str) -> (str | None):
+async def query_reply(group_id: int, raw_message: str) -> str:
     await load_from_file(group_id)
     message: str = _str_msg_proprecess(raw_message)
     if message not in main_dict[group_id]:
-        return None
+        return '不存在该触发词！'
 
     num: int = len(main_dict[group_id][message])
     reply_list: list[str] = [f'{message}的回复语（共{num}条）：']
@@ -152,13 +148,12 @@ async def query_all_reply(group_id: int) -> str:
     await load_from_file(group_id)
     if not main_dict[group_id]:
         return '本群未设置自动回复！'
-    else:
-        return (f'本群的全部回复语（共{len(main_dict[group_id])}条）\n'
-                + '\n'.join(f'{i+1}. {trigger_message}  # 共{len(main_dict[group_id][trigger_message])}条'
-                            for i, trigger_message in enumerate(main_dict[group_id])))
+    return (f'本群的全部回复语（共{len(main_dict[group_id])}条）\n'
+            + '\n'.join(f'{i+1}. {trigger_message}  # 共{len(main_dict[group_id][trigger_message])}条'
+                        for i, trigger_message in enumerate(main_dict[group_id])))
 
 
-async def get_reply(group_id: int, raw_message: str) -> (str | None):
+async def get_reply(group_id: int, raw_message: str) -> str | None:
     await load_from_file(group_id)
     message: str = _str_msg_proprecess(raw_message)
     if message not in main_dict[group_id]:
