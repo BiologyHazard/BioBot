@@ -3,11 +3,6 @@ from pathlib import Path
 from nonebot import get_driver
 from pydantic import BaseModel, DirectoryPath, PositiveInt, FilePath
 
-# data_path = Path('data/maimai')
-# cover_path = data_path / 'mai/cover'
-# pic_path = data_path / 'mai/pic'
-# SONGS_PER_PAGE: int = 25
-
 
 class Config(BaseModel):
     data_path: DirectoryPath = Path('data/maimai')
@@ -15,10 +10,9 @@ class Config(BaseModel):
     cover_path: DirectoryPath = data_path / 'mai/cover'
     pic_path: DirectoryPath = data_path / 'mai/pic'
     chart_path: DirectoryPath = data_path / 'charts'
-    font_path: DirectoryPath = data_path / 'fonts'
-    text_font_path: FilePath = data_path / 'fonts/SourceHanSans.otf'
+    font_path: DirectoryPath = Path('data/fonts')
+    text_font_path: FilePath = font_path / 'SourceHanSans.otf'
     songs_per_page: PositiveInt = 25
-    # max_show_count: PositiveInt = 192
 
 
 plugin_config: Config = Config.parse_obj(get_driver().config)

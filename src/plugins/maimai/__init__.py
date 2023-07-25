@@ -190,7 +190,8 @@ query_alias = maimai_command_group.on_command('查询别名', rule=not_anonymous
 # query_alias = maimai_command_group.on_regex(r'(.*)有什么别名')
 # 推分助手
 score_line = maimai_command_group.on_command('分数线')
-calc_rating = maimai_command_group.on_command('单曲rating', aliases={'calcrating', 'rating', '计算rating'})
+calc_rating = maimai_command_group.on_command(
+    '单曲rating', aliases={'calcrating', 'rating', '计算rating', 'rating计算', '能吃几分'})
 # 猜歌游戏
 guess_music_start = maimai_command_group.on_command('猜歌')
 guess_music_solve = maimai_command_group.on_message(rule=is_now_playing_guess_music)
