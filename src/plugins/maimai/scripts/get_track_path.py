@@ -26,5 +26,5 @@ id_to_path['91'] = 'maimai/131_LINK1/track.mp3'
 id_to_path['253'] = 'niconicoボーカロイド/383_LINK2/track.mp3'
 print(id_to_path)
 
-audio_path_path = Path('data/maimai/audio_path.json')
-audio_path_path.write_text(json.dumps(id_to_path, ensure_ascii=False, indent=4))
+track_path_path = Path('data/maimai/track_path.json')
+track_path_path.write_text(json.dumps(id_to_path, ensure_ascii=False, indent=4))

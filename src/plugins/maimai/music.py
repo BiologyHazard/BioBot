@@ -7,7 +7,6 @@ import time
 from bisect import bisect_right
 from collections import defaultdict
 from dataclasses import dataclass, field
-from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Literal, Self, Sequence, overload
@@ -21,7 +20,7 @@ from .consts import (LEVELS, PLATE_TO_VERSION, VERSION_TO_PLATE, BaseRaSpp,
                      achievementList)
 
 
-def compute_rating(ds: float, achievement: float) -> int:
+def calc_rating(ds: float, achievement: float) -> int:
     return math.floor(ds * min(achievement, 100.5000) * BaseRaSpp[bisect_right(achievementList, achievement)] / 100)
 
 
@@ -49,18 +48,18 @@ class ChartStats:
             fc_dist=[int(x) for x in obj['fc_dist']],
         )
 
-    @classmethod
-    def empty(cls) -> Self:
-        return cls(
-            count=0,
-            diff='0',
-            fit_diff=0,
-            avg_achievement=0,
-            avg_dx_score=0,
-            std_dev=0,
-            dist=[],
-            fc_dist=[],
-        )
+    # @classmethod
+    # def empty(cls) -> Self:
+    #     return cls(
+    #         count=0,
+    #         diff='0',
+    #         fit_diff=0,
+    #         avg_achievement=0,
+    #         avg_dx_score=0,
+    #         std_dev=0,
+    #         dist=[],
+    #         fc_dist=[],
+    #     )
 
 
 @dataclass
@@ -119,34 +118,36 @@ def get_cover_filename(music_id: str) -> str:
     return f'{num:05d}.png'
 
 
-@lru_cache
 async def get_music_cover(music_id: str) -> BytesIO:
     '''获取封面'''
     filename = get_cover_filename(music_id)
     cover_path: Path = plugin_config.cover_path / filename
-    if cover_path.is_file():
-        async with aiofiles.open(cover_path, 'rb') as fp:
-            # 从本地图片读取
-            return BytesIO(await fp.read())
+    try:
+        if cover_path.is_file():
+            async with aiofiles.open(cover_path, 'rb') as fp:
+                # 从本地图片读取
+                return BytesIO(await fp.read())
 
-    async with aiohttp.request('GET', f'https://www.diving-fish.com/covers/{filename}') as response:
-        if response.status == 200:
+        async with aiohttp.request('GET', f'https://www.diving-fish.com/covers/{filename}') as response:
+            response.raise_for_status()
             cover_bytes: bytes = await response.read()
             async with aiofiles.open(cover_path, 'wb') as fp:
                 await fp.write(cover_bytes)
             # 从水鱼网下载
             return BytesIO(cover_bytes)
 
-    async with aiofiles.open(plugin_config.cover_path / '00000.png', 'rb') as fp:
-        # 返回'00000.png'
-        return BytesIO(await fp.read())
+    except Exception:
+        async with aiofiles.open(plugin_config.cover_path / '00000.png', 'rb') as fp:
+            # 返回'00000.png'
+            return BytesIO(await fp.read())
 
 
-@lru_cache
-async def get_music_audio(music_id: str) -> BytesIO | None:
-    if music_id not in Mai.audio_path:
-        return None
-    async with aiofiles.open(plugin_config.chart_path / Mai.audio_path[music_id], 'rb') as fp:
+async def get_music_track(music_id: str) -> BytesIO:
+    if music_id in Mai.track_path:
+        path = plugin_config.chart_path / Mai.track_path[music_id]
+    else:
+        path = plugin_config.chart_path / 'audio_resources_not_found.mp3'
+    async with aiofiles.open(path, 'rb') as fp:
         return BytesIO(await fp.read())
 
 
@@ -194,8 +195,8 @@ class Music:
     async def get_cover(self) -> BytesIO:
         return await get_music_cover(self.id)
 
-    async def get_audio(self) -> BytesIO | None:
-        return await get_music_audio(self.id)
+    async def get_track(self) -> BytesIO:
+        return await get_music_track(self.id)
 
 
 def _cross(checker: list[Any], elem: Any | tuple[Any, Any] | list[Any] | None, diff: list[int]) -> tuple[bool, list[int]]:
@@ -448,6 +449,16 @@ class MusicList(list[Music]):
     def min_ds(self) -> float:
         return min(min(music.ds) for music in self)
 
+    def get_other_type(self, music: Music) -> Music | None:
+        possible_musics: list[Music] = [
+            x for x in self
+            if music.title == x.title and music.artist == x.artist and music.genre == x.genre
+            and music.id != x.id and music.type != x.type
+        ]
+        if len(possible_musics) == 1:
+            return possible_musics[0]
+        return None
+
 
 @dataclass
 class LevelStats:
@@ -519,7 +530,8 @@ class Mai:
 
         cls.hot_music_list = MusicList(
             sorted(cls.music_list,
-                   key=lambda music: sum(chart.stats.count if hasattr(chart, 'stats') else 0 for chart in music.charts),
+                   key=lambda music: sum(chart.stats.count if hasattr(chart, 'stats') else 0
+                                         for chart in music.charts[2:]),
                    reverse=True)[:128]
         )
 
@@ -551,11 +563,11 @@ class Mai:
                 fc_dist=level_diff_data['fc_dist'],
             )
 
-        if (plugin_config.data_path / 'audio_path.json').is_file():
-            async with aiofiles.open(plugin_config.data_path / 'audio_path.json', 'r', encoding='utf-8') as fp:
-                cls.audio_path: dict[str, str] = json.loads(await fp.read())
+        if (plugin_config.data_path / 'track_path.json').is_file():
+            async with aiofiles.open(plugin_config.data_path / 'track_path.json', 'r', encoding='utf-8') as fp:
+                cls.track_path: dict[str, str] = json.loads(await fp.read())
         else:
-            cls.audio_path = {}
+            cls.track_path = {}
 
     @classmethod
     async def get_aliases(cls) -> None:

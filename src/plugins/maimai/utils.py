@@ -20,5 +20,5 @@ def random_audio_clip(file, format='mp3', duration: float = 1.0) -> BytesIO:
     length: float = audio_file.frame_count() / audio_file.frame_rate  # type: ignore
     start: float = random.random() * (length - duration)
     bytesio = BytesIO()
-    audio_file[start * 1000: (start + duration) * 1000].export(bytesio, format)  # type: ignore
+    audio_file[max(start * 1000, 0): (start + duration) * 1000].export(bytesio, format)  # type: ignore
     return bytesio
