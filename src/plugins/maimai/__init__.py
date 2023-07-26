@@ -859,8 +859,11 @@ async def query_alias_func(message: Message = CommandArg()) -> None:
         #     info_str: str = f'{info["card"] or info["nickname"]} ({info["qqid"]})'
         # else:
         #     info_str = '非本群的成员'
-        result.append(f'{i+1}. {alias}  # 由{info.card or info.nickname} ({info.qqid}) 于{strftime(info.time)}设置')
-    await query_alias.finish('\n'.join(result))
+        result.append(f'{i+1}. {alias}  # 由{info.nickname or info.card} ({info.qqid}) 于{strftime(info.time)}设置')
+    if len('\n'.join(result)) < 512:
+        await query_alias.finish('\n'.join(result))
+    else:
+        await query_alias.finish(MessageSegment.image(image_to_bytesio(text_to_image('\n'.join(result)))))
 
 
 @score_line.handle()
