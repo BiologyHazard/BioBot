@@ -95,8 +95,8 @@ maimai插件可用命令如下：
 
 
 【猜歌游戏】
-· {default_command_start}猜歌\t# 开始猜歌，只会从最热门的128首乐曲中随机
-· {default_command_start}猜歌不限热门\t# 开始猜歌，会从所有乐曲中随机
+· {default_command_start}猜歌\t# 开始猜歌，只猜热门乐曲
+· {default_command_start}猜歌不限热门\t# 开始猜歌，所有乐曲随机
 
 【隐私设置】
 · {default_command_start}(同意|允许|禁止|拒绝|不允许)其他人查询我的成绩
