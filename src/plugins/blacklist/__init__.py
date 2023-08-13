@@ -13,6 +13,28 @@ from nonebot.log import logger
 from nonebot.message import event_preprocessor
 from nonebot.params import ArgStr, CommandArg
 from nonebot.permission import SUPERUSER
+from nonebot.plugin import PluginMetadata
+
+__plugin_meta__ = PluginMetadata(
+    name='blacklist',
+    description='拉黑/解禁用户/群',
+    usage='''
+拉黑用户/屏蔽用户
+拉黑群/屏蔽群
+解禁用户/解封用户
+解禁群/解封群
+查看用户黑名单
+查看群聊黑名单
+静默
+响应
+拉黑所有群/屏蔽所有群
+解禁所有群/解封所有群
+拉黑所有好友/屏蔽所有好友
+解禁所有好友/解封所有好友
+重置黑名单/清空黑名单
+自觉静默
+'''.strip()
+)
 
 superusers: set[str] = get_driver().config.superusers
 
