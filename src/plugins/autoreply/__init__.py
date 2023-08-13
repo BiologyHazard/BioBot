@@ -10,19 +10,20 @@
 '''
 
 
-from .image import text_to_image, image_to_bytesio
-from nonebot import MatcherGroup, get_driver, on_message, logger
-from nonebot.adapters.onebot.v11 import (GROUP_ADMIN, GROUP_OWNER, Bot, MessageEvent,
-                                         GroupMessageEvent, Message, MessageSegment)
+from nonebot import MatcherGroup, get_driver, logger, on_message
+from nonebot.adapters.onebot.v11 import (GROUP_ADMIN, GROUP_OWNER, Bot,
+                                         GroupMessageEvent, Message,
+                                         MessageEvent, MessageSegment)
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
-from nonebot.params import (CommandArg, CommandStart, EventMessage, EventToMe)
+from nonebot.params import CommandArg, CommandStart, EventMessage, EventToMe
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
 from . import autoreply
 from .autoreply import ResultCode
+from .image import image_to_bytesio, text_to_image
 
 __plugin_meta__: PluginMetadata = PluginMetadata(
     name='自动回复',
