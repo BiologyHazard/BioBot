@@ -113,8 +113,10 @@ class AliasInfo:
 
 def get_cover_filename(music_id: str) -> str:
     num = int(music_id)
-    if 10000 < num <= 11000:
-        num -= 10000
+    # if 10000 < num <= 11000:
+    #     num -= 10000
+    if num == 1027:  # Halycon SD
+        num = 11027
     return f'{num:05d}.png'
 
 
