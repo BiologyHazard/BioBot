@@ -70,7 +70,7 @@ def text_to_image(text: str,
                            + row_spacing * font_size * (len(lines) - 1)
                            + border * font_size * 2)
     # image: PILImage = Image.new('RGB', (round(image_width), round(image_height)), color='white')
-    image: Image.Image = background_image(image_width, image_height, font_size * 4, 0.5).copy()
+    image: Image.Image = background_image(image_width, image_height, font_size * 4, 0.5)
     draw: ImageDraw.ImageDraw = ImageDraw.Draw(image)
 
     y: float = border * font_size
@@ -95,7 +95,7 @@ def image_to_bytesio(img: Image.Image, format='PNG') -> BytesIO:
     return bytesio
 
 
-async def get_user_logo(qq: int) -> Image.Image:
+async def get_user_avatar(qq: int) -> Image.Image:
     async with aiohttp.request('GET', f'http://q1.qlogo.cn/g?b=qq&nk={qq}&s=640') as response:
         response.raise_for_status()
         return Image.open(BytesIO(await response.read()))

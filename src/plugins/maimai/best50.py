@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 from .api_data import get_player_data
 from .config import plugin_config
 from .consts import combo_rank, score_rank, sync_rank
-from .image import get_user_logo, image_to_bytesio
+from .image import get_user_avatar, image_to_bytesio
 from .music import Mai, get_music_cover
 
 
@@ -227,7 +227,7 @@ class DrawBest:
         icon = Image.open(plugin_config.pic_path / 'UI_Icon_0000.png').resize((214, 214))
         self._im.alpha_composite(icon, (398, 108))
         if self.qqid:
-            qqLogo = await get_user_logo(self.qqid)
+            qqLogo = await get_user_avatar(self.qqid)
             self._im.alpha_composite(Image.new('RGBA', (203, 203), (255, 255, 255, 255)), (404, 114))
             self._im.alpha_composite(qqLogo.convert('RGBA').resize((201, 201)), (405, 115))
         self._im.alpha_composite(dx_rating, (620, 108))

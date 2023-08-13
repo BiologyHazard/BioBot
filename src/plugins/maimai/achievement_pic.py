@@ -1,6 +1,5 @@
 import math
 from bisect import bisect_left, bisect_right
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -268,7 +267,6 @@ async def generate_achievement_pic(
     return MessageSegment.image(image_to_bytesio(image))
 
 
-@lru_cache
 async def generate_inner_level_pic(level: str) -> Image.Image:
     cover_pixels: float = 96.0
     num_per_line: int = 12

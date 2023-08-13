@@ -950,8 +950,9 @@ async def guess_music_solve_func(bot: Bot, event: MessageEvent, message: str = E
     def guess_correct(message: str, matched_musics: Sequence[Music], answer: Music) -> bool:
         return (answer.id == message
                 or (len(matched_musics) == 1 and answer.id == matched_musics[0].id)
-                or (len(matched_musics) == 2 and answer.id in (matched_musics[0].id, matched_musics[1].id))
-                and is_two_type_of_the_same_music(matched_musics[0], matched_musics[1]))
+                or (len(matched_musics) == 2
+                    and answer.id in (matched_musics[0].id, matched_musics[1].id)
+                    and is_two_type_of_the_same_music(*matched_musics)))
 
     message = message.strip()
     guess: Guess = guesses[get_event_id(bot, event)]
