@@ -927,6 +927,8 @@ async def guess_music_start_func(bot: Bot, event: MessageEvent, message: Message
     if '不限热门' in message.extract_plain_text():
         hot: bool = False
         text0: str = '所有'
+    elif message.extract_plain_text():
+        return
     else:
         hot = True
         text0 = '热门'
