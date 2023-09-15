@@ -126,7 +126,7 @@ async def generate_achievement_pic(
         elif goal_han == '神':
             combo = 'AP'
         elif goal_han in '舞舞':
-            sync = 'FSD+'
+            sync = 'FSD'
         elif goal_han == '者':
             achievement = 'A'
 
