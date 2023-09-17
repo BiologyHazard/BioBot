@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BioBot森空岛自动签到插件</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        header {
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 20px 0;
+            font-size: x-large;
+            font-weight: bold;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        h1 {
+            font-size: 24px;
+        }
+
+        h2 {
+            font-size: 20px;
+        }
+
+        p {
+            font-size: 16px;
+        }
+
+        a {
+            color: #0077b6;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+            color: #3d9ceb;
+        }
+
+        code.block {
+            display: block;
+            padding: 10px;
+        }
+
+        code {
+            background-color: #e3e6e8;
+            color: #0a3069;
+            font-family: "JetBrains Mono", "Consolas", "monospace";
+            padding: 2px;
+            /* padding-inline: 10px; */
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ccc;
+            margin: 10px 0;
+        }
+
+        input[type="text"] {
+            font-size: medium;
+            width: 90%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+        }
+
+        input[type="submit"] {
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #555;
+        }
+
+        footer {
+            text-align: center;
+            padding: 10px 0;
+            background-color: #333;
+            color: #fff;
+        }
+
+    </style>
+</head>
+
+<body>
+    <header>
+        BioBot森空岛自动签到插件
+    </header>
+
+    <main>
+        <section>
+            <h1>这是什么</h1>
+            <p>这是BioBot的明日方舟森空岛自动签到工具，可以在每日00:00自动签到。</p>
+        </section>
+
+        <section>
+            <h1>如何使用</h1>
+            <h2>Step 1</h2>
+            <p>
+                使用浏览器打开<a href="https://www.skland.com">森空岛</a>，并登录。<br />
+                如果使用手机操作，您需要把浏览器UA标识设置为“电脑版”。<br />
+                一般来说可以在“浏览器设置-网页浏览设置-浏览器UA标识”中找到此设置。此设置可能因浏览器不同而在不同的位置，请自行搜索修改方法。
+            </p>
+
+            <h2>Step 2</h2>
+            <p>访问<a href="https://web-api.skland.com/account/info/hg">这个网址</a>。</p>
+            <p>返回如下信息：</p>
+
+            <code class="block">{
+    "code": 0,
+    "data": {
+        "content": "1145141919810ABCDEFGHIJ"
+    },
+    "msg": "接口会返回您的鹰角网络通行证账号的登录凭证，此凭证可以用于鹰角网络账号系统校验您登录的有效性。泄露登录凭证属于极度危险操作，为了您的账号安全，请勿将此凭证以任何形式告知他人！"
+}</code>
+
+            <h2>Step 3</h2>
+            <p>把获取到的token，以及您的联系方式，填入下面的输入框中，并点击提交。<br />
+                （token是<code>"content": </code>后面的内容，不包含双引号。在上面的例子中token是<code>1145141919810ABCDEFGHIJ</code>）</p>
+
+            <form method="post" action="/">
+                <div>
+                    QQ: <input type="text" name="qq" id="qqInput" value="" />
+                </div>
+                <div>
+                    Email: <input type="text" name="email" value="" />
+                </div>
+                <div>
+                    Token: <input type="text" name="token" value="" />
+                </div>
+                <input type="submit" value="提交">
+            </form>
+        </section>
+
+        <section>
+            <h1>为什么我要填联系方式</h1>
+            <p>
+                填写邮箱是为了在签到成功或失败之后给您发送邮件提醒。<br />
+                填写QQ号是为了使您有办法停用自动签到或者删除token。<br />
+                请您务必填写真实准确的联系方式，否则您没有办法停用自动签到！
+            </p>
+        </section>
+
+        <section>
+            <h1>致谢</h1>
+            <p>
+                <code><a href="https://github.com/ProbiusOfficial/Skland_API">ProbiusOfficial/Skland_API</a></code><br />
+                <code><a href="https://github.com/GuGuMur/nonebot-plugin-skland-arksign">GuGuMur/nonebot-plugin-skland-arksign</a></code>
+            </p>
+        </section>
+    </main>
+
+    <footer>
+        BioBot
+    </footer>
+
+    <script>
+        const queryString = window.location.search;
+        const params = new URLSearchParams(queryString);
+        const qqParam = params.get("qq");
+        var qqValue = ""
+        if (qqParam) {
+            if (!isNaN(parseInt(qqParam))) {
+                qqValue = qqParam;
+            }
+            else {
+                try {
+                    qqValue = atob(qqParam);
+                }
+                catch (error) { }
+            }
+            if (qqValue) {
+                const qqInput = document.getElementById("qqInput");
+                qqInput.value = qqValue;
+            }
+        }
+    </script>
+
+</body>
+
+</html>
