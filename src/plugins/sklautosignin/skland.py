@@ -2,7 +2,7 @@ from typing import Any, Sequence
 
 from httpx import AsyncClient
 
-from .email import send_email
+from .email import send_email as _send_email
 from .manager import tokens
 
 
@@ -17,6 +17,10 @@ login_headers = {
     'User-Agent': 'Skland/1.0.1 (com.hypergryph.skland; build:100001014; Android 31; ) Okhttp/4.11.0',
     'Accept-Encoding': 'gzip',
     'Connection': 'close',
+    'vName': '1.0.1',
+    'vCode': '100001014',
+    'dId': 'de9759a5afaa634f',
+    'platform': '1',
 }
 
 
@@ -62,12 +66,7 @@ async def get_cred(grant_code: str) -> str:
 
 
 async def get_binding_list(cred: str) -> list[dict[str, Any]]:
-    headers = {
-        'cred': cred,
-        'User-Agent': 'Skland/1.0.1 (com.hypergryph.skland; build:100001014; Android 31; ) Okhttp/4.11.0',
-        'Accept-Encoding': 'gzip',
-        'Connection': 'close',
-    }
+    headers = login_headers | {'cred': cred}
     async with AsyncClient() as client:
         response = await client.get(
             'https://zonai.skland.com/api/v1/game/player/binding',
@@ -85,12 +84,7 @@ async def get_binding_list(cred: str) -> list[dict[str, Any]]:
 
 
 async def sign_in_with_cred(cred: str) -> str:
-    headers = {
-        'cred': cred,
-        'User-Agent': 'Skland/1.0.1 (com.hypergryph.skland; build:100001014; Android 31; ) Okhttp/4.11.0',
-        'Accept-Encoding': 'gzip',
-        'Connection': 'close',
-    }
+    headers = login_headers | {'cred': cred}
     binding_list = await get_binding_list(cred)
     if not binding_list:
         return '获取账号绑定角色信息失败，可能是因为该账号未绑定任何角色。'
@@ -144,8 +138,6 @@ async def sign_in_with_token(token: str) -> dict[str, Any]:
             'code': 2,
             'msg': f'森空岛自动签到出现错误：{e!r}',
         }
-
-_send_email = send_email
 
 
 async def sign_in_and_send_email(token: str,
