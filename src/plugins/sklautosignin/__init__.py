@@ -21,13 +21,13 @@ driver: Driver = get_driver()
 default_command_start: str = tuple(driver.config.command_start)[0]
 
 help_str: str = f'''
-【如何绑定token】
+【如何使用】
 方法一：点击下面链接，按照提示操作
-http://solink.myqnapcloud.cn:27854/
+http://solink.myqnapcloud.cn:27854/BioBot/plugins/sklautosignin/
 方法二：点击上面链接查看如何获取森空岛token，
 然后添加bot为好友，私聊发送“{default_command_start}绑定森空岛token <token>”
 
-【如何关闭/开启自动签到】
+【如何暂时关闭/开启自动签到】
 群聊/私聊发送“{default_command_start}关闭/开启森空岛自动签到”
 
 # 为了您的账号安全，请不要在群聊中直接发送token！

@@ -1,7 +1,4 @@
-import base64
-import datetime
 import email
-import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
@@ -18,14 +15,14 @@ name_email: NameEmail = plugin_config.skl_name_email
 email_password: str = plugin_config.skl_email_password
 
 
-def decode_email_str(s: str) -> str:
-    if s.startswith('=?') and s.endswith('?='):
-        try:
-            _, charset, encoding, encoded_str, _ = s.split('?')
-            return base64.b64decode(encoded_str).decode(charset)
-        except Exception:
-            return s
-    return s
+# def decode_email_str(s: str) -> str:
+#     if s.startswith('=?') and s.endswith('?='):
+#         try:
+#             _, charset, encoding, encoded_str, _ = s.split('?')
+#             return base64.b64decode(encoded_str).decode(charset)
+#         except Exception:
+#             return s
+#     return s
 
 
 async def read_emails():

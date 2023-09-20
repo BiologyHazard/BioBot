@@ -111,7 +111,7 @@ async def sign_in_with_cred(cred: str) -> str:
         if obj['code'] == 0:
             for award in obj['data']['awards']:
                 award_name: str = award['resource']['name']
-                award_count: int = award['resource']['count'] if 'count' in award['resource'] else 1
+                award_count: int = award['count'] if 'count' in award else 1
                 result.append(f'{channel_name}账号 Dr. {nickname} ({uid}) 签到成功！获得奖励{award_name} × {award_count}。')
         elif obj['code'] == 10001:
             result.append(f'{channel_name}账号 Dr. {nickname} ({uid}) 今天已经签到！')

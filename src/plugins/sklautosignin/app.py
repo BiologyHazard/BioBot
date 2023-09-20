@@ -17,7 +17,7 @@ app = Quart(__name__)
 home_html_content = None
 
 
-@app.get("/")
+@app.get("/BioBot/plugins/sklautosignin/")
 async def home() -> str:
     global home_html_content
     if True or home_html_content is None:
@@ -25,8 +25,8 @@ async def home() -> str:
     return home_html_content
 
 
-@app.post("/")
-async def commit() -> str:
+@app.post("/BioBot/plugins/sklautosignin/")
+async def commit():
     def validate_qq(qq: str) -> int:
         if 5 <= len(qq) < 20 and qq.isdigit():
             return int(qq)
@@ -49,13 +49,28 @@ async def commit() -> str:
         email = validate_email(form['email'])
         token = validate_token(form['token'])
     except ValidationError as e:
-        return str(e)
+        return {
+            'code': 400,
+            'message': str(e),
+            'data': None
+        }, 400
 
     try:
         await get_grant_code(token)
     except SKLSignInError as e:
-        return f'绑定森空岛token失败：{e!r}'
+        return {
+            'code': 403,
+            'message': f'绑定森空岛token失败：{e}',
+            'data': None
+        }, 403
 
     tokens.add_item(qq, email, token)
-    await sign_in_and_send_email(token, True, email)
-    return '提交成功'
+
+    # await sign_in_and_send_email(token, True, email)
+    app.add_background_task(sign_in_and_send_email, token, True, email)
+
+    return {
+        'code': 200,
+        'message': f'提交成功。',
+        'data': None
+    }, 200
