@@ -17,6 +17,7 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.help')
     nonebot.load_plugin('src.plugins.blacklist')
     nonebot.load_plugin('src.plugins.fwdrequests')
+    nonebot.load_plugin('src.plugins.runcode')
     nonebot.load_plugin('src.plugins.sklautosignin')
     nonebot.load_plugin('src.plugins.maimai')
     nonebot.load_plugin('src.plugins.autoreply')
