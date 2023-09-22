@@ -21,7 +21,7 @@ home_html_content = None
 async def home() -> str:
     global home_html_content
     if True or home_html_content is None:
-        home_html_content = (Path(__file__).parent / 'html/home.html').read_text()
+        home_html_content = (Path(__file__).parent / 'html/index.html').read_text()
     return home_html_content
 
 
