@@ -20,7 +20,7 @@ home_html_content = None
 @app.get("/BioBot/plugins/sklautosignin/")
 async def home() -> str:
     global home_html_content
-    if True or home_html_content is None:
+    if home_html_content is None:
         home_html_content = (Path(__file__).parent / 'html/index.html').read_text()
     return home_html_content
 
