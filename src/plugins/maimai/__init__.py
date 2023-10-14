@@ -176,7 +176,7 @@ inner_level_pic = maimai_command_group.on_regex(r'^(\d{1,2}\+?)定数表')
 query_chart = maimai_command_group.on_regex(r'^(绿|黄|红|紫|白)?\s*id\s*(\d+)')
 search_music_by_title = maimai_command_group.on_command('查歌')
 search_music_by_alias = maimai_command_group.on_regex(r'(.*)(?:是什么歌|是啥歌)')
-search_music_by_inner = maimai_command_group.on_command('定数查歌')
+search_music_by_inner_level = maimai_command_group.on_command('定数查歌')
 search_music_by_tempo = maimai_command_group.on_command('曲速查歌', aliases={'bpm查歌'})
 search_music_by_artist = maimai_command_group.on_command('曲师查歌')
 search_music_by_charter = maimai_command_group.on_command('谱师查歌')
@@ -492,12 +492,14 @@ async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message
     for i, (music, achievement_data) in enumerate(sorted(achievement_list,
                                                          key=lambda x: x[1]['achievements'], reverse=True)):
         if page * plugin_config.songs_per_page <= i < (page + 1) * plugin_config.songs_per_page:
-            messages.append(f'No.{i+1} | {achievement_data["achievements"]:.4f}% | {music.id}. {music.title} | {DIFFICULTY_NAME[achievement_data["level_index"]]} {music.ds[achievement_data["level_index"]]}')
+            achievement: float = achievement_data['achievements']
+            level_index: int = achievement_data['level_index']
+            messages.append(f'No.{i+1} | {achievement:.4f}% | {music.id}. {music.title} | {DIFFICULTY_NAME[level_index]} {music.ds[level_index]}')
             if achievement_data['fc']:
                 messages.append(f' | {COMBO_RANK[combo_rank.index(achievement_data["fc"])]}')
             if achievement_data['fs']:
                 messages.append(f' {SYNC_RANK[sync_rank.index(achievement_data["fs"])]}')
-            messages.append('\n')
+            messages.append(f' → {music_calc_rating(music.ds[level_index], achievement)}\n')
     messages.append(f'第{page + 1}页，共{pages}页')
     if pages > 1:
         messages.append(f'，发送“{ds or level}分数列表 <页码>{" " + user if user is not None else ""}”查看其他页')
@@ -591,8 +593,8 @@ async def search_music_by_alias_func(group: tuple[str] = RegexGroup()) -> None:
     await search_music_by_alias.finish(f'结果过多（{len(result)}条），请缩小查询范围。')
 
 
-@search_music_by_inner.handle()
-async def search_music_by_inner_func(message: Message = CommandArg()) -> None:
+@search_music_by_inner_level.handle()
+async def search_music_by_inner_level_func(message: Message = CommandArg()) -> None:
     args: list[str] = message.extract_plain_text().strip().split()
     try:
         page: int = 0
@@ -607,11 +609,11 @@ async def search_music_by_inner_func(message: Message = CommandArg()) -> None:
             page = int(args[2]) - 1
             assert math.isfinite(ds[0]) and math.isfinite(ds[1]), ValueError
     except ValueError:
-        await search_music_by_inner.finish(search_music_by_inner_help_text)
+        await search_music_by_inner_level.finish(search_music_by_inner_help_text)
 
     result: list[tuple[Music, int]] = Mai.music_list.by_ds(ds)
     if not result:
-        await search_music_by_inner.finish('没有找到符合条件的乐曲。', reply_message=True)
+        await search_music_by_inner_level.finish('没有找到符合条件的乐曲。', reply_message=True)
 
     pages: int = math.ceil(len(result) / plugin_config.songs_per_page)
     page = max(min(page, pages - 1), 0)
@@ -627,7 +629,7 @@ async def search_music_by_inner_func(message: Message = CommandArg()) -> None:
             messages.append(f'第{page + 1}页，共{pages}页，发送“定数查歌 {ds[0]} {ds[1]} <页码>”查看其他页')
     else:
         messages.append(f'第{page + 1}页，共{pages}页')
-    await search_music_by_inner.finish(MessageSegment.image(image_to_bytesio(text_to_image('\n'.join(messages)))))
+    await search_music_by_inner_level.finish(MessageSegment.image(image_to_bytesio(text_to_image('\n'.join(messages)))))
 
 
 @search_music_by_tempo.handle()

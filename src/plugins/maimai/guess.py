@@ -60,16 +60,19 @@ class Guess:
     async def give_hint(self) -> list[str | Message | MessageSegment]:
         if self.round >= self.rounds:
             raise ValueError
-        if self._hints_type[self.round] == 'text':
-            messages: list[str | Message | MessageSegment] = [f'猜歌提示 | 第{self.round + 1}个，共{self.rounds}个\n{self.hints[self.round - 1]}']
-        elif self._hints_type[self.round] == 'cover':
-            messages = [f'猜歌提示 | 第{self.round + 1}个，共{self.rounds}个\n'
-                        '这首乐曲封面的一部分是\n'
-                        + MessageSegment.image(image_to_bytesio(await self.give_hint_cover()))]
-        else:  # self._hints_type[self.round] == 'track'
-            messages = [f'猜歌提示 | 第{self.round + 1}个，共{self.rounds}个\n'
-                        '这首乐曲音乐的一部分是\n',
-                        MessageSegment.record(await self.give_hint_track())]
+        match self._hints_type[self.round]:
+            case 'text':
+                messages: list[str | Message | MessageSegment] = [f'猜歌提示 | 第{self.round + 1}个，共{self.rounds}个\n{self.hints[self.round - 1]}']
+            case 'cover':
+                messages = [f'猜歌提示 | 第{self.round + 1}个，共{self.rounds}个\n'
+                            '这首乐曲封面的一部分是\n'
+                            + MessageSegment.image(image_to_bytesio(await self.give_hint_cover()))]
+            case 'track':
+                messages = [f'猜歌提示 | 第{self.round + 1}个，共{self.rounds}个\n'
+                            '这首乐曲音乐的一部分是\n',
+                            MessageSegment.record(await self.give_hint_track())]
+            case _:
+                raise ValueError
         if self.round == self.rounds - 1:
             messages.append('答案将在30秒后揭晓')
         self.round += 1

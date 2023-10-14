@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 charts_path = Path('data/maimai/charts')
 music_data_path = Path('data/maimai/music_data.json')
-music_data_path.write_text(json.dumps(json.loads(music_data_path.read_text('utf-8')), ensure_ascii=False, indent=1), 'utf-8')
+# music_data_path.write_text(json.dumps(json.loads(music_data_path.read_text('utf-8')), ensure_ascii=False, indent=1), 'utf-8')
 title_to_path: dict[str, Path] = {}
 for path in charts_path.rglob('maidata.txt'):
     if path.name == 'maidata.txt':
@@ -22,8 +22,8 @@ for music_info in music_data:
         id_to_path[music_info['id']] = path.relative_to(charts_path).as_posix()
     else:
         print(music_info['id'], music_info['title'])
-id_to_path['91'] = 'maimai/131_LINK1/track.mp3'
-id_to_path['253'] = 'niconicoボーカロイド/383_LINK2/track.mp3'
+id_to_path['131'] = 'maimai/131_LINK1/track.mp3'
+id_to_path['383'] = 'niconicoボーカロイド/383_LINK2/track.mp3'
 print(id_to_path)
 
 track_path_path = Path('data/maimai/track_path.json')

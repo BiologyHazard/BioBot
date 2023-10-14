@@ -119,16 +119,19 @@ async def generate_achievement_pic(
     if not goals:
         achievement = 'A'
     if goal_han is not None:
-        if goal_han in '極极':
-            combo = 'FC'
-        elif goal_han == '将':
-            achievement = 'SSS'
-        elif goal_han == '神':
-            combo = 'AP'
-        elif goal_han in '舞舞':
-            sync = 'FSD'
-        elif goal_han == '者':
-            achievement = 'A'
+        match goal_han:
+            case '極' | '极':
+                combo = 'FC'
+            case '将':
+                achievement = 'SSS'
+            case '神':
+                combo = 'AP'
+            case '舞' | '舞':
+                sync = 'FSD'
+            case '者':
+                achievement = 'A'
+            case _:
+                raise ValueError
 
     coordinates: list[tuple[float, float]] = []
     texts: list[tuple[float, float, str]] = []

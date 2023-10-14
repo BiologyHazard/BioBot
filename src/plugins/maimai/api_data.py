@@ -16,12 +16,13 @@ async def get_player_data(project: T_project, payload: dict[str, Any], queryer: 
     - `payload` : 传递给查分器的数据
     - `queryer` : 查询者
     """
-    if project == 'best':
-        p = 'player'
-    elif project == 'plate':
-        p = 'plate'
-    else:
-        raise ValueError
+    match project:
+        case 'best':
+            p = 'player'
+        case 'plate':
+            p = 'plate'
+        case _:
+            raise ValueError
 
     if 'qq' in payload and queryer != payload['qq'] and not query_privacy(payload['qq']):
         return '该用户禁止了其他人获取数据。'

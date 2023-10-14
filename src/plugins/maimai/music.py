@@ -125,22 +125,22 @@ async def get_music_cover(music_id: str) -> BytesIO:
     filename = get_cover_filename(music_id)
     cover_path: Path = plugin_config.cover_path / filename
     try:
+        # 从本地图片读取
         if cover_path.is_file():
             async with aiofiles.open(cover_path, 'rb') as fp:
-                # 从本地图片读取
                 return BytesIO(await fp.read())
 
+        # 从水鱼网下载
         async with aiohttp.request('GET', f'https://www.diving-fish.com/covers/{filename}') as response:
             response.raise_for_status()
             cover_bytes: bytes = await response.read()
             async with aiofiles.open(cover_path, 'wb') as fp:
                 await fp.write(cover_bytes)
-            # 从水鱼网下载
             return BytesIO(cover_bytes)
 
     except Exception:
+        # 返回'00000.png'
         async with aiofiles.open(plugin_config.cover_path / '00000.png', 'rb') as fp:
-            # 返回'00000.png'
             return BytesIO(await fp.read())
 
 
@@ -485,8 +485,9 @@ class Mai:
                 async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as response:
                     response.raise_for_status()
                     obj: Any = await response.json()
+                    json_text: str = json.dumps(obj, ensure_ascii=False, indent=4)
                     async with aiofiles.open(plugin_config.data_path / 'music_data.json', 'w', encoding='utf-8') as fp:
-                        await fp.write(json.dumps(obj, ensure_ascii=False))
+                        await fp.write(json_text)
             except Exception:
                 logger.warning('乐曲信息获取失败，请检查网络环境。已切换至本地暂存文件。')
                 async with aiofiles.open(plugin_config.data_path / 'music_data.json', 'r', encoding='utf-8') as fp:
@@ -499,8 +500,9 @@ class Mai:
                 async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as response:
                     response.raise_for_status()
                     obj: Any = await response.json()
+                    json_text: str = json.dumps(obj, ensure_ascii=False, indent=4)
                     async with aiofiles.open(plugin_config.data_path / 'chart_stats.json', 'w', encoding='utf-8') as fp:
-                        await fp.write(json.dumps(obj, ensure_ascii=False))
+                        await fp.write(json_text)
             except Exception:
                 logger.warning('谱面统计获取失败，请检查网络环境。已切换至本地暂存文件。')
                 async with aiofiles.open(plugin_config.data_path / 'chart_stats.json', 'r', encoding='utf-8') as fp:
@@ -588,8 +590,9 @@ class Mai:
             async with aiohttp.request('GET', 'https://api.yuzuai.xyz/maimaidx/MaimaiDXAlias') as response:
                 response.raise_for_status()
                 obj = await response.json()
+                json_text: str = json.dumps(obj, ensure_ascii=False, indent=4)
                 async with aiofiles.open(plugin_config.data_path / 'aliases_from_yuzuai_api.json', 'w', encoding='utf-8') as fp:
-                    await fp.write(json.dumps(obj, ensure_ascii=False))
+                    await fp.write(json_text)
         except Exception:
             logger.warning('别名信息获取失败，请检查网络环境。已切换至本地暂存文件。')
             async with aiofiles.open(plugin_config.data_path / 'aliases_from_yuzuai_api.json', 'r', encoding='utf-8') as fp:
