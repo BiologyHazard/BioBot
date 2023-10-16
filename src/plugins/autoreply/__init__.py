@@ -11,9 +11,8 @@
 
 
 from nonebot import MatcherGroup, get_driver, logger, on_message
-from nonebot.adapters.onebot.v11 import (GROUP_ADMIN, GROUP_OWNER, Bot,
-                                         GroupMessageEvent, Message,
-                                         MessageEvent, MessageSegment)
+from nonebot.adapters.onebot.v11 import (GROUP_ADMIN, GROUP_OWNER, Bot, GroupMessageEvent,
+                                         Message, MessageEvent, MessageSegment)
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg, CommandStart, EventMessage, EventToMe
