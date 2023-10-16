@@ -360,7 +360,7 @@ async def maimai_what_func() -> None:
 
 
 @spec_rand.handle()
-async def spec_rand_func(group: tuple[str | None, str | None, str | None, str | None] = RegexGroup()) -> None:
+async def spec_rand_func(group: tuple[str | None, str | None, str | None, str | None] = RegexGroup()) -> None:  # type: ignore
     music_type, diff, ds, level = group
     if ds is not None:
         ds = float(ds)
@@ -433,7 +433,10 @@ async def music_score_func(bot: Bot, event: MessageEvent, message: Message = Com
 
 
 @plate_process.handle()
-async def plate_process_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str, str] = RegexGroup()) -> None:
+async def plate_process_func(bot: Bot,
+                             event: MessageEvent,
+                             message: Message = EventMessage(),
+                             group: tuple[str, str] = RegexGroup()) -> None:  # type: ignore
     plate_name_han, user = group
     version_han, goal_han = plate_name_han[0], plate_name_han[1]
 
@@ -449,7 +452,7 @@ async def process_pic_func(
         event: MessageEvent,
         message: Message = EventMessage(),
         group: tuple[str, str | None, str | None, str | None, str | None,
-                     str, str | None, str | None, str | None, str | None, str] = RegexGroup(),
+                     str, str | None, str | None, str | None, str | None, str] = RegexGroup(),  # type: ignore
 ) -> None:
     user = group[-1]
     payload, nickname = await get_payload_and_nickname(bot, event, message, user)
@@ -459,7 +462,12 @@ async def process_pic_func(
 
 
 @level_achievement.handle()
-async def level_achievement_func(bot: Bot, event: MessageEvent, message: Message = EventMessage(), group: tuple[str | None, str | None, str | None, str | None] = RegexGroup()) -> None:
+async def level_achievement_func(
+    bot: Bot,
+    event: MessageEvent,
+    message: Message = EventMessage(),
+    group: tuple[str | None, str | None, str | None, str | None] = RegexGroup(),  # type: ignore
+) -> None:
     ds, level, page, user = group
     if level is not None and level not in LEVELS:
         await level_achievement.finish(f'不存在等级为{level}的乐曲。', reply_message=True)
@@ -540,7 +548,7 @@ async def rating_ranking_func(bot: Bot, event: MessageEvent, message: Message = 
 
 
 @inner_level_pic.handle()
-async def inner_level_pic_func(group: tuple[str] = RegexGroup()) -> None:
+async def inner_level_pic_func(group: tuple[str] = RegexGroup()) -> None:  # type: ignore
     (level,) = group
     if level not in LEVELS:
         await inner_level_pic.finish(f'不存在等级为{level}的乐曲。', reply_message=True)
@@ -548,7 +556,7 @@ async def inner_level_pic_func(group: tuple[str] = RegexGroup()) -> None:
 
 
 @query_chart.handle()
-async def query_chart_func(group: tuple[str | None, str] = RegexGroup()) -> None:
+async def query_chart_func(group: tuple[str | None, str] = RegexGroup()) -> None:  # type: ignore
     level_han, music_id = group
     music: Music | None = Mai.music_list.by_id(music_id)
     if music is None:
@@ -579,7 +587,7 @@ async def search_music_by_title_func(message: Message = CommandArg()) -> None:
 
 
 @search_music_by_alias.handle()
-async def search_music_by_alias_func(group: tuple[str] = RegexGroup()) -> None:
+async def search_music_by_alias_func(group: tuple[str] = RegexGroup()) -> None:  # type: ignore
     (alias, ) = group
     result: MusicList = Mai.music_list.by_alias(alias)
     if not result:
@@ -623,7 +631,7 @@ async def search_music_by_inner_level_func(message: Message = CommandArg()) -> N
         if page * plugin_config.songs_per_page <= i < (page + 1) * plugin_config.songs_per_page:
             messages.append(music_info_with_diff_compact(music, diff_index))
     if pages > 1:
-        if isinstance(ds, float):
+        if isinstance(ds, (float, int)):
             messages.append(f'第{page + 1}页，共{pages}页，发送“定数查歌 {ds} {ds} <页码>”查看其他页')
         else:
             messages.append(f'第{page + 1}页，共{pages}页，发送“定数查歌 {ds[0]} {ds[1]} <页码>”查看其他页')

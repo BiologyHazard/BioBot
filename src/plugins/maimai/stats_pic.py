@@ -2,11 +2,7 @@ from bisect import bisect_right
 from typing import Any
 from itertools import accumulate
 
-import pyecharts.options as opts
 from PIL import Image
-from pyecharts.charts import Pie
-from pyecharts.render import make_snapshot
-from snapshot_phantomjs import snapshot
 
 from .config import plugin_config
 from .consts import DIFFICULTY_NAME, COMBO_RANK, SCORE_RANK
@@ -14,6 +10,10 @@ from .music import Chart, ChartStats, LevelStats, Mai, Music
 from .image import text_to_image
 
 
+# import pyecharts.options as opts
+# from pyecharts.charts import Pie
+# from pyecharts.render import make_snapshot
+# from snapshot_phantomjs import snapshot
 # def music_global_data(music: Music, diff_index: int) -> Image.Image:
 #     stats: ChartStats = music.charts[diff_index].stats
 #     fc_data_pair: list[list[str | int]] = [list(z) for z in zip([c.upper() if c else 'Not FC' for c in [''] + comboRank], stats.fc_dist)]

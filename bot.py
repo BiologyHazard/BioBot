@@ -6,13 +6,15 @@ from nonebot.log import default_filter, default_format, logger
 
 def main() -> None:
     logger.add('logs/bot_{time:YYYY-MM-DD}.log',
-               level=0, rotation='00:00', format=default_format, filter=default_filter)
+               level=0,
+               rotation='00:00',
+               format=default_format,
+               filter=default_filter)
     nonebot.init()
 
     driver: Driver = nonebot.get_driver()
     driver.register_adapter(OneBotV11Adapter)
 
-    # nonebot.load_plugin('nonebot_plugin_gocqhttp')
     nonebot.load_builtin_plugins('echo')
     nonebot.load_plugin('src.plugins.help')
     nonebot.load_plugin('src.plugins.blacklist')

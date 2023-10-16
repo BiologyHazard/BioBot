@@ -59,7 +59,7 @@ def text_to_image(text: str,
         max_line_height = max(max_line_height, font.getbbox(line)[3])
         for i, segment in enumerate(segments):
             if not segment.endswith('\0'):
-                w: int = font.getlength(segment)
+                w: float = font.getlength(segment)
             else:
                 w = 0
             if i >= len(tabs):
