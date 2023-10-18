@@ -14,7 +14,7 @@ class ValidationError(Exception):
 
 app = Quart(__name__)
 
-home_html_content = None
+home_html_content: str | None = None
 
 
 @app.get("/BioBot/plugins/sklautosignin/")

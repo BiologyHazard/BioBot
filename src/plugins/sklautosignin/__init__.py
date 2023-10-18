@@ -5,12 +5,12 @@ from nonebot import get_driver, logger, on_command, on_keyword, require
 from nonebot.adapters.onebot.v11 import Message, MessageEvent
 from nonebot.drivers import Driver
 from nonebot.params import CommandArg, EventPlainText
+from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 
 from .app import app
 from .manager import tokens
-from .skland import (TOKEN_LENGTH, SKLSignInError, get_grant_code,
-                     sign_in_and_send_email)
+from .skland import TOKEN_LENGTH, SKLSignInError, get_grant_code, sign_in_and_send_email
 from .utils import get_qq_mail_address, is_base64
 
 require('nonebot_plugin_apscheduler')
@@ -41,6 +41,12 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
+bind_skl_token = on_command('绑定森空岛token')
+skl_auto_sign_in = on_keyword({'森空岛自动签到'})
+# skl_sign_in_immediately = on_command('森空岛立即签到')
+# skl_sign_in_immediately_superuser = on_command('森空岛立即全部签到', permission=SUPERUSER)
+
+
 @scheduler.scheduled_job('cron', hour=0)
 # @driver.on_startup
 async def skl_sign_in_all() -> None:
@@ -55,10 +61,6 @@ async def skl_sign_in_all() -> None:
 @driver.on_startup
 async def run_app() -> None:
     asyncio.get_event_loop().create_task(app.run_task('0.0.0.0', 13000))
-
-
-bind_skl_token = on_command('绑定森空岛token')
-skl_auto_sign_in = on_keyword({'森空岛自动签到'})
 
 
 @bind_skl_token.handle()
