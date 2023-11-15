@@ -20,7 +20,8 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.blacklist')
     nonebot.load_plugin('src.plugins.fwdrequests')
     nonebot.load_plugin('src.plugins.runcode')
-    nonebot.load_plugin('src.plugins.sklautosignin')
+    nonebot.load_plugin('src.plugins.sklassistant')
+    # nonebot.load_plugin('src.plugins.sklautosignin')
     nonebot.load_plugin('src.plugins.maimai')
     nonebot.load_plugin('src.plugins.autoreply')
     nonebot.load_plugin('src.plugins.biliinfo')
@@ -46,8 +47,8 @@ def main() -> None:
     nonebot.load_plugin('nonebot_plugin_emojimix')
     nonebot.load_plugin('nonebot_plugin_abstract')
     nonebot.load_plugin('nonebot_plugin_makemidi')
-    nonebot.load_plugin('nonebot_plugin_wordcloud')
-    nonebot.load_plugin('nonebot_plugin_memes')
+    # nonebot.load_plugin('nonebot_plugin_wordcloud')
+    # nonebot.load_plugin('nonebot_plugin_memes')
 
     nonebot.run()
 
