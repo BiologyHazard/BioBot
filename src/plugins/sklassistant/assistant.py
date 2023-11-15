@@ -116,7 +116,8 @@ async def 森空岛实时数据分析(token: str, uid: str | None = None) -> str
     # json.dump(obj, open('森空岛数据.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
 
     数据: dict[str, Any] = obj['data']
-    信息内容: str = f"{数据['status']['name'].split('#')[0]} 博士，\n按照森空岛的目前采集到的信息推算，罗德岛需要注意的情况向您汇报如下：\n"
+    信息内容: str = (f"Dr. {数据['status']['name'].split('#')[0]}，\n"
+                 "根据森空岛的目前采集到的信息推算，罗德岛需要注意的情况向您汇报如下：\n")
 
     # 理智
     当前理智: float = 数据['status']['ap']['current'] + (数据['currentTs'] - 数据['status']['ap']['lastApAddTime']) / 360
@@ -125,7 +126,9 @@ async def 森空岛实时数据分析(token: str, uid: str | None = None) -> str
         当前理智 = 数据['status']['ap']['max']
         理智回满剩余时间 = 0
     信息内容 += f"当前理智 {int(当前理智)}"
-    if 理智回满剩余时间 > 0:
+    if 理智回满剩余时间 == 0:
+        信息内容 += "，理智已满。"
+    else:
         信息内容 += f"，距离理智回满还有 {理智回满剩余时间 // 3600} 小时 {理智回满剩余时间 % 3600 // 60} 分钟。"
     信息内容 += "\n"
 
@@ -136,9 +139,9 @@ async def 森空岛实时数据分析(token: str, uid: str | None = None) -> str
         公开招募刷新次数 += 1
     if 公开招募刷新次数 > 3:
         公开招募刷新次数 = 3
-    信息内容 += f"当前公开招募可刷新{公开招募刷新次数}次"
+    信息内容 += f"当前公开招募可刷新 {公开招募刷新次数} 次"
     if 公开招募刷新次数 < 3:
-        信息内容 += f"，{公开招募刷新次数填充时间 // 60} 分钟后会填充次数"
+        信息内容 += f"，{公开招募刷新次数填充时间 // 3600} 小时 {公开招募刷新次数填充时间 % 3600 // 60} 分钟后会填充次数"
     信息内容 += "\n"
 
     # 无人机
@@ -238,18 +241,18 @@ async def 森空岛实时数据分析(token: str, uid: str | None = None) -> str
                             if 人间烟火 and 11.8 < 干员心情 < 18:
                                 信息内容 += f"夕的心情达到了{round(干员心情, 2)}\n"
                     elif 干员心情 < 1:
-                        信息内容 += f"{数据['charInfoMap'][干员['charId']]['name']}的心情仅剩{round(干员心情, 2)}\n"
+                        信息内容 += f"{数据['charInfoMap'][干员['charId']]['name']}的心情仅剩 {round(干员心情, 2)}\n"
         elif 基建类目 in ['control', 'meeting', 'hire']:
             for 干员 in 数据['building'][基建类目]['chars']:
                 干员心情 = 干员['ap'] / 360000
                 if 干员心情 < 1:
-                    信息内容 += f"{数据['charInfoMap'][干员['charId']]['name']}的心情仅剩{round(干员心情, 2)}\n"
+                    信息内容 += f"{数据['charInfoMap'][干员['charId']]['name']}的心情仅剩 {round(干员心情, 2)}\n"
                 elif 干员['charId'] == 'char_2023_ling':
                     if 人间烟火 and 11 < 干员心情 < 12.1:
-                        信息内容 += f"令的心情仅剩{round(干员心情, 2)}\n"
+                        信息内容 += f"令的心情仅剩 {round(干员心情, 2)}\n"
                 elif 干员['charId'] == 'char_2015_dusk':
                     if 感知信息 and 6 < 干员心情 < 12.1:
-                        信息内容 += f"夕的心情仅剩{round(干员心情, 2)}\n"
+                        信息内容 += f"夕的心情仅剩 {round(干员心情, 2)}\n"
 
     信息内容 += (
         "------------------------------------\n"
@@ -259,10 +262,11 @@ async def 森空岛实时数据分析(token: str, uid: str | None = None) -> str
     return 信息内容
 
 
-async def 森空岛干员阵容查询(token, uid):
+async def 森空岛干员阵容查询(token: str, uid: str | None = None) -> str:
     obj = await 森空岛获取信息(token, uid)
-    数据 = obj['data']
-    阵容内容 = f"{数据['status']['name'].split('#')[0]} 博士，根据从森空岛采集到的信息，罗德岛目前的阵容概况如下：\n\n"
+    数据: dict[str, Any] = obj['data']
+    阵容内容: str = (f"Dr. {数据['status']['name'].split('#')[0]} 博士，\n"
+                 "根据从森空岛采集到的信息，罗德岛目前的阵容概况如下：\n")
     总计消耗经验 = 0
     总计消耗龙门币 = 0
 

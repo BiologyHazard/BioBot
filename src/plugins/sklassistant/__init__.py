@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any
 
-from nonebot import get_driver, logger, on_command, on_keyword, require, MatcherGroup
+from nonebot import MatcherGroup, get_driver, logger, require
 from nonebot.adapters.onebot.v11 import Message, MessageEvent, MessageSegment
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
@@ -10,11 +10,11 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 
 from .app import app
-from .manager import tokens
-from .skland import TOKEN_LENGTH, get_grant_code, sign_in_and_send_email, SKLAssistantError
 from .assistant import 森空岛实时数据分析, 森空岛干员阵容查询
+from .image import image_to_bytesio, text_to_image
+from .manager import tokens
+from .skland import TOKEN_LENGTH, SKLAssistantError, get_grant_code, sign_in_and_send_email
 from .utils import get_qq_mail_address, is_base64
-from .image import text_to_image, image_to_bytesio
 
 require('nonebot_plugin_apscheduler')
 
@@ -32,6 +32,10 @@ http://solink.myqnapcloud.cn:27854/BioBot/plugins/sklassistant/
 
 【如何暂时关闭/开启自动签到】
 群聊/私聊发送“{default_command_start}关闭/开启森空岛自动签到”
+
+【其他命令】
+- {default_command_start}森空岛小秘书 <uid>    # 查看森空岛小秘书的功能
+- {default_command_start}森空岛干员阵容查询 <uid>    # 查询森空岛干员阵容
 
 # 为了您的账号安全，请不要在群聊中直接发送token！
 '''.strip()
