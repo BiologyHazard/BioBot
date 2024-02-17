@@ -1,20 +1,25 @@
-import time
-from .config import plugin_config
-from typing import Any
-import aiohttp
 import math
 import re
+import time
+from typing import Any
+
+import aiohttp
 from nonebot import logger
-from nonebot.adapters.onebot.v11 import MessageSegment, Message
+from nonebot.adapters.onebot.v11 import Message, MessageSegment
+
+from .config import plugin_config
 
 url: str = 'https://api.bilibili.com/x/web-interface/view'
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.104 Safari/537.36'
+}
 
 T_group = tuple[str, str, str]
 '''(BV, b23, av)'''
 
 
 async def b23_to_bv(b23: str) -> str:
-    async with aiohttp.request('GET', f'https://{b23}') as response:
+    async with aiohttp.request('GET', f'https://{b23}', headers=headers) as response:
         return re.findall(r'BV1\w{2}4\w1\w7\w{2}', str(response.url))[0]
 
 
@@ -58,7 +63,7 @@ def bv_to_av(bv: str) -> int:
 
 async def get_top_comments(av: int) -> str:
     try:
-        async with aiohttp.request('GET', 'https://api.bilibili.com/x/v2/reply/main', params={'next': '0', 'type': '1', 'oid': str(av)}) as response:
+        async with aiohttp.request('GET', 'https://api.bilibili.com/x/v2/reply/main', params={'next': '0', 'type': '1', 'oid': str(av)}, headers=headers) as response:
             obj: dict[str, Any] = await response.json()
     except Exception:
         return ''
@@ -72,9 +77,11 @@ async def get_top_comments(av: int) -> str:
 
 
 async def get_video_info(av: int) -> Message:
-    async with aiohttp.request('GET', url, params={'aid': str(av)}) as response:
+    async with aiohttp.request('GET', url, params={'aid': str(av)}, headers=headers) as response:
         assert response.status == 200
+        # logger.info(response.status)
         obj: dict[str, Any] = await response.json()
+        # logger.info(obj)
 
     assert obj['code'] == 0
     bv: str = obj['data']['bvid']
