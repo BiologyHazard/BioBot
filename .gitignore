@@ -6,6 +6,7 @@ __pycache__
 /.ipynb_checkpoints
 /accounts
 /go-cqhttp*
+/Lagrange.OneBot_linux-x64
 /data
 /logs
 /unidbg-fetch-qsign-*
