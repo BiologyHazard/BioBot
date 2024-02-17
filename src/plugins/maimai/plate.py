@@ -92,18 +92,18 @@ async def player_plate_data(payload: dict, version_han: str, goal_han: str, nick
                 song_remain_master.append([int(music.id), 3])
             if version_han in ['舞', '霸'] and len(music.level) == 5 and [int(music.id), 4] not in song_played:
                 song_remain_re_master.append([int(music.id), 4])
-    song_remain_basic = sorted(song_remain_basic, key=lambda i: int(i[0]))
-    song_remain_advanced = sorted(
+    song_remain_basic: list[list[int]] = sorted(song_remain_basic, key=lambda i: int(i[0]))
+    song_remain_advanced: list[list[int]] = sorted(
         song_remain_advanced, key=lambda i: int(i[0]))
-    song_remain_expert = sorted(song_remain_expert, key=lambda i: int(i[0]))
-    song_remain_master = sorted(song_remain_master, key=lambda i: int(i[0]))
-    song_remain_re_master = sorted(
+    song_remain_expert: list[list[int]] = sorted(song_remain_expert, key=lambda i: int(i[0]))
+    song_remain_master: list[list[int]] = sorted(song_remain_master, key=lambda i: int(i[0]))
+    song_remain_re_master: list[list[int]] = sorted(
         song_remain_re_master, key=lambda i: int(i[0]))
     for song in song_remain_basic + song_remain_advanced + song_remain_expert + song_remain_master + song_remain_re_master:
         music: Music = Mai.music_list.by_id(str(song[0]), strict=True)
         if music.ds[song[1]] > 13.6:
             song_remain_difficult.append(
-                [music.id, music.title, DIFFICULTY_NAME[song[1]], music.ds[song[1]], f'{music.charts[song[1]].stats.fit_diff:.2f}', song[1]])
+                [music.id, music.title, DIFFICULTY_NAME[song[1]], music.ds[song[1]], f'{music.charts[song[1]].stats.fit_diff if hasattr(music.charts[song[1]], "stats") else music.ds[song[1]]:.2f}', song[1]])
 
     appellation = nickname if nickname else '您'
 

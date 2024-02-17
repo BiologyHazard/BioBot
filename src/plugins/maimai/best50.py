@@ -162,7 +162,7 @@ class DrawBest:
             x: int = 100 + (num % 5) * 404
             y: int = y0 + (num // 5) * dy
 
-            cover = Image.open(await get_music_cover(info.id)).resize((135, 135))
+            cover = Image.open(await get_music_cover(info.id)).convert('RGBA').resize((135, 135))
             version = Image.open(plugin_config.pic_path / f'UI_RSL_MBase_Parts_{info.type}.png').resize((55, 19))
             rate = Image.open(plugin_config.pic_path / f'UI_TTR_PhotoParts_{rankPic[info.rate]}.png').resize((80, 50))
 

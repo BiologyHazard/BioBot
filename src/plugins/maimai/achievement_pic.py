@@ -126,7 +126,7 @@ async def generate_achievement_pic(
                 achievement = 'SSS'
             case '神':
                 combo = 'AP'
-            case '舞' | '舞':
+            case '舞' | '舞舞':
                 sync = 'FSD'
             case '者':
                 achievement = 'A'
@@ -203,7 +203,8 @@ async def generate_achievement_pic(
         #               round((x0 + col * (1 + col_spacing) + 3 * color_block_border) * image_pixels - 1/2),
         #               round((y0 + y - color_block_border) * image_pixels - 1/2)),
         #              colors[level_index])
-        cover: Image.Image = Image.open(await music.get_cover()).resize((round(cover_pixels), round(cover_pixels)))
+        cover: Image.Image = Image.open(await music.get_cover()).convert('RGBA').resize(
+            (round(cover_pixels), round(cover_pixels)))
         image.alpha_composite(cover, (round((x - 1/2) * cover_pixels), round((y - 1/2) * cover_pixels)))
         if music.type == 'DX':
             image.alpha_composite(dx_image, (round((x + 1/2) * cover_pixels - dx_image.width),
@@ -357,7 +358,7 @@ async def generate_inner_level_pic(level: str) -> Image.Image:
                         round((x + 1/2 + color_block_border) * cover_pixels - 1),
                         round((y + 1/2 + color_block_border) * cover_pixels - 1)),
                        colors[diff_index])
-        cover: Image.Image = Image.open(await music.get_cover()).resize((round(cover_pixels), round(cover_pixels)))
+        cover: Image.Image = Image.open(await music.get_cover()).convert('RGBA').resize((round(cover_pixels), round(cover_pixels)))
         image.alpha_composite(cover, (round((x - 1/2) * cover_pixels), round((y - 1/2) * cover_pixels)))
         if music.type == 'DX':
             image.alpha_composite(dx_image, (round((x + 1/2) * cover_pixels - dx_image.width),

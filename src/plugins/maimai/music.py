@@ -527,10 +527,10 @@ class Mai:
             #         if stats_dict:
             #             music.charts[i].stats = ChartStats.from_json(stats_dict)
             #         else:
-            #             music.charts[i].stats = ChartStats.empty()
+            #             music.charts[i].stats = None
             # else:
             #     for i in range(music.diff_num):
-            #         music.charts[i].stats = ChartStats.empty()
+            #         music.charts[i].stats = None
 
         cls.hot_music_list = MusicList(
             sorted(cls.music_list,
