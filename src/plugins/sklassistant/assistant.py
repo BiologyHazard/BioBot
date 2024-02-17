@@ -163,7 +163,7 @@ async def 森空岛实时数据分析(token: str, uid: str | None = None) -> str
         信息内容 += f"可赠线索 {可赠线索} 个\n"
     if 线索交流剩余时间 == 0:
         信息内容 += f"线索交流已完成\n"
-    elif 线索交流剩余时间 < 60:
+    else:
         信息内容 += f"距线索交流结束还有 {线索交流剩余时间 // 3600} 小时 {线索交流剩余时间 % 3600 // 60} 分钟\n"
 
     # 贸易站缺人
@@ -233,7 +233,7 @@ async def 森空岛实时数据分析(token: str, uid: str | None = None) -> str
                             if 刺玫:
                                 信息内容 += f"{数据['charInfoMap'][干员['charId']]['name']}在刺玫的宿舍 {门牌号[房间['slotId']]} 心情达到了 {round(干员心情, 2)}\n"
                             elif 干员心情 > 23.5:
-                                信息内容 += f"{数据['charInfoMap'][干员['charId']]['name']}的心情达到了{round(干员心情, 2)}\n"
+                                信息内容 += f"{数据['charInfoMap'][干员['charId']]['name']}的心情达到了 {round(干员心情, 2)}\n"
                         elif 干员['charId'] == 'char_2023_ling':
                             if 感知信息 and 11.8 < 干员心情 < 18:
                                 信息内容 += f"令的心情达到了{round(干员心情, 2)}\n"
