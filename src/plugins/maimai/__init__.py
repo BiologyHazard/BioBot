@@ -1,17 +1,15 @@
-from typing import Sequence
 import asyncio
 import json
 import math
 import re
 from bisect import bisect_right
 from random import Random
-from typing import Any
+from typing import Any, Sequence
 
 import aiofiles
 from nonebot import MatcherGroup, get_driver, logger, require
-from nonebot.adapters.onebot.v11 import (Bot, GroupMessageEvent, Message,
-                                         MessageEvent, MessageSegment,
-                                         PrivateMessageEvent)
+from nonebot.adapters.onebot.v11 import (Bot, GroupMessageEvent, Message, MessageEvent,
+                                         MessageSegment, PrivateMessageEvent)
 from nonebot.adapters.onebot.v11.permission import GROUP_ADMIN, GROUP_OWNER
 from nonebot.drivers import Driver
 from nonebot.params import CommandArg, EventMessage, EventPlainText, RegexGroup
@@ -23,8 +21,7 @@ from .achievement_pic import generate_achievement_pic, generate_inner_level_pic
 from .api_data import get_player_data, get_rating_ranking_data
 from .best50 import generate_b50
 from .config import plugin_config
-from .consts import (COMBO_RANK, DIFFICULTY_NAME, LEVELS, SYNC_RANK,
-                     VERSION_TO_PLATE, combo_rank, sync_rank)
+from .consts import COMBO_RANK, DIFFICULTY_NAME, LEVELS, SYNC_RANK, VERSION_TO_PLATE, combo_rank, sync_rank
 from .guess import Guess, guesses
 from .image import image_to_bytesio, text_to_image
 from .music import AliasInfo, Chart, ChartStats, Mai, Music, MusicList
@@ -923,7 +920,7 @@ async def calc_rating_func(message: Message = CommandArg()) -> None:
         achievement = achievement.rstrip('%')
         achievement = float(achievement)
         assert Mai.music_list.min_ds <= ds <= Mai.music_list.max_ds, ValueError
-        assert 0.0000 <= achievement <= 101.0000
+        assert 0.0000 <= achievement <= 101.0000, ValueError
     except ValueError:
         await calc_rating.finish('命令格式：\n单曲rating <定数> <达成率>')
 
