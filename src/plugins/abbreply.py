@@ -1,6 +1,7 @@
 import aiohttp
-from nonebot.adapters.onebot.v11 import Event
-from nonebot.plugin import PluginMetadata, on_regex
+from nonebot.plugin import PluginMetadata, on_command
+from nonebot.params import CommandArg
+from nonebot.adapters import Message
 
 __plugin_meta__ = PluginMetadata(
     name='缩写查询器',
@@ -30,7 +31,7 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-async def get_sx(word):
+async def get_sx(word: str):
     url = "https://lab.magiconch.com/api/nbnhhsh/guess"
 
     headers = {
@@ -39,37 +40,36 @@ async def get_sx(word):
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36',
     }
     data = {
-        "text": f"{word}"
+        "text": word
     }
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url=url, headers=headers, data=data) as resp:
-            msg = await resp.json()
-            return msg if msg else []
+    async with aiohttp.request('POST', url, headers=headers, data=data) as response:
+        msg = await response.json()
+    return msg
 
 
-sx = on_regex(pattern=r"^sx\ |^缩写\ (.*)")
+sx = on_command('缩写', aliases={'sx'}, priority=5, block=False)
 
 
 @sx.handle()
-async def _(event: Event):
-    msg = str(event.get_message())[3:]
-    data = await get_sx(msg)
+async def sx_func(message: Message = CommandArg()):
+    data = await get_sx(message.extract_plain_text())
     result = ""
     try:
         data = data[0]
         name = data['name']
         try:
             content = data['trans']
-            result += ' , '.join(content)
+            result += '、'.join(content)
         except KeyError:
             pass
         try:
             inputs = data['inputting']
-            result += ' , '.join(inputs)
+            result += '、'.join(inputs)
         except KeyError:
             pass
-        if result:
-            await sx.finish(message=name + "可能解释为：\n" + result)
-        await sx.finish(message=f"没有找到缩写 {msg} 的可能释义")
-    except KeyError:
+    except Exception as e:
         await sx.finish(message=f"出错啦")
+
+    if result:
+        await sx.finish(message=name + "可能解释为：\n" + result)
+    await sx.finish(message=f"没有找到缩写 {message} 的可能释义")
