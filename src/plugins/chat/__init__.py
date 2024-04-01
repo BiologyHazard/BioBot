@@ -1,9 +1,10 @@
 from nonebot import MatcherGroup, logger
 from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
-from nonebot.params import CommandArg, CommandStart, EventToMe, Command
+from nonebot.params import Command, CommandArg, CommandStart, EventToMe
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
+from .config import Config
 from .manager import Session, sessions
 
 __plugin_meta__: PluginMetadata = PluginMetadata(
@@ -21,7 +22,9 @@ __plugin_meta__: PluginMetadata = PluginMetadata(
         '· qwen-max-1201\n'
         '· qwen-max-longcontext\n'
         '· spark\n'
-    )
+    ),
+    type='application',
+    config=Config,
 )
 
 
