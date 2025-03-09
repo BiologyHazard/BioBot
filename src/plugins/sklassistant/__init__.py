@@ -13,7 +13,7 @@ from .app import app
 from .assistant import 森空岛实时数据分析, 森空岛干员阵容查询
 from .image import image_to_bytesio, text_to_image
 from .manager import tokens
-from .skland import TOKEN_LENGTH, SKLAssistantError, get_grant_code, sign_in_and_send_email
+from .skland import TOKEN_LENGTH, SKLand, attendance_and_send_email
 from .utils import get_qq_mail_address, is_base64
 
 require('nonebot_plugin_apscheduler')
@@ -43,7 +43,7 @@ http://solink.myqnapcloud.cn:27854/BioBot/plugins/sklassistant/
 
 __plugin_meta__ = PluginMetadata(
     name='森空岛小助手',
-    description='BioBot的明日方舟森空岛自动签到工具，可以在每日00:00自动签到，并发送邮件提醒。',
+    description='明日方舟森空岛自动签到工具，可以在每日00:00自动签到，并发送邮件提醒。',
     usage=help_str
 )
 
@@ -52,22 +52,20 @@ bind_skl_token = matcher_group.on_command('绑定森空岛token')
 skl_auto_sign_in = matcher_group.on_keyword({'森空岛自动签到'})
 skl_assistant = matcher_group.on_command('森空岛小秘书', aliases={'森空岛助手', '森空岛小助手'})
 skl_query = matcher_group.on_command('森空岛查询', aliases={'森空岛干员阵容查询'})
-# skl_sign_in_immediately = on_command('森空岛立即签到')
-# skl_sign_in_immediately_superuser = on_command('森空岛立即全部签到', permission=SUPERUSER)
 
 
 @scheduler.scheduled_job('cron', hour=0)
 # @driver.on_startup
 async def skl_sign_in_all() -> None:
     logger.info('开始森空岛自动签到')
-    tasks = [sign_in_and_send_email(item['token'], True, item['email'])
+    tasks = [attendance_and_send_email(item['token'], True, item['email'])
              for item in tokens if item['enabled']]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     for result in results:
         logger.info(repr(result))
 
 
-@driver.on_startup
+# @driver.on_startup
 async def run_app() -> None:
     asyncio.get_event_loop().create_task(app.run_task('0.0.0.0', 13000))
 
@@ -85,7 +83,7 @@ async def bind_skl_token_func(event: MessageEvent, message: Message = CommandArg
         await bind_skl_token.finish('token已存在。')
 
     try:
-        await get_grant_code(token)
+        await SKLand().login_by_token(token)
     except Exception as e:
         await bind_skl_token.finish(f'绑定森空岛token失败：{e}')
 
@@ -94,7 +92,7 @@ async def bind_skl_token_func(event: MessageEvent, message: Message = CommandArg
                               '已为您开启自动签到和邮件提醒，以后将于每日00:00签到。\n'
                               '如暂时不需要开启，请发送“关闭森空岛自动签到”。')
 
-    result: dict[str, Any] = await sign_in_and_send_email(token, True, get_qq_mail_address(event.user_id))
+    result: dict[str, Any] = await attendance_and_send_email(token, True, get_qq_mail_address(event.user_id))
     await skl_auto_sign_in.finish(result['msg'])
 
 
@@ -114,7 +112,7 @@ async def skl_auto_sign_in_func(event: MessageEvent, message: str = EventPlainTe
 
     if enable:
         await skl_auto_sign_in.send('已开启森空岛自动签到。立即进行一次签到。以后将于每日00:00签到。')
-        tasks = (sign_in_and_send_email(item['token'], True, item['email'])
+        tasks = (attendance_and_send_email(item['token'], True, item['email'])
                  for item in tokens if item['qq'] == event.user_id)
         results: list[dict[str, Any] | BaseException] = await asyncio.gather(*tasks, return_exceptions=True)
         await skl_auto_sign_in.finish(
@@ -151,6 +149,6 @@ async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Mes
                 await skl_assistant.finish(MessageSegment.image(image_to_bytesio(text_to_image(result))))
             await skl_assistant.finish(result)
 
-    if isinstance(exception, SKLAssistantError):
+    if isinstance(exception, SKLand):
         await skl_assistant.finish(str(exception))
     await skl_assistant.finish(repr(exception))

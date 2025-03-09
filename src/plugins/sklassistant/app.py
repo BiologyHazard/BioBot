@@ -4,7 +4,7 @@ from nonebot import logger
 from quart import Quart, request
 
 from .manager import tokens
-from .skland import TOKEN_LENGTH, SKLAssistantError, get_grant_code, sign_in_and_send_email
+from .skland import TOKEN_LENGTH, SKLandError, SKLand, attendance_and_send_email
 from .utils import is_base64, is_valid_email
 
 
@@ -21,7 +21,7 @@ home_html_content: str | None = None
 async def home() -> str:
     global home_html_content
     if home_html_content is None:
-        home_html_content = (Path(__file__).parent / 'html/index.html').read_text()
+        home_html_content = (Path(__file__).parent / 'html/index.html').read_text("utf-8")
     return home_html_content
 
 
@@ -56,8 +56,8 @@ async def commit():
         }, 400
 
     try:
-        await get_grant_code(token)
-    except SKLAssistantError as e:
+        await SKLand().login_by_token(token)
+    except SKLandError as e:
         return {
             'code': 403,
             'message': f'绑定森空岛token失败：{e}',
@@ -67,7 +67,7 @@ async def commit():
     tokens.add_item(qq, email, token)
 
     # await sign_in_and_send_email(token, True, email)
-    app.add_background_task(sign_in_and_send_email, token, True, email)
+    app.add_background_task(attendance_and_send_email, token, True, email)
 
     return {
         'code': 200,

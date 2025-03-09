@@ -1,11 +1,9 @@
-import json
 from datetime import datetime
 from typing import Any
 
 import aiohttp
 
-from .skland import SKLAssistantError, get_binding_list, get_cred, get_grant_code, get_sign_header, login_headers
-
+from .skland import SKLand, SKLandError, login_headers
 
 门牌号: dict[str, str] = {
     'slot_3': 'B401',
@@ -87,14 +85,17 @@ from .skland import SKLAssistantError, get_binding_list, get_cred, get_grant_cod
 
 
 async def 森空岛获取信息(token: str, uid: str | None = None) -> dict[str, Any]:
-    cred, sign_token = await get_cred(await get_grant_code(token))
-    characters: list[dict[str, Any]] = await get_binding_list(cred, sign_token)
+    skland = SKLand()
+    await skland.login_by_token(token)
+    characters = await skland.get_binding_list()
     if not characters:
-        raise SKLAssistantError('该账号未绑定任何角色。')
+        raise SKLandError('该账号未绑定任何角色。')
     if uid is None:
         uid = characters[0]['uid']
     elif not any(character['uid'] == uid for character in characters):
-        raise SKLAssistantError('该账号未绑定该角色。')
+        raise SKLandError('该账号未绑定该角色。')
+
+    return await skland.get_player_info(uid)
 
     url: str = f"https://zonai.skland.com/api/v1/game/player/info?uid={uid}"
     headers = get_sign_header(
@@ -107,7 +108,7 @@ async def 森空岛获取信息(token: str, uid: str | None = None) -> dict[str,
     async with aiohttp.request('get', url, headers=headers) as response:
         obj = await response.json()
     if obj['code'] != 0:
-        raise SKLAssistantError(obj['message'])
+        raise SKLandError(obj['message'])
     return obj
 
 

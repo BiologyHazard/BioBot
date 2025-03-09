@@ -50,8 +50,8 @@ async def send_email(recipients: str | Sequence[str], subject: str, content: str
         email_message.attach(MIMEText(content, 'plain', 'utf-8'))
         email_message['Subject'] = subject
         email_message['From'] = formataddr((name_email.name, name_email.email))
-        async with aiosmtplib.SMTP(plugin_config.skl_email_smtp_host,
-                                   plugin_config.skl_email_smtp_port,
+        async with aiosmtplib.SMTP(hostname=plugin_config.skl_email_smtp_host,
+                                   port=plugin_config.skl_email_smtp_port,
                                    use_tls=True) as smtp_client:
             await smtp_client.login(name_email.email, email_password)
             await smtp_client.sendmail(name_email.email, recipients, email_message.as_string())

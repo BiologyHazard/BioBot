@@ -242,7 +242,7 @@
             event.preventDefault();
             document.getElementById("submitInput").value = "提交中...";
             const formData = new FormData(event.target);
-            fetch("http://solink.myqnapcloud.cn:27854/BioBot/plugins/sklautosignin/", {
+            fetch("http://127.0.0.1:13000/BioBot/plugins/sklassistant/", {
                 method: "POST",
                 body: formData
             })

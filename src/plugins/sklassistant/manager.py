@@ -13,6 +13,8 @@ class Manager(list[dict[str, Any]]):
 
     @classmethod
     def load_from_file(cls, file_path: Path = file_path) -> Self:
+        if not file_path.is_file():
+            return cls()
         return cls(json.loads(file_path.read_text('utf-8')))
 
     def has_token(self, token: str) -> bool:

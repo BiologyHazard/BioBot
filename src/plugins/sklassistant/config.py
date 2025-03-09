@@ -1,4 +1,4 @@
-from nonebot import get_driver
+from nonebot import get_plugin_config
 from pydantic import BaseModel, DirectoryPath, FilePath, NameEmail
 from pathlib import Path
 
@@ -12,4 +12,6 @@ class Config(BaseModel):
     skl_tokens_file_path: FilePath = skl_data_path / 'tokens.json'
 
 
-plugin_config: Config = Config.parse_obj(get_driver().config)
+plugin_config: Config = get_plugin_config(Config)
+# plugin_config.skl_data_path.mkdir(parents=True, exist_ok=True)
+# plugin_config.skl_tokens_file_path.parent.mkdir(parents=True, exist_ok=True)
