@@ -1,12 +1,10 @@
-from typing import Literal
-
-from nonebot import logger, on_message
-from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
+from nonebot import get_plugin_config, logger, on_message
+from nonebot.adapters.onebot.v11 import GroupMessageEvent, Message
 from nonebot.params import EventMessage
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
-from . import config
+from .config import Config
 
 __plugin_meta__ = PluginMetadata(
     name='复读机',
@@ -14,17 +12,14 @@ __plugin_meta__ = PluginMetadata(
     usage='bot会自动复读重复的群消息'
 )
 
-repeater_group: Literal['all'] | list[int] = config.repeater_group
-shortest: int = config.shortest_length
-blacklist: list[str] = config.blacklist
-
+plugin_config = get_plugin_config(Config)
 
 last_message: dict[int, Message] = {}
 message_times: dict[int, int] = {}
 
 
 def _message_preprocess(message: Message) -> Message:
-    '''预处理message, 对于`CQ:image`仅保留`file`字段'''
+    '''预处理 message, 对于 `CQ:image` 仅保留 `file` 字段'''
     for message_segment in message:
         if message_segment.type == 'image':
             message_segment.data = {'file': message_segment.data['file']}
@@ -33,12 +28,12 @@ def _message_preprocess(message: Message) -> Message:
 
 @Rule
 async def in_repeater_group(event: GroupMessageEvent) -> bool:
-    return repeater_group == 'all' or event.group_id in repeater_group
+    return plugin_config.repeater_group == 'all' or event.group_id in plugin_config.repeater_group
 
 
 @Rule
 async def not_in_blacklist(raw_message: Message = EventMessage()) -> bool:
-    return raw_message not in blacklist
+    return raw_message not in plugin_config.repeater_blacklist
 
 
 @Rule
@@ -50,9 +45,9 @@ async def should_repeat(event: GroupMessageEvent, raw_message: Message = EventMe
         message_times[event.group_id] = 1
     else:
         message_times[event.group_id] += 1
-    logger.debug(f'[复读姬] 已重复次数: {message_times.get(event.group_id)}/{config.shortest_times}')
+    logger.debug(f'[复读姬] 已重复次数: {message_times.get(event.group_id)}/{plugin_config.repeater_min_message_times}')
     last_message[event.group_id] = message
-    return message_times.get(event.group_id) == config.shortest_times
+    return message_times.get(event.group_id) == plugin_config.repeater_min_message_times
 
 repeat = on_message(rule=in_repeater_group & not_in_blacklist & should_repeat, priority=10, block=False)
 

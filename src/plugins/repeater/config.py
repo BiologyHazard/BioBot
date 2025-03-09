@@ -1,17 +1,19 @@
-from nonebot import get_driver, logger
+from nonebot import logger
 
-config = get_driver().config.dict()
+from pydantic import BaseModel, PositiveInt, model_validator
+from typing import Any, Literal
 
-if 'repeater_group' not in config:
-    logger.warning('[复读姬] 未发现配置项 `repeater_group` , 采用默认值: []')
-if 'repeater_min_message_length' not in config:
-    logger.warning('[复读姬] 未发现配置项 `repeater_min_message_length` , 采用默认值: 1')
-if 'repeater_min_message_times' not in config:
-    logger.warning('[复读姬] 未发现配置项 `repeater_min_message_times` , 采用默认值: 2')
-if 'repeater_blacklist' not in config:
-    logger.warning('[复读姬] 未发现配置项 `repeater_blacklist` , 采用默认值: []')
 
-repeater_group = config.get('repeater_group', [])
-shortest_length = config.get('repeater_min_message_length', 1)
-shortest_times = config.get('repeater_min_message_times', 2)
-blacklist = config.get('repeater_blacklist', [])
+class Config(BaseModel):
+    repeater_group: Literal["all"] | list[Any] = "all"
+    repeater_min_message_length: PositiveInt = 1
+    repeater_min_message_times: PositiveInt = 2
+    repeater_blacklist: list[str] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_default_values(cls, values):
+        for name, field in cls.model_fields.items():
+            if name not in values:
+                logger.opt(colors=True).warning(f'<b>[复读姬]</> 未发现配置项 <magenta>{name!r}</>, 采用默认值: {field.default!r}')
+        return values
