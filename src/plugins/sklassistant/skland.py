@@ -246,13 +246,12 @@ class SKLand:
         cred, sign_token = await self.login_by_token(token)
         return cred, sign_token
 
-    async def get_binding_list(self, app_code: str = 'arknights') -> list[dict[str, Any]]:
-        result: list[dict[str, Any]] = []
+    async def get_binding_list(self, app_code: str = 'arknights') -> dict[str, Any]:
         obj = await self._request('GET', get_binding_list_url, login_headers, None, True)
         for app in obj['data']['list']:
             if app['appCode'] == app_code:
-                result.extend(app['bindingList'])
-        return result
+                return app
+        raise SKLandError(f'未找到应用代码为 {app_code!r} 的绑定信息')
 
     async def attendance_query(self, uid: str) -> dict[str, Any]:
         url = f'{attendance_url}?uid={uid}'
@@ -293,7 +292,7 @@ class SKLand:
 
     async def attendance_multi_characters(self) -> dict[str, Any]:
         try:
-            binding_list: list[dict[str, Any]] = await self.get_binding_list()
+            binding_list: list[dict[str, Any]] = (await self.get_binding_list())["bindingList"]
 
             if not binding_list:
                 return {

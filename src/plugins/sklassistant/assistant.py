@@ -91,25 +91,11 @@ async def 森空岛获取信息(token: str, uid: str | None = None) -> dict[str,
     if not characters:
         raise SKLandError('该账号未绑定任何角色。')
     if uid is None:
-        uid = characters[0]['uid']
-    elif not any(character['uid'] == uid for character in characters):
+        uid = characters['defaultUid']
+    elif not any(character['uid'] == uid for character in characters["bindingList"]):
         raise SKLandError('该账号未绑定该角色。')
 
     return await skland.get_player_info(uid)
-
-    url: str = f"https://zonai.skland.com/api/v1/game/player/info?uid={uid}"
-    headers = get_sign_header(
-        url,
-        'get',
-        None,
-        login_headers | {'cred': cred},
-        sign_token,
-    )
-    async with aiohttp.request('get', url, headers=headers) as response:
-        obj = await response.json()
-    if obj['code'] != 0:
-        raise SKLandError(obj['message'])
-    return obj
 
 
 async def 森空岛实时数据分析(token: str, uid: str | None = None) -> str:
