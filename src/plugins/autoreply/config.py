@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from nonebot import get_driver
-from pydantic import BaseModel, DirectoryPath, FilePath, PositiveInt
+from nonebot import get_plugin_config
+from pydantic import BaseModel, DirectoryPath, FilePath
 
 
 class Config(BaseModel):
@@ -11,5 +11,5 @@ class Config(BaseModel):
     text_font_path: FilePath = font_path / 'SourceHanSans.otf'
 
 
-plugin_config: Config = Config.parse_obj(get_driver().config)
+plugin_config: Config = get_plugin_config(Config)
 plugin_config.data_path.mkdir(parents=True, exist_ok=True)
