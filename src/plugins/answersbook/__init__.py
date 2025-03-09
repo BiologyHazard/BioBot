@@ -54,5 +54,4 @@ async def anwsersbook(state: T_State, event: MessageEvent) -> None:
         reply = event.message_id
     await look_answer.finish(Message([MessageSegment.reply(reply),
                                       MessageSegment.at(event.user_id),
-                                      MessageSegment.at(event.user_id),
                                       MessageSegment.text(answer)]))
