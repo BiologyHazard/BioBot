@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 def text_to_image(text: str,
-                  font_path='data/fonts/SourceHanSans.otf',
+                  font_path='data/fonts/SourceHanSansSC-Regular.otf',
                   font_size: float = 24.0,
                   tabs: list[float] | None = None,
                   border: float = 1.625,
