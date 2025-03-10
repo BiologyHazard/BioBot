@@ -40,7 +40,7 @@ def hint_to_num(hint: list[int]) -> int:
 class WordleAI:
     def __init__(self, dic_name: str, length: int) -> None:
         self.psb_answers: set[str] = set(filter(lambda s: len(s) == length,
-                                                json.loads((words_dir / f'{dic_name}.json').read_text()).keys()))
+                                                json.loads((words_dir / f'{dic_name}.json').read_text("utf-8")).keys()))
         self.supported_guesses: set[str] = self.psb_answers.copy()
         self.length: int = length
 

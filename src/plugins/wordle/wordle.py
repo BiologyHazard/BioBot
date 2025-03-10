@@ -66,7 +66,8 @@ class Wordle:
         if letter:
             letter = letter.upper()
             draw = ImageDraw.Draw(block)
-            letter_size = self.font.getsize(letter)
+            letter_bbox = self.font.getbbox(letter)
+            letter_size = (letter_bbox[2] - letter_bbox[0], letter_bbox[3] - letter_bbox[1])
             x = (self.block_size[0] - letter_size[0]) / 2
             y = (self.block_size[1] - letter_size[1]) / 2
             draw.text((x, y), letter, font=self.font, fill=self.font_color)
