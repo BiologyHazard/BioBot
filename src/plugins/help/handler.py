@@ -18,16 +18,16 @@ helper.__help_info__ = f'''· {default_start}help  # 获取本插件帮助
 
 @helper.handle()
 async def handle_first_receive(event: Event, matcher: Matcher, args: Message = CommandArg()):
-    at = MessageSegment.at(event.get_user_id())
     if args:
         matcher.set_arg("content", args)
     else:
-        await matcher.finish(Message(at + f'''欢迎使用Nonebot2 Help Menu
+        await matcher.finish(Message(
+            f'''欢迎使用Nonebot2 Help Menu
 支持使用的前缀：{', '.join(f'"{x}"' if x else '[空]' for x in nonebot.get_driver().config.command_start)}
 · {default_start}help  # 获取本插件帮助
 · {default_start}help list  # 展示已加载插件列表
 · {default_start}help <plugin_name>  # 调取目标插件帮助信息
-'''))
+'''), at_sender=True)
 
 
 @helper.got("content")
