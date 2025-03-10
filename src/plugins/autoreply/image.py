@@ -14,7 +14,7 @@ def text_to_image(text: str,
                   *args,
                   **kwargs,
                   ) -> Image.Image:
-    return Text2Image.from_text(text, round(font_size)).to_image('white', (10, 10))
+    return Text2Image.from_text(text, round(font_size)).to_image(None, 'white', (10, 10))
 #     font: ImageFont.FreeTypeFont = ImageFont.truetype(str(font_path), round(font_size))
 #     lines: list[str] = text.splitlines()
 #     if tabs is None:

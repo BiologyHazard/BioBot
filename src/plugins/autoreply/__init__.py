@@ -65,13 +65,13 @@ async def should_reply(event: GroupMessageEvent, message: Message = EventMessage
     return await autoreply.get_reply(event.group_id, str(message)) is not None
 
 
-# autoreply_command_group = MatcherGroup(rule=with_command_start_or_to_me, block=False, priority=5)
-autoreply_command_group = MatcherGroup(block=False, priority=5)
-learn: type[Matcher] = autoreply_command_group.on_command('学习')
-forget: type[Matcher] = autoreply_command_group.on_command('忘记', aliases={'删除'})
-forget_all: type[Matcher] = autoreply_command_group.on_command('忘记全部', aliases={'删除全部'})
-query: type[Matcher] = autoreply_command_group.on_command('查询')
-query_all: type[Matcher] = autoreply_command_group.on_command('查询全部')
+autoreply_command_group = MatcherGroup(rule=with_command_start_or_to_me, block=False, priority=5)
+# autoreply_command_group = MatcherGroup(block=False, priority=5)
+learn: type[Matcher] = autoreply_command_group.on_command('学习', force_whitespace=True)
+forget: type[Matcher] = autoreply_command_group.on_command('忘记', aliases={'删除'}, force_whitespace=True)
+forget_all: type[Matcher] = autoreply_command_group.on_command('忘记全部', aliases={'删除全部'}, force_whitespace=True)
+query: type[Matcher] = autoreply_command_group.on_command('查询', force_whitespace=True)
+query_all: type[Matcher] = autoreply_command_group.on_command('查询全部', force_whitespace=True)
 reply: type[Matcher] = on_message(rule=should_reply, block=False, priority=15)
 
 
