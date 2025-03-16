@@ -25,7 +25,7 @@ async def get_reply(text: Text, model: str = 'qwen-max', **kwargs) -> Result:
     #     },
     # }
     match model:
-        case 'qwen-turbo' | 'qwen-plus' | 'qwen-max' | 'qwen-max-1201' | 'qwen-max-longcontext':
+        case 'qwen-turbo' | 'qwen-plus' | 'qwen-max' | 'qwen-max-1201' | 'qwen-max-longcontext' | "deepseek-r1" | "deepseek-v3":
             return await qwen_get_reply(qwen_api_key, model, text, **kwargs)
         case 'spark':
             return await spark_get_reply(spark_appid, spark_api_key, spark_api_secret, spark_version, text)

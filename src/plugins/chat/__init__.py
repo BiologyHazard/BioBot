@@ -39,6 +39,8 @@ models = {
     'qwen-max': 'qwen-max',
     'qwen-max-1201': 'qwen-max-1201',
     'qwen-max-longcontext': 'qwen-max-longcontext',
+    "deepseek-r1": "deepseek-r1",
+    "deepseek-v3": "deepseek-v3",
     'spark': 'spark',
     '通义千问': 'qwen-max',
     '通义': 'qwen-max',
