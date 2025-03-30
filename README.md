@@ -6,7 +6,7 @@
 
 ## 安装
 
-1. 安装python
+1. 安装 python
 
 2. pip 安装依赖
 
@@ -14,7 +14,7 @@
     pip install -r requirements.txt
     ```
 
-3. 安装 enchant
+3. 安装 enchant (wordle 插件)
 
     ```bash
     # CentOS
@@ -23,19 +23,19 @@
     sudo apt install enchant-2
     ```
 
-4. 安装 ffmpeg
+4. 安装 ffmpeg (maimai 插件)
 
     ```bash
     sudo apt install ffmpeg
     ```
 
-5. 下载meme资源
+5. 下载 meme 资源 (meme 插件)
 
     ```bash
     meme download
     ```
 
-6. 安装字体
+6. 安装字体 (meme 插件)
 
     https://github.com/MeetWq/meme-generator/blob/main/docs/install.md
 
@@ -47,4 +47,5 @@
     fc-cache -fv
     rm ~/.cache/matplotlib/*
     ```
+
     然后重启bot
