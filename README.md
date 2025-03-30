@@ -6,13 +6,12 @@
 
 1. 安装python
 
-1. 安装go-cqhttp
-
 1. pip安装依赖  
     `$ pip install -r requirements.txt`
 
 1. 安装enchant  
     `$ yum install enchant`
+    `$ sudo apt install enchant-2`
 
 1. 下载meme资源  
     `$ meme download`
