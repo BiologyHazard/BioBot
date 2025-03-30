@@ -1,4 +1,4 @@
-from nonebot import get_driver
+from nonebot import get_plugin_config
 from pydantic import BaseModel, PositiveInt, PositiveFloat
 
 
@@ -8,4 +8,4 @@ class Config(BaseModel):
     biliinfo_max_count: PositiveInt = 5
 
 
-plugin_config: Config = Config.parse_obj(get_driver().config)
+plugin_config: Config = get_plugin_config(Config)
