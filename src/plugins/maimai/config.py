@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from nonebot import get_driver
+from nonebot import get_plugin_config
 from pydantic import BaseModel, DirectoryPath, PositiveInt, FilePath
 
 
@@ -15,6 +15,6 @@ class Config(BaseModel):
     songs_per_page: PositiveInt = 25
 
 
-plugin_config: Config = Config.parse_obj(get_driver().config)
+plugin_config: Config = get_plugin_config(Config)
 plugin_config.data_path.mkdir(parents=True, exist_ok=True)
 plugin_config.cover_path.mkdir(parents=True, exist_ok=True)
