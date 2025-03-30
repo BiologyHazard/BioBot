@@ -16,5 +16,8 @@ quart
 pydantic[email]
 nonebot-plugin-apscheduler
 
+# maimai
+pydub
+
 # wordle
 pyenchant
