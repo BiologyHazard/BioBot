@@ -1,6 +1,6 @@
 nonebot2[fastapi]
 nb-cli
-nonebot-adapater-onebot
+nonebot-adapter-onebot
 
 pillow
 pil_utils
@@ -17,7 +17,7 @@ pydantic[email]
 nonebot-plugin-apscheduler
 
 # maimai
-pydub
+# pydub
 
 # wordle
-pyenchant
+# pyenchant

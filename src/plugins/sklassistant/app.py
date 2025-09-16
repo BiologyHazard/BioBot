@@ -74,3 +74,7 @@ async def commit():
         'message': f'提交成功。',
         'data': None
     }, 200
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=80)

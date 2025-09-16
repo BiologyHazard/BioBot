@@ -13,6 +13,7 @@ from httpx import AsyncClient
 from nonebot.log import logger
 
 from .email import send_email as _send_email
+from .config import plugin_config
 
 TOKEN_LENGTH = 24
 APP_CODE = '4ca99fa6b56cc2ba'
@@ -31,6 +32,7 @@ cultivate_character_url = 'https://zonai.skland.com/api/v1/game/cultivate/charac
 cultivate_info_url = 'https://zonai.skland.com/api/v1/game/cultivate/info'
 cultivate_player_url = 'https://zonai.skland.com/api/v1/game/cultivate/player'  # ?uid={uid}
 refresh_url = 'https://zonai.skland.com/api/v1/auth/refresh'
+web_v1_user_auth_logout_url = "https://zonai.skland.com/api/v1/user/auth/logout"  # POST
 
 # 以下是web的接口
 check_url = 'https://zonai.skland.com/web/v1/user/check'
@@ -52,7 +54,7 @@ login_headers: dict[str, str] = {
     'Accept-Encoding': 'gzip',
     'Connection': 'close',
     'Content-Type': 'application/json',
-    'dId': 'BuWFcTYb2NL2MYocsmowIE7+OAWEHv7NfGLyu/sBO+5V0DjPoN8HfX3zZGOG8asy9asUUFvwB2IFAdalljpiodw==',
+    'dId': plugin_config.skland_did,
 }
 
 # 签名请求头一定要这个顺序，否则失败
@@ -60,7 +62,7 @@ login_headers: dict[str, str] = {
 header_for_sign: dict[str, str] = {
     'platform': '3',
     'timestamp': '',
-    'dId': 'BuWFcTYb2NL2MYocsmowIE7+OAWEHv7NfGLyu/sBO+5V0DjPoN8HfX3zZGOG8asy9asUUFvwB2IFAdalljpiodw==',
+    'dId': plugin_config.skland_did,
     'vName': '1.21.0',
 }
 
@@ -265,6 +267,10 @@ class SKLand:
         }
         obj = await self._request('POST', attendance_url, login_headers, data, True, raise_error=False)
         return obj
+        
+    async def logout(self) -> None:
+        obj = await self._request('POST', web_v1_user_auth_logout_url, login_headers, {}, True, raise_error=True)
+        return obj
 
     async def attendance_single_character(self, character: dict[str, Any]) -> str:
         uid: str = character['uid']
@@ -290,8 +296,10 @@ class SKLand:
             message: str = obj['message']
             raise SKLandError(f'{channel_name}账号 Dr. {nickname} ({uid}) 签到时出现未知错误：{message}')
 
-    async def attendance_multi_characters(self) -> dict[str, Any]:
+    async def attendance_multi_characters(self, token: str) -> dict[str, Any]:
         try:
+            await self.login_by_token(token)
+
             binding_list: list[dict[str, Any]] = (await self.get_binding_list())["bindingList"]
 
             if not binding_list:
@@ -356,8 +364,7 @@ async def attendance_and_send_email(token: str,
                                     send_email: bool = True,
                                     recipients: str | Sequence[str] | None = None) -> dict[str, Any]:
     skland = SKLand()
-    await skland.login_by_token(token)
-    result = await skland.attendance_multi_characters()
+    result = await skland.attendance_multi_characters(token)
     if send_email:
         assert recipients is not None, ValueError
         if result['code'] == 0:

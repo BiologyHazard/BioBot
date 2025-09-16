@@ -61,7 +61,7 @@ def main() -> None:
     nonebot.load_plugin('src.plugins.abbreply')
     nonebot.load_plugin('src.plugins.kfccrazythu')
     nonebot.load_plugin('src.plugins.choose')
-    nonebot.load_plugin('src.plugins.wordle')
+    # nonebot.load_plugin('src.plugins.wordle')
     # nonebot.load_plugin('src.plugins.handle')
 
     # nonebot.load_plugin('nonebot_plugin_emojimix')

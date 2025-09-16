@@ -11,6 +11,7 @@ from nonebot.plugin import PluginMetadata
 
 from .app import app
 from .assistant import 森空岛实时数据分析, 森空岛干员阵容查询
+from .config import plugin_config
 from .image import image_to_bytesio, text_to_image
 from .manager import tokens
 from .skland import TOKEN_LENGTH, SKLand, attendance_and_send_email
@@ -26,7 +27,7 @@ default_command_start: str = tuple(driver.config.command_start)[0]
 help_str: str = f'''
 【如何使用】
 方法一：点击下面链接，按照提示操作
-http://solink.myqnapcloud.cn:27854/BioBot/plugins/sklassistant/
+http://{plugin_config.server}/BioBot/plugins/sklassistant/
 方法二：点击上面链接查看如何获取森空岛token，
 然后添加bot为好友，私聊发送“{default_command_start}绑定森空岛token <token>”
 
@@ -52,22 +53,24 @@ bind_skl_token = matcher_group.on_command('绑定森空岛token')
 skl_auto_sign_in = matcher_group.on_keyword({'森空岛自动签到'})
 skl_assistant = matcher_group.on_command('森空岛小秘书', aliases={'森空岛助手', '森空岛小助手'})
 skl_query = matcher_group.on_command('森空岛查询', aliases={'森空岛干员阵容查询'})
+skl_attendance_all = matcher_group.on_command('森空岛签到全部', permission=SUPERUSER)
 
 
 @scheduler.scheduled_job('cron', hour=0)
 # @driver.on_startup
 async def skl_sign_in_all() -> None:
     logger.info('开始森空岛自动签到')
-    tasks = [attendance_and_send_email(item['token'], True, item['email'])
+    tasks = [attendance_and_send_email(item['token'], item['remind'], item['email'])
              for item in tokens if item['enabled']]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     for result in results:
         logger.info(repr(result))
+    return results
 
 
-# @driver.on_startup
+@driver.on_startup
 async def run_app() -> None:
-    asyncio.get_event_loop().create_task(app.run_task('0.0.0.0', 13000))
+    asyncio.get_event_loop().create_task(app.run_task('0.0.0.0', 80))
 
 
 @bind_skl_token.handle()
@@ -152,3 +155,9 @@ async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Mes
     if isinstance(exception, SKLand):
         await skl_assistant.finish(str(exception))
     await skl_assistant.finish(repr(exception))
+
+
+@skl_attendance_all.handle()
+async def skl_attendance_all_func() -> None:
+    results = await skl_sign_in_all()
+    await skl_attendance_all.finish('\n'.join(repr(result) for result in results))
