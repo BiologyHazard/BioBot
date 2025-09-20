@@ -1,9 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-import aiohttp
-
-from .skland import SKLand, SKLandError, login_headers
+from .skland import SKLand, SKLandError
 
 门牌号: dict[str, str] = {
     'slot_3': 'B401',

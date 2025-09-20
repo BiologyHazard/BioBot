@@ -112,11 +112,11 @@ class Manager(list[dict[str, Any]]):
             result.append(data)
         return result
 
-    def all_tokens(self) -> Generator[str, None, None]:
-        return (data['token'] for data in self)
+    # def all_tokens(self) -> Generator[str, None, None]:
+    #     return (data['token'] for data in self)
 
-    def all_enabled_tokens(self) -> Generator[str, None, None]:
-        return (data['token'] for data in self if data['enabled'])
+    # def all_enabled_tokens(self) -> Generator[str, None, None]:
+    #     return (data['token'] for data in self if data['enabled'])
 
     def save_to_file(self, path: Path = file_path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)

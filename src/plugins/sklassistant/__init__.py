@@ -14,7 +14,7 @@ from .assistant import 森空岛实时数据分析, 森空岛干员阵容查询
 from .config import plugin_config
 from .image import image_to_bytesio, text_to_image
 from .manager import tokens
-from .skland import TOKEN_LENGTH, SKLand, attendance_and_send_email
+from .skland import TOKEN_LENGTH, SKLand, SKLandError, attendance_and_send_email
 from .utils import get_qq_mail_address, is_base64
 
 require('nonebot_plugin_apscheduler')
@@ -58,7 +58,7 @@ skl_attendance_all = matcher_group.on_command('森空岛签到全部', permissio
 
 @scheduler.scheduled_job('cron', hour=0)
 # @driver.on_startup
-async def skl_sign_in_all() -> None:
+async def skl_sign_in_all() -> list[dict[str, Any] | BaseException]:
     logger.info('开始森空岛自动签到')
     tasks = [attendance_and_send_email(item['token'], item['remind'], item['email'])
              for item in tokens if item['enabled']]
@@ -152,9 +152,12 @@ async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Mes
                 await skl_assistant.finish(MessageSegment.image(image_to_bytesio(text_to_image(result))))
             await skl_assistant.finish(result)
 
-    if isinstance(exception, SKLand):
-        await skl_assistant.finish(str(exception))
-    await skl_assistant.finish(repr(exception))
+    if isinstance(exception, SKLandError):
+        await skl_assistant.send(str(exception))
+    else:
+        await skl_assistant.send(repr(exception))
+
+    raise exception
 
 
 @skl_attendance_all.handle()
