@@ -1,10 +1,13 @@
 import re
 from dataclasses import dataclass
+from enum import Enum
+
 from PIL import Image, ImageDraw, ImageFont
 from PIL.Image import Image as PILImage
 from PIL.ImageDraw import ImageDraw as PILImageDraw
 from PIL.ImageFont import FreeTypeFont
-from enum import Enum
+
+from .config import plugin_config
 
 pos_T = tuple[float, float]
 xy_T = tuple[pos_T, pos_T]
@@ -209,17 +212,20 @@ class BoardGame:
                              round((border + i) * grid_pixels - 1/2))),
                            'black', round(grid_width * grid_pixels))
         # 写字
-        font0: FreeTypeFont = ImageFont.truetype(
-            r'data/boardgame/consola.ttf', round(font_size * grid_pixels))
+        font0: FreeTypeFont = ImageFont.truetype(plugin_config.font_path.as_posix(), round(font_size * grid_pixels))
         for i in range(self.size):
-            font_pixels: tuple[int, int] = font0.getsize(Pos.num_to_letter(i))
-            draw0.text((round((border + i + 1/2) * grid_pixels - font_pixels[0] / 2 - 1/2),
-                        round((border - 0.1) * grid_pixels - font_pixels[1] - 1/2)),
+            left, top, right, bottom = font0.getbbox(Pos.num_to_letter(i))
+            text_width = right - left
+            text_height = bottom - top
+            draw0.text((round((border + i + 1/2) * grid_pixels - text_width / 2 - 1/2),
+                        round((border - 0.1) * grid_pixels - text_height - 1/2)),
                        Pos.num_to_letter(i), 'black', font0, align='center')
         for i in range(self.size):
-            font_pixels = font0.getsize(str(i + 1))
-            draw0.text((round((border - 0.1) * grid_pixels - font_pixels[0] - 1/2),
-                        round((border + i + 1/2) * grid_pixels - font_pixels[1] / 2 - 1/2)),
+            left, top, right, bottom = font0.getbbox(str(i + 1))
+            text_width = right - left
+            text_height = bottom - top
+            draw0.text((round((border - 0.1) * grid_pixels - text_width - 1/2),
+                        round((border + i + 1/2) * grid_pixels - text_height / 2 - 1/2)),
                        str(i + 1), 'black', font0, align='center')
 
         # 画棋子
