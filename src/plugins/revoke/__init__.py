@@ -1,6 +1,6 @@
 from typing import Any
 
-from nonebot import get_driver, on_command, on_notice
+from nonebot import on_command, on_notice
 from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters.onebot.v11 import Bot as V11Bot
 from nonebot.adapters.onebot.v11 import GroupMessageEvent as V11GMEvent
@@ -15,11 +15,11 @@ from nonebot.adapters.onebot.v12 import GroupMessageEvent as V12GMEvent
 from nonebot.adapters.onebot.v12 import Message as V12Msg
 from nonebot.adapters.onebot.v12 import MessageEvent as V12MEvent
 from nonebot.params import CommandArg, CommandStart, EventToMe
-from nonebot.plugin import PluginMetadata
+from nonebot.plugin import PluginMetadata, get_plugin_config
 
 from .config import Config
 
-revoke_config: Config = Config.parse_obj(get_driver().config.dict())
+revoke_config: Config = get_plugin_config(Config)
 
 
 __plugin_meta__ = PluginMetadata(
