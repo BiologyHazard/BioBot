@@ -21,8 +21,8 @@ def on_startup_func() -> None:
 
 
 arknights_matcher_group = MatcherGroup(priority=5, block=False)
-base_skill = arknights_matcher_group.on_regex(r"(.+)基建技能|基建技能\s*(.+)")
-evolve_cost = arknights_matcher_group.on_regex(r"(.+)(?:满练|拉满)消耗")
+base_skill = arknights_matcher_group.on_regex(r"^(.+)基建技能$|^基建技能\s*(.+)$")
+evolve_cost = arknights_matcher_group.on_regex(r"^(.+)(?:满练|拉满)消耗$")
 # all_evolve_cost = arknights_matcher_group.on_regex(r"全(?:干员)?(?:满练|拉满)消耗")
 
 
