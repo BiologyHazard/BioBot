@@ -89,7 +89,7 @@ async def 森空岛获取信息(token: str, uid: str | None = None) -> dict[str,
     if not characters:
         raise SKLandError('该账号未绑定任何角色。')
     if uid is None:
-        uid = characters['defaultUid']
+        uid = characters['defaultUid']  # TODO: 如果没设置默认角色，就没有 defaultUid 这个字段
     elif not any(character['uid'] == uid for character in characters["bindingList"]):
         raise SKLandError('该账号未绑定该角色。')
 
@@ -114,7 +114,8 @@ async def 森空岛实时数据分析(token: str, uid: str | None = None) -> str
     if 理智回满剩余时间 == 0:
         信息内容 += "，理智已满。"
     else:
-        信息内容 += f"，距离理智回满还有 {理智回满剩余时间 // 3600} 小时 {理智回满剩余时间 % 3600 // 60} 分钟。"
+        # 信息内容 += f"，距离理智回满还有 {理智回满剩余时间 // 3600} 小时 {理智回满剩余时间 % 3600 // 60} 分钟。"
+        信息内容 += f"，将在 {datetime.fromtimestamp(数据['status']['ap']['completeRecoveryTime']).strftime("%H:%M")}（{理智回满剩余时间 // 3600} 小时 {理智回满剩余时间 % 3600 // 60} 分钟后） 回满"
     信息内容 += "\n"
 
     # 公开招募刷新

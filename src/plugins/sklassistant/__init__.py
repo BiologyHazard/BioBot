@@ -27,7 +27,7 @@ default_command_start: str = tuple(driver.config.command_start)[0]
 help_str: str = f'''
 【如何使用】
 方法一：点击下面链接，按照提示操作
-http://{plugin_config.server}/BioBot/plugins/sklassistant/
+http://{plugin_config.skl_server_host}:{plugin_config.skl_quart_port}/BioBot/plugins/sklassistant/
 方法二：点击上面链接查看如何获取森空岛token，
 然后添加bot为好友，私聊发送“{default_command_start}绑定森空岛token <token>”
 
@@ -70,7 +70,7 @@ async def skl_sign_in_all() -> list[dict[str, Any] | BaseException]:
 
 @driver.on_startup
 async def run_app() -> None:
-    asyncio.get_event_loop().create_task(app.run_task('0.0.0.0', 80))
+    asyncio.create_task(app.run_task(plugin_config.skl_quart_host, plugin_config.skl_quart_port))
 
 
 @bind_skl_token.handle()

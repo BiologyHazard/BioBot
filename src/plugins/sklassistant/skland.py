@@ -267,8 +267,8 @@ class SKLand:
         }
         obj = await self._request('POST', attendance_url, login_headers, data, True, raise_error=False)
         return obj
-        
-    async def logout(self) -> None:
+
+    async def logout(self) -> dict[str, Any]:
         obj = await self._request('POST', web_v1_user_auth_logout_url, login_headers, {}, True, raise_error=True)
         return obj
 
