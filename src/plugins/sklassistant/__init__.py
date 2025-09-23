@@ -1,6 +1,14 @@
+import sys
+
+sys.path.append("src/arknights-game-model")  # NOQA
+
 import asyncio
 from typing import Any
 
+from arknights_game_model.game_data import game_data
+from arknights_game_model.item_info_model import ItemInfo, ItemInfoList
+from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_cultivate_player import \
+    HttpsZonaiSklandComApiV1GameCultivatePlayer as CultivatePlayer
 from nonebot import MatcherGroup, get_driver, logger, require
 from nonebot.adapters.onebot.v11 import Message, MessageEvent, MessageSegment
 from nonebot.drivers import Driver
@@ -24,12 +32,18 @@ from nonebot_plugin_apscheduler import scheduler  # NOQA: E402
 driver: Driver = get_driver()
 default_command_start: str = tuple(driver.config.command_start)[0]
 
-help_str: str = f'''
-【如何使用】
+token_str = f"""
+【如何绑定森空岛 token】
 方法一：点击下面链接，按照提示操作
 http://{plugin_config.skl_server_host}:{plugin_config.skl_quart_port}/BioBot/plugins/sklassistant/
 方法二：点击上面链接查看如何获取森空岛token，
 然后添加bot为好友，私聊发送“{default_command_start}绑定森空岛token <token>”
+""".strip()
+
+no_token_str = f"""未绑定森空岛 token，请先绑定森空岛 token。\n\n{token_str}"""
+
+help_str: str = f'''
+{token_str}
 
 【如何暂时关闭/开启自动签到】
 群聊/私聊发送“{default_command_start}关闭/开启森空岛自动签到”
@@ -54,6 +68,7 @@ skl_auto_sign_in = matcher_group.on_keyword({'森空岛自动签到'})
 skl_assistant = matcher_group.on_command('森空岛小秘书', aliases={'森空岛助手', '森空岛小助手'})
 skl_query = matcher_group.on_command('森空岛查询', aliases={'森空岛干员阵容查询'})
 skl_attendance_all = matcher_group.on_command('森空岛签到全部', permission=SUPERUSER)
+skl_consumed_items = matcher_group.on_command('已消耗材料', aliases={'养成总消耗'})
 
 
 @scheduler.scheduled_job('cron', hour=0)
@@ -109,7 +124,7 @@ async def skl_auto_sign_in_func(event: MessageEvent, message: str = EventPlainTe
         await skl_auto_sign_in.finish()
 
     if not tokens.filter(qq=event.user_id):
-        await skl_auto_sign_in.finish('请先绑定森空岛token。')
+        await skl_auto_sign_in.finish(no_token_str)
 
     tokens.set_enable_state('qq', event.user_id, enable)
 
@@ -135,7 +150,7 @@ async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Mes
 
     token_list = tokens.filter(qq=event.user_id)
     if not token_list:
-        await skl_assistant.finish('请先绑定森空岛token。')
+        await skl_assistant.finish(no_token_str)
 
     exception = None
     for item in token_list:
@@ -149,18 +164,102 @@ async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Mes
             exception = e
         else:
             if len(result) > 512:
-                await skl_assistant.finish(MessageSegment.image(image_to_bytesio(text_to_image(result))))
-            await skl_assistant.finish(result)
+                await skl_assistant.send(MessageSegment.image(image_to_bytesio(text_to_image(result))))
+            else:
+                await skl_assistant.send(result)
 
     if isinstance(exception, SKLandError):
         await skl_assistant.send(str(exception))
-    else:
+        raise exception
+    elif isinstance(exception, Exception):
         await skl_assistant.send(repr(exception))
-
-    raise exception
+        raise exception
 
 
 @skl_attendance_all.handle()
 async def skl_attendance_all_func() -> None:
     results = await skl_sign_in_all()
     await skl_attendance_all.finish('\n'.join(repr(result) for result in results))
+
+
+@skl_consumed_items.handle()
+async def skl_consumed_items_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
+    uid: str | None = message.extract_plain_text().strip()
+    if not uid.isdigit():
+        uid = None
+
+    token_list = tokens.filter(qq=event.user_id)
+    if not token_list:
+        await skl_consumed_items.finish(no_token_str)
+
+    exception = None
+
+    for item in token_list:
+        token = item["token"]
+        try:
+            skland = SKLand()
+            await skland.login_by_token(token)
+
+            player_binding = await skland.player_binding()
+            if uid is None:
+                default_character = skland.get_default_character(player_binding, "arknights")
+                if default_character is None:
+                    await matcher.send("该账号未绑定任何角色。")
+                    continue
+                uid = default_character["uid"]
+            else:
+                specific_game_player_binding = skland.extract_specific_game_player_binding(player_binding, "arknights")
+                for binding in specific_game_player_binding:
+                    if binding["uid"] == uid:
+                        default_character = binding
+                        break
+                else:
+                    await matcher.send(f"该账号未绑定 UID 为 {uid} 的角色。")
+                    continue
+
+            obj = await skland.cultivate_player(uid)
+
+            model = CultivatePlayer.model_validate(obj)
+
+            item_info_list: ItemInfoList = ItemInfoList()
+            for skl_character in model.data.characters:
+                character = game_data.characters.by_id(skl_character.id)
+                item_info_list.extend(character.养成消耗(
+                    目标精英化阶段=skl_character.evolve_phase,
+                    目标等级=skl_character.level,
+                    目标技能专精等级列表=[skill.level for skill in skl_character.skills],
+                    目标模组等级字典={equip.id: equip.level for equip in skl_character.equips}
+                ))
+
+            item_info_list.combine_in_place()
+            item_info_list.sort_in_place_by_sort_id()
+            yituliu_item_value = item_info_list.yituliu_item_value(strict=False)
+
+            lines: list[str] = []
+
+            lines.append(f"{default_character["channelName"]}账号 {default_character["nickName"]}（{default_character["uid"]}）")
+            lines.append("________________")
+            lines.append("")
+            lines.append("/- 养成总消耗 -/")
+            lines.append("")
+            lines.extend(str(item_info_list).split())
+            lines.append("")
+            lines.append(f"相当于 {yituliu_item_value:.2f} 理智")
+            lines.append("")
+            lines.append("________________")
+            lines.append("# 物品价值数据来自 明日方舟一图流 - 物品价值表")
+            lines.append("https://ark.yituliu.cn/material/value")
+            lines.append("")
+            lines.append("# 来自 bilibili@Bio-Hazard")
+            lines.append("https://space.bilibili.com/37179776")
+
+            await skl_consumed_items.send("\n".join(lines))
+        except Exception as e:
+            exception = e
+
+    if isinstance(exception, SKLandError):
+        await skl_assistant.send(str(exception))
+        raise exception
+    elif isinstance(exception, Exception):
+        await skl_assistant.send(repr(exception))
+        raise exception

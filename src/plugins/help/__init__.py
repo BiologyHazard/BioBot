@@ -43,7 +43,7 @@ def get_list_text() -> str:
                 parts.append(plugin.metadata.name)
             # version
             if "version" in plugin.metadata.extra and isinstance(plugin.metadata.extra["version"], str) and plugin.metadata.extra["version"]:
-                lines.append(f"版本：{plugin.metadata.extra['version']}")
+                parts.append(f"版本：{plugin.metadata.extra['version']}")
             # description
             if plugin.metadata.description:
                 parts.append(plugin.metadata.description)

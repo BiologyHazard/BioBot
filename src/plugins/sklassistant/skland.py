@@ -7,13 +7,14 @@ import reprlib
 import time
 from typing import Any, Sequence
 from urllib import parse
+from warnings import deprecated
 
 import httpx
 from httpx import AsyncClient
 from nonebot.log import logger
 
-from .email import send_email as _send_email
 from .config import plugin_config
+from .email import send_email as _send_email
 
 TOKEN_LENGTH = 24
 APP_CODE = '4ca99fa6b56cc2ba'
@@ -248,12 +249,40 @@ class SKLand:
         cred, sign_token = await self.login_by_token(token)
         return cred, sign_token
 
+    @deprecated("use get_specific_game_player_binding instead")
     async def get_binding_list(self, app_code: str = 'arknights') -> dict[str, Any]:
+        """Deprecated, use get_specific_game_player_binding instead."""
         obj = await self._request('GET', get_binding_list_url, login_headers, None, True)
         for app in obj['data']['list']:
             if app['appCode'] == app_code:
                 return app
         raise SKLandError(f'未找到应用代码为 {app_code!r} 的绑定信息')
+
+    async def player_binding(self, *, uid: str | None = None) -> dict[str, Any]:
+        if uid is None:
+            url = get_binding_list_url
+        else:
+            url = f'{get_binding_list_url}?uid={uid}'
+        obj = await self._request('GET', url, login_headers, None, True)
+        return obj
+
+    def extract_specific_game_player_binding(self, binding_list: dict[str, Any], app_code: str) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+        for app in binding_list['data']['list']:
+            if app['appCode'] == app_code:
+                result.extend(app['bindingList'])
+        return result
+
+    def get_default_character(self, binding_list: dict[str, Any], app_code: str) -> dict[str, Any] | None:
+        specific_game_binding_list = self.extract_specific_game_player_binding(binding_list, app_code)
+        if not specific_game_binding_list:
+            return None
+
+        for character in specific_game_binding_list:
+            if character["isDefault"]:
+                return character
+
+        return specific_game_binding_list[0]
 
     async def attendance_query(self, uid: str) -> dict[str, Any]:
         url = f'{attendance_url}?uid={uid}'
