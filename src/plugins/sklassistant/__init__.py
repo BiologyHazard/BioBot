@@ -287,11 +287,13 @@ async def _(matcher: Matcher, event: MessageEvent, message: Message = CommandArg
             await skl_binding_func(matcher, event, message)
 
     except SKLandError as e:
-        await matcher.finish(str(e))
+        await matcher.send(str(e))
+        raise e
     except MatcherException as e:
         raise e
     except Exception as e:
-        await matcher.finish(repr(e))
+        await matcher.send("发生了苏茜解决不了的错误呢，怎么回事呢？")
+        raise e
 
 
 async def skl_missing_characters_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
