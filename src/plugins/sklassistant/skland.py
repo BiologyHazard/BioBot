@@ -34,6 +34,7 @@ cultivate_info_url = 'https://zonai.skland.com/api/v1/game/cultivate/info'
 cultivate_player_url = 'https://zonai.skland.com/api/v1/game/cultivate/player'  # ?uid={uid}
 refresh_url = 'https://zonai.skland.com/api/v1/auth/refresh'
 web_v1_user_auth_logout_url = "https://zonai.skland.com/api/v1/user/auth/logout"  # POST
+api_v1_search_user_url = "https://zonai.skland.com/api/v1/search/user"  # 搜索用户 GET ?keyword={keyword}&pageSize={pageSize}(&pageToken={pageToken})(list_id={list_id})
 
 # 以下是web的接口
 check_url = 'https://zonai.skland.com/web/v1/user/check'
