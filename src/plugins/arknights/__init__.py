@@ -70,6 +70,10 @@ def get_term_ids(initial_queue: list[str]) -> list[str]:
             continue
 
         visited.add(term_id)
+
+        if term_id not in game_data.raw_data.excel.gamedata_const.term_description_dict:
+            continue  # 有时候会因为解包库更新不及时导致找不到术语
+
         term_ids.append(term_id)
         term_description = game_data.raw_data.excel.gamedata_const.term_description_dict[term_id].description
         queue.extend(find_dollar_tags(term_description))
