@@ -113,7 +113,7 @@ async def skl_sign_in_all() -> list[dict[str, Any] | BaseException]:
     return results
 
 
-# @driver.on_startup
+@driver.on_startup
 async def run_app() -> None:
     asyncio.create_task(app.run_task(plugin_config.skl_quart_host, plugin_config.skl_quart_port))
 
