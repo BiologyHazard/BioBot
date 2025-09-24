@@ -386,6 +386,7 @@ def get_consumed_item_info_list(cultivate_player: CultivatePlayer) -> ItemInfoLi
         item_info_list.extend(character.养成消耗(
             目标精英化阶段=skl_character.evolve_phase,
             目标等级=skl_character.level,
+            目标技能等级=skl_character.main_skill_level,
             目标技能专精等级列表=[skill.level for skill in skl_character.skills],
             目标模组等级字典={equip.id: equip.level for equip in skl_character.equips}
         ))
@@ -403,6 +404,7 @@ def get_missing_item_info_list(cultivate_player: CultivatePlayer) -> ItemInfoLis
         item_info_list.extend(character.养成消耗(
             初始精英化阶段=skl_character.evolve_phase,
             初始等级=skl_character.level,
+            初始技能等级=skl_character.main_skill_level,
             初始技能专精等级列表=[skill.level for skill in skl_character.skills],
             初始模组等级字典={equip.id: equip.level for equip in skl_character.equips}
         ))

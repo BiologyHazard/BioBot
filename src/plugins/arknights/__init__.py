@@ -106,11 +106,11 @@ async def base_skill_func(regex_group: tuple[str, None] | tuple[None, str] = Reg
         if buff_char_item.buff_data:
             lines.append("")
             lines.append(f"/- 基建技能 {skill_num} -/")
-            lines.append("")
 
             for buff_data_item in buff_char_item.buff_data:
                 skill_id = buff_data_item.buff_id
                 skill = game_data.raw_data.excel.building_data.buffs[skill_id]
+                lines.append("")
                 lines.append(f"【{skill.buff_name}】{ELITE_LEVEL_DICT.get(buff_data_item.cond.phase)} {buff_data_item.cond.level} 级解锁")
                 lines.append(escape_description(skill.description))
                 initial_queue.extend(find_dollar_tags(skill.description))
