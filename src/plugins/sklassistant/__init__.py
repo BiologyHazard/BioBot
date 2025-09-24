@@ -64,11 +64,13 @@ __plugin_meta__ = PluginMetadata(
 
 matcher_group = MatcherGroup(priority=1)
 bind_skl_token = matcher_group.on_command('绑定森空岛token')
-skl_auto_sign_in = matcher_group.on_keyword({'森空岛自动签到'})
+skl_auto_attendance = matcher_group.on_keyword({'森空岛自动签到'})
 skl_assistant = matcher_group.on_command('森空岛小秘书', aliases={'森空岛助手', '森空岛小助手'})
 skl_query = matcher_group.on_command('森空岛查询', aliases={'森空岛干员阵容查询'})
 skl_attendance_all = matcher_group.on_command('森空岛签到全部', permission=SUPERUSER)
 skl_consumed_items = matcher_group.on_command('已消耗材料', aliases={'养成总消耗'})
+skl_missing_items = matcher_group.on_command('满练需要材料', aliases={'满练差多少材料'})
+skl_missing_characters = matcher_group.on_command("未拥有干员")
 
 
 @scheduler.scheduled_job('cron', hour=0)
@@ -111,34 +113,34 @@ async def bind_skl_token_func(event: MessageEvent, message: Message = CommandArg
                               '如暂时不需要开启，请发送“关闭森空岛自动签到”。')
 
     result: dict[str, Any] = await attendance_and_send_email(token, True, get_qq_mail_address(event.user_id))
-    await skl_auto_sign_in.finish(result['msg'])
+    await skl_auto_attendance.finish(result['msg'])
 
 
-@skl_auto_sign_in.handle()
-async def skl_auto_sign_in_func(event: MessageEvent, message: str = EventPlainText()) -> None:
+@skl_auto_attendance.handle()
+async def skl_auto_attendance_func(event: MessageEvent, message: str = EventPlainText()) -> None:
     if '关闭' in message:
         enable: bool = False
     elif '开启' in message:
         enable = True
     else:
-        await skl_auto_sign_in.finish()
+        await skl_auto_attendance.finish()
 
     if not tokens.filter(qq=event.user_id):
-        await skl_auto_sign_in.finish(no_token_str)
+        await skl_auto_attendance.finish(no_token_str)
 
     tokens.set_enable_state('qq', event.user_id, enable)
 
     if enable:
-        await skl_auto_sign_in.send('已开启森空岛自动签到。立即进行一次签到。以后将于每日00:00签到。')
+        await skl_auto_attendance.send('已开启森空岛自动签到。立即进行一次签到。以后将于每日00:00签到。')
         tasks = (attendance_and_send_email(item['token'], True, item['email'])
                  for item in tokens if item['qq'] == event.user_id)
         results: list[dict[str, Any] | BaseException] = await asyncio.gather(*tasks, return_exceptions=True)
-        await skl_auto_sign_in.finish(
+        await skl_auto_attendance.finish(
             '\n'.join(result['msg'] if isinstance(result, dict) else repr(result)
                       for result in results)
         )
     else:
-        await skl_auto_sign_in.finish('已关闭森空岛自动签到。')
+        await skl_auto_attendance.finish('已关闭森空岛自动签到。')
 
 
 @skl_assistant.handle()
@@ -183,14 +185,15 @@ async def skl_attendance_all_func() -> None:
 
 
 @skl_consumed_items.handle()
-async def skl_consumed_items_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
+@skl_missing_items.handle()
+async def skl_consumed_or_missing_items_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
     uid: str | None = message.extract_plain_text().strip()
     if not uid.isdigit():
         uid = None
 
     token_list = tokens.filter(qq=event.user_id)
     if not token_list:
-        await skl_consumed_items.finish(no_token_str)
+        await matcher.finish(no_token_str)
 
     exception = None
 
@@ -222,14 +225,27 @@ async def skl_consumed_items_func(matcher: Matcher, event: MessageEvent, message
             model = CultivatePlayer.model_validate(obj)
 
             item_info_list: ItemInfoList = ItemInfoList()
-            for skl_character in model.data.characters:
-                character = game_data.characters.by_id(skl_character.id)
-                item_info_list.extend(character.养成消耗(
-                    目标精英化阶段=skl_character.evolve_phase,
-                    目标等级=skl_character.level,
-                    目标技能专精等级列表=[skill.level for skill in skl_character.skills],
-                    目标模组等级字典={equip.id: equip.level for equip in skl_character.equips}
-                ))
+            for character_id, character in game_data.characters.items():
+                for skl_character in model.data.characters:
+                    if skl_character.id == character_id:
+                        if isinstance(matcher, skl_consumed_items):
+                            item_info_list.extend(character.养成消耗(
+                                目标精英化阶段=skl_character.evolve_phase,
+                                目标等级=skl_character.level,
+                                目标技能专精等级列表=[skill.level for skill in skl_character.skills],
+                                目标模组等级字典={equip.id: equip.level for equip in skl_character.equips}
+                            ))
+                        elif isinstance(matcher, skl_missing_items):
+                            item_info_list.extend(character.养成消耗(
+                                初始精英化阶段=skl_character.evolve_phase,
+                                初始等级=skl_character.level,
+                                初始技能专精等级列表=[skill.level for skill in skl_character.skills],
+                                初始模组等级字典={equip.id: equip.level for equip in skl_character.equips}
+                            ))
+                        break
+                else:
+                    if isinstance(matcher, skl_missing_items):
+                        item_info_list.extend(character.养成消耗())
 
             item_info_list.combine_in_place()
             item_info_list.sort_in_place_by_sort_id()
@@ -240,7 +256,7 @@ async def skl_consumed_items_func(matcher: Matcher, event: MessageEvent, message
             lines.append(f"{default_character["channelName"]}账号 {default_character["nickName"]}（{default_character["uid"]}）")
             lines.append("________________")
             lines.append("")
-            lines.append("/- 养成总消耗 -/")
+            lines.append("/- 养成总消耗 -/" if isinstance(matcher, skl_consumed_items) else "/- 距离满练还差 -/")
             lines.append("")
             lines.extend(str(item_info_list).split())
             lines.append("")
@@ -253,7 +269,79 @@ async def skl_consumed_items_func(matcher: Matcher, event: MessageEvent, message
             lines.append("# 来自 bilibili@Bio-Hazard")
             lines.append("https://space.bilibili.com/37179776")
 
-            await skl_consumed_items.send("\n".join(lines))
+            await matcher.send("\n".join(lines))
+        except Exception as e:
+            exception = e
+
+    if isinstance(exception, SKLandError):
+        await skl_assistant.send(str(exception))
+        raise exception
+    elif isinstance(exception, Exception):
+        await skl_assistant.send(repr(exception))
+        raise exception
+
+
+@skl_missing_characters.handle()
+async def skl_missing_characters_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
+    uid: str | None = message.extract_plain_text().strip()
+    if not uid.isdigit():
+        uid = None
+
+    token_list = tokens.filter(qq=event.user_id)
+    if not token_list:
+        await matcher.finish(no_token_str)
+
+    exception = None
+
+    for item in token_list:
+        token = item["token"]
+        try:
+            skland = SKLand()
+            await skland.login_by_token(token)
+
+            player_binding = await skland.player_binding()
+            if uid is None:
+                default_character = skland.get_default_character(player_binding, "arknights")
+                if default_character is None:
+                    await matcher.send("该账号未绑定任何角色。")
+                    continue
+                uid = default_character["uid"]
+            else:
+                specific_game_player_binding = skland.extract_specific_game_player_binding(player_binding, "arknights")
+                for binding in specific_game_player_binding:
+                    if binding["uid"] == uid:
+                        default_character = binding
+                        break
+                else:
+                    await matcher.send(f"该账号未绑定 UID 为 {uid} 的角色。")
+                    continue
+
+            obj = await skland.cultivate_player(uid)
+
+            model = CultivatePlayer.model_validate(obj)
+
+            missing_character_list = []
+            for character_id, character in game_data.characters.items():
+                for skl_character in model.data.characters:
+                    if skl_character.id == character_id:
+                        break
+                else:
+                    missing_character_list.append(character)
+
+            lines: list[str] = []
+
+            lines.append(f"{default_character["channelName"]}账号 {default_character["nickName"]}（{default_character["uid"]}）")
+            lines.append("________________")
+            lines.append("")
+            lines.append("/- 未拥有干员 -/")
+            lines.append("")
+            lines.append("、".join(character.name for character in missing_character_list))
+            lines.append("")
+            lines.append("________________")
+            lines.append("# 来自 bilibili@Bio-Hazard")
+            lines.append("https://space.bilibili.com/37179776")
+
+            await matcher.send("\n".join(lines))
         except Exception as e:
             exception = e
 
