@@ -10,16 +10,16 @@ from arknights_game_model.game_data import game_data
 from arknights_game_model.item_info_model import ItemInfo, ItemInfoList
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_cultivate_player import \
     HttpsZonaiSklandComApiV1GameCultivatePlayer as CultivatePlayer
-from arknights_game_model.skland.https_zonai_skland_com_api_v1_search_user import \
-    HttpsZonaiSklandComApiV1SearchUser as SearchUser
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_binding import \
     HttpsZonaiSklandComApiV1GamePlayerBinding as PlayerBinding
+from arknights_game_model.skland.https_zonai_skland_com_api_v1_search_user import \
+    HttpsZonaiSklandComApiV1SearchUser as SearchUser
 from nonebot import MatcherGroup, get_driver, logger, require
 from nonebot.adapters.onebot.v11 import Message, MessageEvent, MessageSegment
 from nonebot.drivers import Driver
 from nonebot.exception import MatcherException
 from nonebot.matcher import Matcher
-from nonebot.params import CommandArg, EventPlainText
+from nonebot.params import CommandArg, EventPlainText, RegexGroup
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 
@@ -77,7 +77,7 @@ help_str: str = f'''
 __plugin_meta__ = PluginMetadata(
     name='森空岛小助手',
     description='明日方舟森空岛工具，提供自动签到、干员查询、仓库查询等各种实用功能。',
-    usage=help_str
+    usage=help_str,
 )
 
 matcher_group = MatcherGroup(priority=1, block=False)
@@ -147,30 +147,35 @@ async def get_character(*, matcher: Matcher, skland: SKLand, qq: int, uid: str |
 
 
 @bind_skl_token_command.handle()
-async def bind_skl_token_func(event: MessageEvent, message: Message = CommandArg()) -> None:
+@bind_skl_token_regex.handle()
+async def bind_skl_token_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg(), group: tuple[str] = RegexGroup()) -> None:
     # TODO: 在群聊中发送消息时撤回消息
-    token: str = message.extract_plain_text().strip()
+    if isinstance(matcher, bind_skl_token_command):
+        token: str = message.extract_plain_text().strip()
+    else:
+        token = group[0].strip()
+
     if not token:
-        await bind_skl_token_command.finish(help_str)
+        await matcher.finish(help_str)
 
     if not (len(token) == TOKEN_LENGTH and is_base64(token)):
-        await bind_skl_token_command.finish('token 格式错误，请确认 token 不带引号。如需帮助，请发送“绑定森空岛token”。')
+        await matcher.finish('token 格式错误，请确认 token 不带引号。如需帮助，请发送“绑定森空岛token”。')
 
     if tokens.has_token(token):
-        await bind_skl_token_command.finish('token 已存在。')
+        await matcher.finish('token 已存在。')
 
     try:
         await SKLand().login_by_token(token)
     except Exception as e:
-        await bind_skl_token_command.finish(f'绑定森空岛 token 失败：{e}')
+        await matcher.finish(f'绑定森空岛 token 失败：{e}')
 
     tokens.add_item(event.user_id, get_qq_mail_address(event.user_id), token)
-    await bind_skl_token_command.send('成功绑定森空岛 token。立即进行一次签到。\n'
-                                      '已为您开启自动签到和邮件提醒，以后将于每日 00:00 签到。\n'
-                                      '如暂时不需要开启，请发送“关闭森空岛自动签到”。')
+    await matcher.send('成功绑定森空岛 token。立即进行一次签到。\n'
+                       '已为您开启自动签到和邮件提醒，以后将于每日 00:00 签到。\n'
+                       '如暂时不需要开启，请发送“关闭森空岛自动签到”。')
 
     result: dict[str, Any] = await attendance_and_send_email(token, True, get_qq_mail_address(event.user_id))
-    await skl_auto_attendance.finish(result['msg'])
+    await matcher.finish(result['msg'])
 
 
 # @delete_skl_token.handle()
