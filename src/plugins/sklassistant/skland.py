@@ -273,16 +273,21 @@ class SKLand:
                 result.extend(app['bindingList'])
         return result
 
-    def get_default_character(self, binding_list: dict[str, Any], app_code: str) -> dict[str, Any] | None:
+    def get_character(self, binding_list: dict[str, Any], uid: str | None, app_code: str) -> dict[str, Any] | None:
         specific_game_binding_list = self.extract_specific_game_player_binding(binding_list, app_code)
         if not specific_game_binding_list:
             return None
 
-        for character in specific_game_binding_list:
-            if character["isDefault"]:
-                return character
-
-        return specific_game_binding_list[0]
+        if uid is not None:
+            for character in specific_game_binding_list:
+                if character['uid'] == uid:
+                    return character
+            return None
+        else:
+            for character in specific_game_binding_list:
+                if character["isDefault"]:
+                    return character
+            return specific_game_binding_list[0]
 
     async def attendance_query(self, uid: str) -> dict[str, Any]:
         url = f'{attendance_url}?uid={uid}'
