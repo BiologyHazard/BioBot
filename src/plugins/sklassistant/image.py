@@ -2,10 +2,12 @@ from io import BytesIO
 
 from PIL import Image, ImageDraw, ImageFont
 
+from .config import plugin_config
+
 
 def text_to_image(text: str,
-                  font_path='data/fonts/SourceHanSansSC-Regular.otf',
-                  font_size: float = 24.0,
+                  font_path=plugin_config.skl_text_font_path,
+                  font_size: float = 12.0,
                   tabs: list[float] | None = None,
                   border: float = 1.625,
                   row_spacing: float = 0.2,

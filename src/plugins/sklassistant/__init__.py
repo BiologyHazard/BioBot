@@ -3,6 +3,7 @@ import sys
 sys.path.append("src/arknights-game-model")  # NOQA
 
 import asyncio
+from itertools import accumulate
 from typing import Any
 
 import httpx
@@ -15,7 +16,7 @@ from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_bindi
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_search_user import \
     HttpsZonaiSklandComApiV1SearchUser as SearchUser
 from nonebot import MatcherGroup, get_driver, logger, require
-from nonebot.adapters.onebot.v11 import Message, MessageEvent, MessageSegment
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message, MessageEvent, MessageSegment
 from nonebot.drivers import Driver
 from nonebot.exception import MatcherException
 from nonebot.matcher import Matcher
@@ -61,6 +62,7 @@ help_str: str = f'''
 - {default_command_start}森空岛小秘书 <森空岛用户名|森空岛 ID> <uid>    # 查别人的成分
 
 - {default_command_start}森空岛干员阵容查询 [<uid>]    # 查询已有干员
+- {default_command_start}已拥有干员 [<uid>]    # 查询已有干员练度
 - {default_command_start}未拥有干员 [<uid>]    # 查询未拥有干员
 
 - {default_command_start}我的仓库  # 查询仓库材料
@@ -81,24 +83,25 @@ __plugin_meta__ = PluginMetadata(
 )
 
 matcher_group = MatcherGroup(priority=1, block=False)
-bind_skl_token_command = matcher_group.on_command('绑定森空岛token')
-bind_skl_token_regex = matcher_group.on_regex(r'{"code":0,"data":{"content":"(.+)"},"msg":".+"}')
-# delete_skl_token = matcher_group.on_command('删除森空岛token', aliases={'解绑森空岛token'})
-# delete_all_skl_token = matcher_group.on_command('解绑所有森空岛token', aliases={'解绑全部森空岛token', "删除全部森空岛token", "删除所有森空岛token"})
+bind_skl_token_command = matcher_group.on_command("绑定森空岛token")
+bind_skl_token_regex = matcher_group.on_regex(r"""{"code":0,"data":{"content":"(.+)"},"msg":".+"}""")
+# delete_skl_token = matcher_group.on_command("删除森空岛token", aliases={"解绑森空岛token"})
+# delete_all_skl_token = matcher_group.on_command("解绑所有森空岛token", aliases={"解绑全部森空岛token", "删除全部森空岛token", "删除所有森空岛token"})
 
-skl_auto_attendance = matcher_group.on_keyword({'森空岛自动签到'})
-skl_attendance_all = matcher_group.on_command('森空岛签到全部', permission=SUPERUSER)
+skl_auto_attendance = matcher_group.on_keyword({"森空岛自动签到"})
+skl_attendance_all = matcher_group.on_command("森空岛签到全部", permission=SUPERUSER)
 
-skl_assistant = matcher_group.on_command('森空岛小秘书', aliases={'森空岛助手', '森空岛小助手'})
+skl_assistant = matcher_group.on_command("森空岛小秘书", aliases={"森空岛助手", "森空岛小助手"})
 
-skl_query = matcher_group.on_command('森空岛查询', aliases={'森空岛干员阵容查询'})
+skl_query = matcher_group.on_command("森空岛查询", aliases={"森空岛干员阵容查询"})
+skl_my_characters = matcher_group.on_command("已拥有干员", aliases={"已有干员练度", "已有干员", "干员练度", "我的干员", "我的干员练度"})
 skl_missing_characters = matcher_group.on_command("未拥有干员")
 
-skl_my_depot = matcher_group.on_command('我的仓库', aliases={'已有材料', '仓库材料'})
-skl_consumed_items = matcher_group.on_command('已消耗材料', aliases={'养成总消耗'})
-skl_missing_items = matcher_group.on_command('满练需要材料', aliases={'满练差多少材料', "满练还差多少"})
+skl_my_depot = matcher_group.on_command("我的仓库", aliases={"已有材料", "仓库材料"})
+skl_consumed_items = matcher_group.on_command("已消耗材料", aliases={"养成总消耗"})
+skl_missing_items = matcher_group.on_command("满练需要材料", aliases={"满练差多少材料", "满练还差多少"})
 
-skl_binding = matcher_group.on_command('森空岛用户绑定角色')
+skl_binding = matcher_group.on_command("森空岛用户绑定角色")
 
 
 @scheduler.scheduled_job('cron', hour=0)
@@ -147,35 +150,53 @@ async def get_character(*, matcher: Matcher, skland: SKLand, qq: int, uid: str |
 
 
 @bind_skl_token_command.handle()
+async def bind_skl_token_command_func(matcher: Matcher, bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
+    token = message.extract_plain_text().strip()
+    return await bind_skl_token_func(matcher, bot, event, token)
+
+
 @bind_skl_token_regex.handle()
-async def bind_skl_token_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg(), group: tuple[str] = RegexGroup()) -> None:
-    # TODO: 在群聊中发送消息时撤回消息
-    if isinstance(matcher, bind_skl_token_command):
-        token: str = message.extract_plain_text().strip()
-    else:
-        token = group[0].strip()
+async def bind_skl_token_regex_func(matcher: Matcher, bot: Bot, event: MessageEvent, group: tuple[str] = RegexGroup()) -> None:
+    token = group[0].strip()
+    return await bind_skl_token_func(matcher, bot, event, token)
 
-    if not token:
-        await matcher.finish(help_str)
 
-    if not (len(token) == TOKEN_LENGTH and is_base64(token)):
-        await matcher.finish('token 格式错误，请确认 token 不带引号。如需帮助，请发送“绑定森空岛token”。')
-
-    if tokens.has_token(token):
-        await matcher.finish('token 已存在。')
+async def bind_skl_token_func(matcher: Matcher, bot: Bot, event: MessageEvent, token: str) -> None:
+    # 在群聊中发送消息时尝试撤回消息
+    if isinstance(event, GroupMessageEvent):
+        try:
+            await bot.delete_msg(message_id=event.message_id)
+        except Exception as e:
+            logger.warning(f'尝试撤回群聊消息失败：{e}')
 
     try:
+        if not token:
+            await matcher.finish(help_str)
+
+        if not (len(token) == TOKEN_LENGTH and is_base64(token)):
+            await matcher.finish('token 格式错误，请确认 token 不带引号。如需帮助，请发送“help sklassistant”。')
+
+        if tokens.has_token(token):
+            await matcher.finish('token 已存在。')
+
         await SKLand().login_by_token(token)
+
+        tokens.add_item(event.user_id, get_qq_mail_address(event.user_id), token)
+        await matcher.send('成功绑定森空岛 token。立即进行一次签到。\n'
+                           '已为您开启自动签到和邮件提醒（发送到您的 QQ 邮箱），以后将于每日 00:00 签到。\n'
+                           '如暂时不需要开启，请发送“关闭森空岛自动签到”。')
+
+        result: dict[str, Any] = await attendance_and_send_email(token, True, get_qq_mail_address(event.user_id))
+        await matcher.finish(result['msg'])
+
+    except SKLandError as e:
+        await matcher.send(f"绑定森空岛 token 失败：{e}")
+        raise e
+    except MatcherException as e:
+        raise e
     except Exception as e:
-        await matcher.finish(f'绑定森空岛 token 失败：{e}')
-
-    tokens.add_item(event.user_id, get_qq_mail_address(event.user_id), token)
-    await matcher.send('成功绑定森空岛 token。立即进行一次签到。\n'
-                       '已为您开启自动签到和邮件提醒，以后将于每日 00:00 签到。\n'
-                       '如暂时不需要开启，请发送“关闭森空岛自动签到”。')
-
-    result: dict[str, Any] = await attendance_and_send_email(token, True, get_qq_mail_address(event.user_id))
-    await matcher.finish(result['msg'])
+        await matcher.send("发生了苏茜解决不了的错误呢，怎么回事呢？")
+        raise e
 
 
 # @delete_skl_token.handle()
@@ -273,6 +294,7 @@ async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Mes
         raise exception
 
 
+@skl_my_characters.handle()
 @skl_missing_characters.handle()
 @skl_my_depot.handle()
 @skl_consumed_items.handle()
@@ -280,7 +302,9 @@ async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Mes
 @skl_binding.handle()
 async def _(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
     try:
-        if isinstance(matcher, skl_missing_characters):
+        if isinstance(matcher, skl_my_characters):
+            await skl_my_characters_func(matcher, event, message)
+        elif isinstance(matcher, skl_missing_characters):
             await skl_missing_characters_func(matcher, event, message)
         elif isinstance(matcher, skl_my_depot):
             await skl_my_depot_func(matcher, event, message)
@@ -299,6 +323,67 @@ async def _(matcher: Matcher, event: MessageEvent, message: Message = CommandArg
     except Exception as e:
         await matcher.send("发生了苏茜解决不了的错误呢，怎么回事呢？")
         raise e
+
+
+async def skl_my_characters_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
+    skland = SKLand()
+    binding_character = await get_character(matcher=matcher,
+                                            skland=skland,
+                                            qq=event.user_id,
+                                            uid=message.extract_plain_text().strip(),
+                                            app_code="arknights")
+
+    obj = await skland.cultivate_player(binding_character["uid"])
+
+    cultivate_player = CultivatePlayer.model_validate(obj)
+
+    owned_character_id_set = {character.id for character in cultivate_player.data.characters}
+    not_owned_character_id_set = game_data.characters.keys() - owned_character_id_set
+
+    lines: list[str] = []
+
+    lines.append(f"{binding_character["channelName"]}账号 {binding_character["nickName"]}（{binding_character["uid"]}）")
+    lines.append("________________")
+    lines.append("")
+    lines.append("/- 干员练度详情 -/")
+    lines.append("")
+    lines.append("干员 ID\t干员代号\t精英化\0\t等级\0\t技能\0\t专精\t模组")
+
+    for skl_character in cultivate_player.data.characters:
+        character = game_data.characters.by_id(skl_character.id)
+
+        skill_spec_text = f"专{"".join(str(skill.level) for skill in skl_character.skills)}"
+        equip_text_list = []
+        for skl_equip in skl_character.equips:
+            equip = character.get_uniequip(skl_equip.id)
+            equip_text_list.append(f"{equip.type_name2}{skl_equip.level}")
+
+        lines.append(f"{character.id}\t"
+                     f"{character.name}\t"
+                     f"精{skl_character.evolve_phase}\0\t"
+                     f"{skl_character.level}级\0\t"
+                     f"{skl_character.main_skill_level}级\0\t"
+                     f"{skill_spec_text}\t"
+                     f"{" ".join(equip_text_list)}")
+        """char_377_gdglow\t澄闪\t精2\0\t60级\0\t7级\0\t专333\tX3 Y0"""
+
+    for character_id in not_owned_character_id_set:
+        character = game_data.characters.by_id(character_id)
+        lines.append(f"{character.id}\t{character.name}\t未拥有")
+
+    lines.append("")
+    lines.append("________________")
+    lines.append("# Generated by BioBot")
+    lines.append("# Made by bilibili@Bio-Hazard")
+    lines.append("https://space.bilibili.com/37179776")
+
+    result = "\n".join(lines)
+
+    if len(result) > 512:
+        await matcher.send(MessageSegment.image(image_to_bytesio(text_to_image(
+            result, tabs=list(accumulate([10, 9, 2.5, 2, 0.5, 3])), row_spacing=0), format="JPEG")))
+    else:
+        await matcher.send(result)
 
 
 async def skl_missing_characters_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
@@ -467,11 +552,11 @@ async def skl_binding_func(matcher: Matcher, event: MessageEvent, message: Messa
 
     skland = SKLand()
     id_or_name: str = message.extract_plain_text().strip()
-    if not id_or_name:
+    if not id_or_name:  # 未提供 ID 或名称，则查询自己的绑定列表
         user_id = None
-    elif id_or_name.isdigit():
+    elif id_or_name.isdigit():  # 提供了 ID，则查询该 ID 的绑定列表
         user_id = id_or_name
-    else:
+    else:  # 提供了名称，则先搜索用户，再查询该用户的绑定列表
         token = token_list[0]['token']
         await skland.login_by_token(token)
 
