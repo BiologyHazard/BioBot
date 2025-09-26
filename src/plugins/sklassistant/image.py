@@ -57,8 +57,8 @@ def text_to_image(text: str,
     return image
 
 
-def image_to_bytesio(img: Image.Image, format='PNG') -> BytesIO:
+def image_to_bytesio(img: Image.Image, format='PNG', *args, **kwargs) -> BytesIO:
     bytesio = BytesIO()
-    img.save(bytesio, format)
+    img.save(bytesio, format, *args, **kwargs)
     bytesio.seek(0)
     return bytesio

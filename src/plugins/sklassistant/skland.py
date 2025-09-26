@@ -363,8 +363,11 @@ class SKLand:
                 'msg': f'森空岛自动签到出现错误：{e!r}',
             }
 
-    async def get_player_info(self, uid) -> dict[str, Any]:
-        url: str = f'{player_info_url}?uid={uid}'
+    async def get_player_info(self, uid, user_id: str | None = None) -> dict[str, Any]:
+        if user_id is not None:
+            url: str = f'{player_info_url}?uid={uid}&userId={user_id}'
+        else:
+            url: str = f'{player_info_url}?uid={uid}'
         obj = await self._request('GET', url, login_headers, None, True)
         return obj
 
