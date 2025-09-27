@@ -72,14 +72,14 @@ help_str: str = f'''
 - {default_command_start}森空岛小秘书 <森空岛用户名|森空岛 ID> [<uid>]    # 查别人的成分
 
 - {default_command_start}森空岛干员阵容查询 [<uid>]    # 查询已有干员
-- {default_command_start}干员列表 [-h] [-n SKLAND_NAME | -i SKLAND_USER_ID] [-u GAME_UID]    # 查询自己或别人的干员列表
+- {default_command_start}干员列表 [-n <name> | -i <skland_id>] [-u <uid>]    # 查询自己或别人的干员列表
 - {default_command_start}未拥有干员 [<uid>]    # 查询未拥有干员
 
 - {default_command_start}我的仓库  # 查询仓库材料
 - {default_command_start}已消耗材料 [<uid>]    # 查询养成总消耗
 - {default_command_start}满练还差多少 [<uid>]    # 查询满练差多少材料
 
-- {default_command_start}森空岛用户绑定角色 [<森空岛用户名|森空岛 ID>]    # 查询森空岛用户绑定的角色
+- {default_command_start}森空岛用户绑定角色 [-n <name> | -i <skland_id>]    # 查询森空岛用户绑定的角色
 
 # <uid> 为一串数字，可在游戏主界面昵称下方找到。
 # <uid> 为可选参数。若不指定 <uid>，则查询官网绑定的默认角色。
@@ -128,6 +128,15 @@ skl_character_list_parser.add_argument('-u', '--game-uid', help='游戏角色 UI
 # )
 # parser.add_argument('--filter-profession', help='过滤职业')
 
+skl_binding_parser = ArgumentParser(
+    prog="森空岛用户绑定角色",
+    description="森空岛用户绑定角色查询工具",
+    # formatter_class=argparse.RawTextHelpFormatter,
+)
+skl_binding_group = skl_binding_parser.add_mutually_exclusive_group()
+skl_binding_group.add_argument('-n', '--skland-name', help='森空岛昵称')
+skl_binding_group.add_argument('-i', '--skland-user-id', help='森空岛 ID')
+
 matcher_group = MatcherGroup(priority=1, block=False)
 bind_skl_token_command = matcher_group.on_command("绑定森空岛token")
 bind_skl_token_regex = matcher_group.on_regex(r"""{"code":0,"data":{"content":"(.+)"},"msg":".+"}""")
@@ -147,7 +156,7 @@ skl_my_depot = matcher_group.on_command("我的仓库", aliases={"已有材料",
 skl_consumed_items = matcher_group.on_command("已消耗材料", aliases={"养成总消耗"})
 skl_missing_items = matcher_group.on_command("满练需要材料", aliases={"满练差多少材料", "满练还差多少"})
 
-skl_binding = matcher_group.on_command("森空岛用户绑定角色")
+skl_binding = matcher_group.on_shell_command("森空岛用户绑定角色", aliases={"森空岛角色绑定", "森空岛用户绑定列表"}, parser=skl_binding_parser)
 
 
 @scheduler.scheduled_job('cron', hour=0)
@@ -358,7 +367,6 @@ async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Mes
 @skl_my_depot.handle()
 @skl_consumed_items.handle()
 @skl_missing_items.handle()
-@skl_binding.handle()
 async def _(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
     try:
         if isinstance(matcher, skl_missing_characters):
@@ -369,8 +377,6 @@ async def _(matcher: Matcher, event: MessageEvent, message: Message = CommandArg
             await skl_consumed_or_missing_items_func(matcher, event, message)
         elif isinstance(matcher, skl_missing_items):
             await skl_consumed_or_missing_items_func(matcher, event, message)
-        elif isinstance(matcher, skl_binding):
-            await skl_binding_func(matcher, event, message)
         else:
             await matcher.finish("更多功能正在锐意开发中，一键三连可以催更哦~")
 
@@ -391,7 +397,6 @@ async def skl_character_list_succeed_func(matcher: Matcher, event: MessageEvent,
         token_list = tokens.filter(qq=event.user_id)
         if not token_list:
             await matcher.finish(no_token_str)
-
         token = token_list[0]['token']
 
         if args.skland_user_id is not None and not args.skland_user_id.isdigit():
@@ -684,57 +689,71 @@ async def skl_consumed_or_missing_items_func(matcher: Matcher, event: MessageEve
     await matcher.send("\n".join(lines))
 
 
-async def skl_binding_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
-    # 检查是否绑定了森空岛 token
-    token_list = tokens.filter(qq=event.user_id)
-    if not token_list:
-        await matcher.finish(no_token_str)
-
-    skland = SKLand()
-    id_or_name: str = message.extract_plain_text().strip()
-    if not id_or_name:  # 未提供 ID 或名称，则查询自己的绑定列表
-        user_id = None
-    elif id_or_name.isdigit():  # 提供了 ID，则查询该 ID 的绑定列表
-        user_id = id_or_name
-    else:  # 提供了名称，则先搜索用户，再查询该用户的绑定列表
+@skl_binding.handle()
+async def skl_binding_succeed_func(matcher: Matcher, event: MessageEvent, args: Namespace = ShellCommandArgs()) -> None:
+    try:
+        # 检查是否绑定了森空岛 token
+        token_list = tokens.filter(qq=event.user_id)
+        if not token_list:
+            await matcher.finish(no_token_str)
         token = token_list[0]['token']
-        await skland.login_by_token(token)
 
-        url = httpx.URL(api_v1_search_user_url).copy_merge_params(dict(keyword=id_or_name, pageSize=20))
-        search_result_obj = await skland._request("GET", str(url), login_headers, json=None, sign=True)
-        search_user = SearchUser.model_validate(search_result_obj)
-        if search_user.data.list:
-            user_id = search_user.data.list[0].user.id
-        else:
-            await matcher.finish(f'未找到用户 {id_or_name}。')
+        if args.skland_user_id is not None and not args.skland_user_id.isdigit():
+            await matcher.finish("森空岛 ID 必须为纯数字。如果您想使用森空岛昵称查询，请使用 -n/--skland-name 参数。\n发送“森空岛用户绑定角色 -h”查看帮助。")
 
-    # 如果查自己的（user_id is None），则尝试所有 token，否则只使用第一个 token
-    if user_id is not None:
-        token_list = token_list[:1]
-
-    for item in token_list:
-        token = item["token"]
-
-        # 尝试登录
-        if getattr(skland, "token", None) != token:
+        skland = SKLand()
+        if args.skland_name is not None:  # 使用森空岛搜索功能
             await skland.login_by_token(token)
 
-        player_binding_obj = await skland.player_binding(uid=user_id)
-        player_binding = PlayerBinding.model_validate(player_binding_obj)
+            url = httpx.URL(api_v1_search_user_url).copy_merge_params(dict(keyword=args.skland_name, pageSize=20))
+            search_result_obj = await skland._request("GET", str(url), login_headers, json=None, sign=True)
+            search_user = SearchUser.model_validate(search_result_obj)
+            if search_user.data.list:
+                args.skland_user_id = search_user.data.list[0].user.id
+            else:
+                await matcher.finish(f'未找到用户 {args.skland_name}。')
 
-        lines: list[str] = []
-        lines.append("用户绑定列表")
-        lines.append("________________")
-        for app_info in player_binding.data.list:
-            lines.append("")
-            lines.append(f"/- {app_info.app_code}（{app_info.app_name}） -/")
-            lines.append("")
-            for binding_character in app_info.binding_list:
-                lines.append(f"{binding_character.channel_name}账号 {binding_character.nick_name}（{binding_character.uid}{"，默认" if binding_character.is_default else ""}）")
-        lines.append("")
-        lines.append("________________")
-        lines.append("# Generated by BioBot")
-        lines.append("# Made by bilibili@Bio-Hazard")
-        lines.append("https://space.bilibili.com/37179776")
+        # 如果查自己的（user_id is None），则尝试所有 token，否则只使用第一个 token
+        if args.skland_user_id is not None:
+            token_list = token_list[:1]
 
-        await matcher.send("\n".join(lines))
+        for item in token_list:
+            token = item["token"]
+
+            # 尝试登录
+            if getattr(skland, "token", None) != token:
+                await skland.login_by_token(token)
+
+            player_binding_obj = await skland.player_binding(uid=args.skland_user_id)
+            player_binding = PlayerBinding.model_validate(player_binding_obj)
+
+            lines: list[str] = []
+            lines.append("用户绑定列表")
+            lines.append("________________")
+            for app_info in player_binding.data.list:
+                lines.append("")
+                lines.append(f"/- {app_info.app_code}（{app_info.app_name}） -/")
+                lines.append("")
+                for binding_character in app_info.binding_list:
+                    lines.append(f"{binding_character.channel_name}账号 {binding_character.nick_name}（{binding_character.uid}{"，默认" if binding_character.is_default else ""}）")
+            lines.append("")
+            lines.append("________________")
+            lines.append("# Generated by BioBot")
+            lines.append("# Made by bilibili@Bio-Hazard")
+            lines.append("https://space.bilibili.com/37179776")
+
+            await matcher.send("\n".join(lines))
+
+    except SKLandError as e:
+        await matcher.send(str(e))
+        raise e
+    except MatcherException as e:
+        raise e
+    except Exception as e:
+        await matcher.send("发生了苏茜解决不了的错误呢，怎么回事呢？")
+        raise e
+
+
+@skl_binding.handle()
+async def skl_binding_fail_func(args: ParserExit = ShellCommandArgs()) -> None:
+    await skl_binding.finish(skl_binding_parser.format_help())
