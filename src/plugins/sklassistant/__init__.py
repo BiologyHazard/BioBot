@@ -7,8 +7,9 @@ import sys
 
 sys.path.append("src/arknights-game-model")  # NOQA
 
+import argparse
 import asyncio
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from itertools import accumulate
 from typing import Any
 
@@ -26,11 +27,12 @@ from arknights_game_model.skland.https_zonai_skland_com_api_v1_search_user impor
 from nonebot import MatcherGroup, get_driver, logger, require
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message, MessageEvent, MessageSegment
 from nonebot.drivers import Driver
-from nonebot.exception import MatcherException
+from nonebot.exception import MatcherException, ParserExit
 from nonebot.matcher import Matcher
-from nonebot.params import CommandArg, EventPlainText, RegexGroup
+from nonebot.params import CommandArg, EventPlainText, RegexGroup, ShellCommandArgs
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
+from nonebot.rule import ArgumentParser, Namespace
 
 from .app import app
 from .assistant import 森空岛实时数据分析, 森空岛干员阵容查询
@@ -70,8 +72,7 @@ help_str: str = f'''
 - {default_command_start}森空岛小秘书 <森空岛用户名|森空岛 ID> [<uid>]    # 查别人的成分
 
 - {default_command_start}森空岛干员阵容查询 [<uid>]    # 查询已有干员
-- {default_command_start}已拥有干员 [<uid>]    # 查询已有干员练度
-- {default_command_start}别人的已拥有干员 <森空岛用户名|森空岛 ID> [<uid>]    # 查询别人的已有干员练度
+- {default_command_start}干员列表 [-h] [-n SKLAND_NAME | -i SKLAND_USER_ID] [-u GAME_UID]    # 查询自己或别人的干员列表
 - {default_command_start}未拥有干员 [<uid>]    # 查询未拥有干员
 
 - {default_command_start}我的仓库  # 查询仓库材料
@@ -93,6 +94,40 @@ __plugin_meta__ = PluginMetadata(
     usage=help_str,
 )
 
+skl_character_list_parser = ArgumentParser(
+    prog="干员列表",
+    description="森空岛干员列表查询工具",
+    # formatter_class=argparse.RawTextHelpFormatter,
+)
+skl_character_list_group = skl_character_list_parser.add_mutually_exclusive_group()
+skl_character_list_group.add_argument('-n', '--skland-name', help='森空岛昵称')
+skl_character_list_group.add_argument('-i', '--skland-user-id', help='森空岛 ID')
+skl_character_list_parser.add_argument('-u', '--game-uid', help='游戏角色 UID')
+# parser.add_argument(
+#     '-s', '--sort',
+#     choices=['RARITY', 'LEVEL', 'PROFESSION', 'FAVOR', 'SKILLLEVEL', 'ONLINETIME', 'OBTAINTIME',
+#              'R', 'L', 'P', 'F', 'S', 'O', 'G'],
+#     help='排序方式:\n'
+#          '  RARITY (R)     - 稀有度\n'
+#          '  LEVEL (L)      - 等级\n'
+#          '  PROFESSION (P) - 职业\n'
+#          '  FAVOR (F)      - 好感度\n'
+#          '  SKILLLEVEL (S) - 技能等级\n'
+#          '  ONLINETIME (O) - 在线时间\n'
+#          '  OBTAINTIME (G) - 获取时间'
+# )
+# parser.add_argument('-r', '--reversed', action='store_true', help='从大到小排序')
+# parser.add_argument(
+#     '--filter-owned',
+#     choices=['TRUE', 'FALSE'],
+#     help='过滤已拥有 (TRUE/FALSE)'
+# )
+# parser.add_argument(
+#     '--filter-rarity',
+#     help='过滤稀有度，格式为 [1-6] 或 [1-6]-[1-6]'
+# )
+# parser.add_argument('--filter-profession', help='过滤职业')
+
 matcher_group = MatcherGroup(priority=1, block=False)
 bind_skl_token_command = matcher_group.on_command("绑定森空岛token")
 bind_skl_token_regex = matcher_group.on_regex(r"""{"code":0,"data":{"content":"(.+)"},"msg":".+"}""")
@@ -105,8 +140,7 @@ skl_attendance_all = matcher_group.on_command("森空岛签到全部", permissio
 skl_assistant = matcher_group.on_command("森空岛小秘书", aliases={"森空岛助手", "森空岛小助手"})
 
 skl_query = matcher_group.on_command("森空岛查询", aliases={"森空岛干员阵容查询"})
-skl_my_characters = matcher_group.on_command("已拥有干员", aliases={"已有干员练度", "已有干员", "干员练度", "我的干员", "我的干员练度", "已拥有干员练度"})
-skl_others_characters = matcher_group.on_command("别人的已拥有干员", aliases={"别人的已有干员练度", "别人的已有干员", "别人的干员练度", "别人的已拥有干员练度"})
+skl_character_list = matcher_group.on_shell_command("干员列表", aliases={"已有干员练度", "已有干员", "干员练度", "我的干员", "我的干员练度", "已拥有干员练度", "已拥有干员"}, parser=skl_character_list_parser)
 skl_missing_characters = matcher_group.on_command("未拥有干员")
 
 skl_my_depot = matcher_group.on_command("我的仓库", aliases={"已有材料", "仓库材料"})
@@ -133,6 +167,18 @@ async def run_app() -> None:
     asyncio.create_task(app.run_task(plugin_config.skl_quart_host, plugin_config.skl_quart_port))
 
 CST = timezone(timedelta(hours=8), name="CST")
+
+
+def divide(x, y, /, *, positive=float("inf"), negative=float("-inf"), zero=float("nan")) -> float:
+    try:
+        return x / y
+    except ZeroDivisionError:
+        if x > 0:
+            return positive
+        elif x < 0:
+            return negative
+        else:
+            return zero
 
 
 async def get_character(*, matcher: Matcher, skland: SKLand, qq: int, uid: str | None, app_code: str = "arknights") -> dict[str, Any]:
@@ -308,8 +354,6 @@ async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Mes
         raise exception
 
 
-@skl_my_characters.handle()
-@skl_others_characters.handle()
 @skl_missing_characters.handle()
 @skl_my_depot.handle()
 @skl_consumed_items.handle()
@@ -317,11 +361,7 @@ async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Mes
 @skl_binding.handle()
 async def _(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
     try:
-        if isinstance(matcher, skl_my_characters):
-            await skl_my_characters_func(matcher, event, message)
-        elif isinstance(matcher, skl_others_characters):
-            await skl_others_characters_func(matcher, event, message)
-        elif isinstance(matcher, skl_missing_characters):
+        if isinstance(matcher, skl_missing_characters):
             await skl_missing_characters_func(matcher, event, message)
         elif isinstance(matcher, skl_my_depot):
             await skl_my_depot_func(matcher, event, message)
@@ -344,169 +384,146 @@ async def _(matcher: Matcher, event: MessageEvent, message: Message = CommandArg
         raise e
 
 
-async def skl_my_characters_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
-    skland = SKLand()
-    binding_character = await get_character(matcher=matcher,
-                                            skland=skland,
-                                            qq=event.user_id,
-                                            uid=message.extract_plain_text().strip(),
-                                            app_code="arknights")
+@skl_character_list.handle()
+async def skl_character_list_succeed_func(matcher: Matcher, event: MessageEvent, args: Namespace = ShellCommandArgs()) -> None:
+    try:
+        # 检查是否绑定了森空岛 token
+        token_list = tokens.filter(qq=event.user_id)
+        if not token_list:
+            await matcher.finish(no_token_str)
 
-    obj = await skland.cultivate_player(binding_character["uid"])
+        token = token_list[0]['token']
 
-    cultivate_player = CultivatePlayer.model_validate(obj)
+        if args.skland_user_id is not None and not args.skland_user_id.isdigit():
+            await matcher.finish("森空岛 ID 必须为纯数字。如果您想使用森空岛昵称查询，请使用 -n/--skland-name 参数。\n发送“干员列表 -h”查看帮助。")
+        if args.game_uid is not None and not args.game_uid.isdigit():
+            await matcher.finish("游戏角色 UID 必须为纯数字。UID 可以在游戏主界面昵称下方找到。\n发送“干员列表 -h”查看帮助。")
 
-    owned_character_id_set = {character.id for character in cultivate_player.data.characters}
-    not_owned_character_id_set = game_data.characters.keys() - owned_character_id_set
+        skland = SKLand()
+        if args.skland_name is not None:  # 使用森空岛搜索功能
+            await skland.login_by_token(token)
 
-    lines: list[str] = []
+            url = httpx.URL(api_v1_search_user_url).copy_merge_params(dict(keyword=args.skland_name, pageSize=20))
+            search_result_obj = await skland._request("GET", str(url), login_headers, json=None, sign=True)
+            search_user = SearchUser.model_validate(search_result_obj)
+            if search_user.data.list:
+                args.skland_user_id = search_user.data.list[0].user.id
+            else:
+                await matcher.finish(f'未找到用户 {args.skland_name}。')
 
-    lines.append(f"{binding_character["channelName"]}账号 {binding_character["nickName"]}（{binding_character["uid"]}）")
-    lines.append("________________")
-    lines.append("")
-    lines.append("/- 干员练度详情 -/")
-    lines.append("")
-    lines.append("干员 ID\t干员代号\t精英化\0\t等级\0\t技能\0\t专精\t模组")
+        # 尝试登录
+        if getattr(skland, "token", None) != token:
+            await skland.login_by_token(token)
 
-    for skl_character in cultivate_player.data.characters:
-        character = game_data.characters.by_id(skl_character.id)
+        player_binding_obj = await skland.player_binding(uid=args.skland_user_id)
+        binding_character = skland.get_character(player_binding_obj, args.game_uid, app_code="arknights")
 
-        skill_spec_text = f"专{"".join(str(skill.level) for skill in skl_character.skills)}"
-        equip_text_list = []
-        for skl_equip in skl_character.equips:
-            equip = character.get_uniequip(skl_equip.id)
-            equip_text_list.append(f"{equip.type_name2}{skl_equip.level}")
+        if binding_character is None:
+            await matcher.finish(f'未找到该用户的绑定角色。')
 
-        lines.append(f"{character.id}\t"
-                     f"{character.name}\t"
-                     f"精{skl_character.evolve_phase}\0\t"
-                     f"{skl_character.level}级\0\t"
-                     f"{skl_character.main_skill_level}级\0\t"
-                     f"{skill_spec_text}\t"
-                     f"{" ".join(equip_text_list)}")
-        """char_377_gdglow\t澄闪\t精2\0\t60级\0\t7级\0\t专333\tX3 Y0"""
+        obj = await skland.get_player_info(uid=binding_character["uid"], user_id=args.skland_user_id)
 
-    for character_id in not_owned_character_id_set:
-        character = game_data.characters.by_id(character_id)
-        lines.append(f"{character.id}\t{character.name}\t未拥有")
+        player_info = PlayerInfo.model_validate(obj)
 
-    lines.append("")
-    lines.append("________________")
-    lines.append("# Generated by BioBot")
-    lines.append("# Made by bilibili@Bio-Hazard")
-    lines.append("https://space.bilibili.com/37179776")
+        owned_character_id_set = {character.char_id for character in player_info.data.chars}
+        not_owned_character_id_set = game_data.characters.keys() - owned_character_id_set
 
-    result = "\n".join(lines)
+        lines: list[str] = []
 
-    if len(result) > 512:
-        await matcher.send(MessageSegment.image(image_to_bytesio(text_to_image(
-            result, tabs=list(accumulate([10, 9, 2.5, 2, 0.5, 3])), row_spacing=0), format="JPEG")))
-    else:
-        await matcher.send(result)
+        lines.append(f"{binding_character["channelName"]}账号 {binding_character["nickName"]}（{binding_character["uid"]}）")
+        lines.append("________________")
+        lines.append("")
+        lines.append("/- 干员练度详情 -/")
+        lines.append("")
+        lines.append("干员 ID\t干员代号\t精英化\0\t等级\0\t技能\0\t专精\t模组\t信赖\0\t获取时间\tEXP\0\t龙门币\0\t钱书比\0\t物品价值\0")
 
+        item_info_list = ItemInfoList()
 
-async def skl_others_characters_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
-    # 检查是否绑定了森空岛 token
-    token_list = tokens.filter(qq=event.user_id)
-    if not token_list:
-        await matcher.finish(no_token_str)
+        for skl_character in player_info.data.chars:
+            character = game_data.characters.by_id(skl_character.char_id)
 
-    token = token_list[0]['token']
+            # 计算养成到当前练度所需材料
+            char_item_info_list = character.养成消耗(
+                目标精英化阶段=skl_character.evolve_phase,
+                目标等级=skl_character.level,
+                目标技能等级=skl_character.main_skill_lvl,
+                目标技能专精等级列表=[skl_skill.specialize_level for skl_skill in skl_character.skills],
+                目标模组等级字典={skl_equip.id: 0 if skl_equip.locked else skl_equip.level for skl_equip in skl_character.equip}
+            ).combine()
+            counter = char_item_info_list.counter()
+            char_yituliu_value = char_item_info_list.yituliu_item_value(strict=False)
+            item_info_list.extend(char_item_info_list)
 
-    # 解析命令参数
-    argv = message.extract_plain_text().strip().split(maxsplit=1)
-    if not argv:
-        await matcher.finish(f"请在命令后面跟上森空岛用户名或森空岛 ID。如需查询自己的干员练度，请发送“已拥有干员 [<uid>]”。")
-    elif len(argv) == 1:
-        id_or_name = argv[0]
-        uid = None
-    else:
-        id_or_name, uid = argv
-        if not uid.isdigit():
-            uid = None
+            skill_spec_text = f"专{"".join(str(skl_skill.specialize_level) for skl_skill in skl_character.skills)}"
+            equip_text_list = []
+            for skl_equip in skl_character.equip:
+                equip = character.get_uniequip(skl_equip.id)
+                if equip.is_original:
+                    continue  # 跳过初始模组
+                equip_level = 0 if skl_equip.locked else skl_equip.level
+                equip_text_list.append(f"{equip.type_name2}{equip_level}")
 
-    skland = SKLand()
-    if not id_or_name:  # 未提供 ID 或名称，则查询自己的绑定列表
-        user_id = None
-    elif id_or_name.isdigit():  # 提供了 ID，则查询该 ID 的绑定列表
-        user_id = id_or_name
-    else:  # 提供了名称，则先搜索用户，再查询该用户的绑定列表
-        await skland.login_by_token(token)
+            lines.append(
+                f"{character.id}\t"
+                f"{character.name}\t"
+                f"精{skl_character.evolve_phase}\0\t"
+                f"{skl_character.level}级\0\t"
+                f"{skl_character.main_skill_lvl}级\0\t"
+                f"{skill_spec_text}\t"
+                f"{" ".join(equip_text_list)}\t"
+                f"{skl_character.favor_percent}%\0\t"
+                f"{datetime.fromtimestamp(skl_character.gain_time, CST).strftime("%Y-%m-%d %H:%M:%S")}\t"
+                f"{counter.get("exp", 0)}\0\t"
+                f"{counter.get("4001", 0)}\0\t"
+                f"{divide(counter.get("4001", 0), counter.get("exp", 0)):.4f}\0\t"
+                f"{char_yituliu_value:.2f}\0"
+            )
+            """char_377_gdglow\t澄闪\t精2\0\t60级\0\t7级\0\t专333\tX3 Y0\t100%\0\t2022-09-01 12:34:56\t114514\0\t1919810\0\t1.4142\0\t1145.14\0"""
 
-        url = httpx.URL(api_v1_search_user_url).copy_merge_params(dict(keyword=id_or_name, pageSize=20))
-        search_result_obj = await skland._request("GET", str(url), login_headers, json=None, sign=True)
-        search_user = SearchUser.model_validate(search_result_obj)
-        if search_user.data.list:
-            user_id = search_user.data.list[0].user.id
+        for character_id in not_owned_character_id_set:
+            character = game_data.characters.by_id(character_id)
+            lines.append(f"{character.id}\t{character.name}\t未拥有")
+
+        counter = item_info_list.counter()
+        yituliu_item_value = item_info_list.yituliu_item_value(strict=False)
+        lines.append("")
+        lines.append(f"养成到当前练度共消耗 EXP×{counter.get("exp", 0)}、龙门币×{counter.get("4001", 0)}，钱书比 {divide(counter.get("4001", 0), counter.get("exp", 0)):.4f}")
+        lines.append(f"养成到当前练度共消耗的材料相当于 {yituliu_item_value:.2f} 理智")
+        lines.append("")
+        lines.append("________________")
+        lines.append("# 物品价值数据来自 明日方舟一图流 - 物品价值表")
+        lines.append("https://ark.yituliu.cn/material/value")
+        lines.append("")
+        lines.append("# Generated by BioBot")
+        lines.append("# Made by bilibili@Bio-Hazard")
+        lines.append("https://space.bilibili.com/37179776")
+
+        result = "\n".join(lines)
+
+        if len(result) > 512:
+            image = text_to_image(
+                result,
+                tabs=list(accumulate([10, 9, 2.5, 2, 0.5, 3, 8, 0.5, 14, 4.5, 4, 5])),
+                font_size=10,
+                row_spacing=0,
+            )
+            await matcher.send(MessageSegment.image(image_to_bytesio(image.convert("L"), format="PNG")))
         else:
-            await matcher.finish(f'未找到用户 {id_or_name}。')
+            await matcher.send(result)
 
-    # 尝试登录
-    if getattr(skland, "token", None) != token:
-        await skland.login_by_token(token)
+    except SKLandError as e:
+        await matcher.send(str(e))
+        raise e
+    except MatcherException as e:
+        raise e
+    except Exception as e:
+        await matcher.send("发生了苏茜解决不了的错误呢，怎么回事呢？")
+        raise e
 
-    player_binding_obj = await skland.player_binding(uid=user_id)
-    binding_character = skland.get_character(player_binding_obj, uid, app_code="arknights")
 
-    if binding_character is None:
-        await matcher.finish(f'未找到用户 {id_or_name} 的绑定角色。')
-
-    obj = await skland.get_player_info(uid=binding_character["uid"], user_id=user_id)
-
-    player_info = PlayerInfo.model_validate(obj)
-
-    owned_character_id_set = {character.char_id for character in player_info.data.chars}
-    not_owned_character_id_set = game_data.characters.keys() - owned_character_id_set
-
-    lines: list[str] = []
-
-    lines.append(f"{binding_character["channelName"]}账号 {binding_character["nickName"]}（{binding_character["uid"]}）")
-    lines.append("________________")
-    lines.append("")
-    lines.append("/- 干员练度详情 -/")
-    lines.append("")
-    lines.append("干员 ID\t干员代号\t精英化\0\t等级\0\t技能\0\t专精\t模组\t信赖\0\t获取时间")
-
-    for skl_character in player_info.data.chars:
-        character = game_data.characters.by_id(skl_character.char_id)
-
-        skill_spec_text = f"专{"".join(str(skill.specialize_level) for skill in skl_character.skills)}"
-        equip_text_list = []
-        for skl_equip in skl_character.equip:
-            equip = character.get_uniequip(skl_equip.id)
-            if equip.is_original:
-                continue  # 跳过初始模组
-            equip_level = 0 if skl_equip.locked else skl_equip.level
-            equip_text_list.append(f"{equip.type_name2}{equip_level}")
-
-        lines.append(f"{character.id}\t"
-                     f"{character.name}\t"
-                     f"精{skl_character.evolve_phase}\0\t"
-                     f"{skl_character.level}级\0\t"
-                     f"{skl_character.main_skill_lvl}级\0\t"
-                     f"{skill_spec_text}\t"
-                     f"{" ".join(equip_text_list)}\t"
-                     f"{skl_character.favor_percent}%\0\t"
-                     f"{datetime.fromtimestamp(skl_character.gain_time, CST).strftime("%Y-%m-%d %H:%M:%S")}")
-        """char_377_gdglow\t澄闪\t精2\0\t60级\0\t7级\0\t专333\tX3 Y0\t100%\0\t2022-09-01 12:34:56"""
-
-    for character_id in not_owned_character_id_set:
-        character = game_data.characters.by_id(character_id)
-        lines.append(f"{character.id}\t{character.name}\t未拥有")
-
-    lines.append("")
-    lines.append("________________")
-    lines.append("# Generated by BioBot")
-    lines.append("# Made by bilibili@Bio-Hazard")
-    lines.append("https://space.bilibili.com/37179776")
-
-    result = "\n".join(lines)
-
-    if len(result) > 512:
-        await matcher.send(MessageSegment.image(image_to_bytesio(text_to_image(
-            result, tabs=list(accumulate([10, 9, 2.5, 2, 0.5, 3, 6.5, 0.5])), row_spacing=0), format="JPEG")))
-    else:
-        await matcher.send(result)
+@skl_character_list.handle()
+async def skl_character_list_fail_func(args: ParserExit = ShellCommandArgs()) -> None:
+    await skl_character_list.finish(skl_character_list_parser.format_help())
 
 
 async def skl_missing_characters_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
