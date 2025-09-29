@@ -1,6 +1,7 @@
 """
 TODO: 材料归蓝
 TODO: 给干员排序
+TODO: 如果账号很久没登录，则/api/v1/game/player/info 中 chars 的模组可能不包含该干员的全部模组。
 """
 
 import sys
@@ -20,8 +21,12 @@ from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_cultivate_pl
     HttpsZonaiSklandComApiV1GameCultivatePlayer as CultivatePlayer
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_binding import \
     HttpsZonaiSklandComApiV1GamePlayerBinding as PlayerBinding
+from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_info import (BaseRoom, Control,
+                                                                                        Dormitory, Hire)
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_info import \
     HttpsZonaiSklandComApiV1GamePlayerInfo as PlayerInfo
+from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_info import (Manufacture, Meeting,
+                                                                                        Power, Trading, Training)
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_search_user import \
     HttpsZonaiSklandComApiV1SearchUser as SearchUser
 from nonebot import MatcherGroup, get_driver, logger, require
@@ -68,8 +73,7 @@ help_str: str = f'''
 
 - {default_command_start}(关闭|开启)森空岛自动签到    # 关闭/开启森空岛自动签到
 
-- {default_command_start}森空岛小秘书 [<uid>]    # 森空岛实时数据分析
-- {default_command_start}森空岛小秘书 <森空岛用户名|森空岛 ID> [<uid>]    # 查别人的成分
+- {default_command_start}森空岛小秘书 [-n <name> | -i <skland_id>] [-u <uid>]    # 森空岛实时数据分析
 
 - {default_command_start}森空岛干员阵容查询 [<uid>]    # 查询已有干员
 - {default_command_start}干员列表 [-n <name> | -i <skland_id>] [-u <uid>]    # 查询自己或别人的干员列表
@@ -93,6 +97,17 @@ __plugin_meta__ = PluginMetadata(
     description='明日方舟森空岛工具，提供自动签到、干员查询、仓库查询等各种实用功能。',
     usage=help_str,
 )
+
+skl_assistant_parser = ArgumentParser(
+    prog="森空岛小秘书",
+    description="森空岛实时数据分析",
+    # formatter_class=argparse.RawTextHelpFormatter,
+)
+skl_assistant_group = skl_assistant_parser.add_mutually_exclusive_group()
+skl_assistant_group.add_argument('-n', '--skland-name', help='森空岛昵称')
+skl_assistant_group.add_argument('-i', '--skland-user-id', help='森空岛 ID')
+skl_assistant_parser.add_argument('-u', '--game-uid', help='游戏角色 UID')
+skl_assistant_parser.add_argument('-v', '--verbose', action='store_true', help='输出更详细的信息')
 
 skl_character_list_parser = ArgumentParser(
     prog="干员列表",
@@ -146,7 +161,7 @@ delete_all_skl_token = matcher_group.on_command("解绑所有森空岛token", al
 skl_auto_attendance = matcher_group.on_keyword({"森空岛自动签到"})
 skl_attendance_all = matcher_group.on_command("森空岛签到全部", permission=SUPERUSER)
 
-skl_assistant = matcher_group.on_command("森空岛小秘书", aliases={"森空岛助手", "森空岛小助手"})
+skl_assistant = matcher_group.on_shell_command("森空岛小秘书", aliases={"森空岛助手", "森空岛小助手"}, parser=skl_assistant_parser)
 
 skl_query = matcher_group.on_command("森空岛查询", aliases={"森空岛干员阵容查询"})
 skl_character_list = matcher_group.on_shell_command("干员列表", aliases={"已有干员练度", "已有干员", "干员练度", "我的干员", "我的干员练度", "已拥有干员练度", "已拥有干员"}, parser=skl_character_list_parser)
@@ -329,6 +344,244 @@ async def skl_attendance_all_func() -> None:
 
 
 @skl_assistant.handle()
+async def skl_assistant_succeed_func(matcher: Matcher, event: MessageEvent, args: Namespace = ShellCommandArgs()) -> None:
+    def format_positive_time_delta(time_delta: timedelta) -> str:
+        if time_delta < timedelta(0):
+            raise ValueError("time_delta must be non-negative")
+
+        days = time_delta.days
+        hours = time_delta.seconds // 3600
+        minutes = time_delta.seconds % 3600 // 60
+
+        parts = []
+        if days != 0:
+            parts.append(f"{days} 天")
+        if days != 0 or hours != 0:
+            parts.append(f"{hours} 小时")
+        parts.append(f"{minutes} 分钟")
+
+        return " ".join(parts)
+
+    def format_time(current_timestamp: int,
+                    target_timestamp: int,
+                    timezone: timezone | None,
+                    *,
+                    prefix_future: str = "将于 ",
+                    prefix_past: str = "已于 ",
+                    seconds: bool = False) -> str:
+        current_time = datetime.fromtimestamp(current_timestamp, tz=timezone)
+        target_time = datetime.fromtimestamp(target_timestamp, tz=timezone)
+        time_delta = target_time - current_time
+
+        if current_time.date() == target_time.date():
+            format_str = "%H:%M"
+        else:
+            format_str = "%Y-%m-%d %H:%M"
+        if seconds:
+            format_str += ":%S"
+
+        if time_delta > timedelta(0):
+            return f"{prefix_future}{target_time.strftime(format_str)}（{format_positive_time_delta(time_delta)}后）"
+        else:
+            return f"{prefix_past}{target_time.strftime(format_str)}（{format_positive_time_delta(-time_delta)}前）"
+
+    try:
+        # 检查是否绑定了森空岛 token
+        token_list = tokens.filter(qq=event.user_id)
+        if not token_list:
+            await matcher.finish(no_token_str)
+        token = token_list[0]['token']
+
+        if args.skland_user_id is not None and not args.skland_user_id.isdigit():
+            await matcher.finish("森空岛 ID 必须为纯数字。如果您想使用森空岛昵称查询，请使用 -n/--skland-name 参数。\n发送“干员列表 -h”查看帮助。")
+        if args.game_uid is not None and not args.game_uid.isdigit():
+            await matcher.finish("游戏角色 UID 必须为纯数字。UID 可以在游戏主界面昵称下方找到。\n发送“干员列表 -h”查看帮助。")
+
+        skland = SKLand()
+        if args.skland_name is not None:  # 使用森空岛搜索功能
+            await skland.login_by_token(token)
+
+            url = httpx.URL(api_v1_search_user_url).copy_merge_params(dict(keyword=args.skland_name, pageSize=20))
+            search_result_obj = await skland._request("GET", str(url), login_headers, json=None, sign=True)
+            search_user = SearchUser.model_validate(search_result_obj)
+            if search_user.data.list:
+                args.skland_user_id = search_user.data.list[0].user.id
+            else:
+                await matcher.finish(f'未找到用户 {args.skland_name}。')
+
+        # 尝试登录
+        if getattr(skland, "token", None) != token:
+            await skland.login_by_token(token)
+
+        player_binding_obj = await skland.player_binding(uid=args.skland_user_id)
+        binding_character = skland.get_character(player_binding_obj, args.game_uid, app_code="arknights")
+
+        if binding_character is None:
+            await matcher.finish(f'未找到该用户的绑定角色。')
+
+        obj = await skland.get_player_info(uid=binding_character["uid"], user_id=args.skland_user_id)
+
+        player_info = PlayerInfo.model_validate(obj)
+
+        owned_character_id_set = {character.char_id for character in player_info.data.chars}
+        not_owned_character_id_set = game_data.characters.keys() - owned_character_id_set
+
+        lines: list[str] = []
+
+        # contents.append(f"{binding_character["channelName"]}账号 {binding_character["nickName"]}（{binding_character["uid"]}）")
+        # contents.append("________________")
+
+        lines.append(f"Dr. {player_info.data.status.name}，")
+        lines.append("根据森空岛目前采集到的信息推算，罗德岛需要注意的情况向您汇报如下：")
+        lines.append("")
+
+        # 理智
+        当前理智 = player_info.data.status.ap.current
+        if 当前理智 < player_info.data.status.ap.max:  # 如果理智未满，则考虑信息刷新延迟期间的理智恢复
+            当前理智 += (player_info.data.current_ts - player_info.data.status.ap.last_ap_add_time) // 360
+            当前理智 = min(当前理智, player_info.data.status.ap.max)
+        lines.append(f"当前理智 {当前理智}，{format_time(player_info.data.current_ts, player_info.data.status.ap.complete_recovery_time, CST)}回满。")
+        lines.append("")
+
+        # 公开招募刷新
+        if player_info.data.building.hire is not None:
+            公开招募刷新次数 = player_info.data.building.hire.refresh_count
+            if player_info.data.building.hire.complete_work_time <= 0:
+                lines.append(f"当前公开招募可刷新 {公开招募刷新次数} 次，请及时使用。")
+            else:
+                if player_info.data.current_ts >= player_info.data.building.hire.complete_work_time:
+                    公开招募刷新次数 += 1
+                lines.append(f"当前公开招募可刷新 {公开招募刷新次数} 次，{format_time(player_info.data.current_ts, player_info.data.building.hire.complete_work_time, CST)}填充次数。")
+            lines.append("")
+
+        # 无人机
+        当前无人机 = player_info.data.building.labor.value
+        if 当前无人机 < player_info.data.building.labor.max_value:  # 如果无人机未满，则考虑信息刷新延迟期间的无人机恢复
+            当前无人机 += ((player_info.data.current_ts - player_info.data.building.labor.last_update_time)
+                      * divide(player_info.data.building.labor.max_value - player_info.data.building.labor.value,
+                               player_info.data.building.labor.remain_secs, positive=0, negative=0, zero=0))
+            当前无人机 = min(当前无人机, player_info.data.building.labor.max_value)
+        无人机充满时间戳 = player_info.data.building.labor.last_update_time + player_info.data.building.labor.remain_secs
+        lines.append(f"当前无人机 {int(当前无人机)} 个，{format_time(player_info.data.current_ts, 无人机充满时间戳, CST)}充满。")
+        lines.append("")
+
+        # 可赠线索
+        if player_info.data.building.meeting is not None:
+            可赠线索 = player_info.data.building.meeting.clue.own
+            lines.append(f"可赠线索 {可赠线索} 份，{format_time(player_info.data.current_ts, player_info.data.building.meeting.complete_work_time, CST)}刷新。")
+            lines.append("")
+
+        # 线索交流剩余时间
+        if player_info.data.building.meeting is not None:
+            if player_info.data.building.meeting.clue.share_complete_time <= 0:
+                if player_info.data.building.meeting.clue.sharing:
+                    lines.append("线索交流已开启。")
+                else:
+                    lines.append("线索交流未开启。")
+            else:
+                lines.append(f"线索交流{format_time(player_info.data.current_ts, player_info.data.building.meeting.clue.share_complete_time, CST, seconds=True)}结束。")
+            lines.append("")
+            # if not player_info.data.building.meeting.clue.sharing:
+            #     lines.append("线索交流已完成")
+            # else:
+            #     lines.append(f"线索交流{format_time(player_info.data.current_ts, player_info.data.building.meeting.clue.share_complete_time, CST)}结束。")
+
+        # 注意力涣散的干员
+        if player_info.data.building.tired_chars:
+            char_name_list: list[str] = [player_info.data.char_info_map[tired_char.char_id].name
+                                         for tired_char in player_info.data.building.tired_chars]
+            lines.append(f"注意力涣散的干员：{"、".join(char_name_list)}")
+            lines.append("")
+
+        # 菲亚梅塔、令、夕的心情
+        菲亚梅塔_id = game_data.characters.by_name("菲亚梅塔").id
+        令_id = game_data.characters.by_name("令").id
+        夕_id = game_data.characters.by_name("夕").id
+        rooms: list[Power | Manufacture | Trading | Dormitory | Meeting | Hire | Control] = []
+        rooms.extend(player_info.data.building.powers)
+        rooms.extend(player_info.data.building.manufactures)
+        rooms.extend(player_info.data.building.tradings)
+        rooms.extend(player_info.data.building.dormitories)
+        if player_info.data.building.meeting is not None:
+            rooms.append(player_info.data.building.meeting)
+        if player_info.data.building.hire is not None:
+            rooms.append(player_info.data.building.hire)
+        # if player_info.data.building.training is not None:
+        #     rooms.append(player_info.data.building.training)
+        rooms.append(player_info.data.building.control)
+        for room in rooms:
+            for char in room.chars:
+                if char.char_id in {菲亚梅塔_id, 令_id, 夕_id}:
+                    lines.append(f"{player_info.data.char_info_map[char.char_id].name}的心情为 {char.ap / 360000:.2f}")
+        lines.append("")
+
+        if args.verbose:
+            # 基本信息
+            lines.append(f"Dr. {player_info.data.status.name}（{player_info.data.status.uid}），声望 Lv. {player_info.data.status.level}，入职于 {datetime.fromtimestamp(player_info.data.status.register_ts, tz=CST).strftime("%Y-%m-%d %H:%M:%S")}。")
+            if not player_info.data.status.main_stage_progress:
+                作战进度字符串 = "全部完成"
+            elif player_info.data.status.main_stage_progress in game_data.raw_data.excel.stage_table.stages:
+                作战进度字符串 = game_data.raw_data.excel.stage_table.stages[player_info.data.status.main_stage_progress].code
+            else:
+                作战进度字符串 = player_info.data.status.main_stage_progress
+            lines.append(f"作战进度：{作战进度字符串}")
+            if player_info.data.status.subscription_end <= 0:
+                lines.append("未购买月卡")
+            else:
+                lines.append(f"月卡{format_time(player_info.data.current_ts, player_info.data.status.subscription_end, CST, seconds=True)}到期")
+            lines.append(f"storeTs：{datetime.fromtimestamp(player_info.data.status.store_ts, tz=CST).strftime("%Y-%m-%d %H:%M:%S")}")
+            lines.append(f"最近登录于 {format_time(player_info.data.current_ts, player_info.data.status.last_online_ts, CST, seconds=True, prefix_future="", prefix_past="")}")
+
+            # 蚀刻章
+            lines.append(f"蚀刻章总数：{player_info.data.medal.total}")
+
+            # 助战干员
+            lines.append(f"助战干员：{"、".join(player_info.data.char_info_map[char.char_id].name for char in player_info.data.assist_chars)}")
+
+            # 已拥有干员
+            lines.append(f"已拥有干员：{sum(1 for skl_char in player_info.data.chars if not game_data.characters.by_id(skl_char.char_id).is_patch_char)} / {sum(1 for character in game_data.characters.values() if not character.is_patch_char)}")
+
+            # 已拥有时装
+            lines.append(f"已拥有时装：{len(player_info.data.skins)}")
+
+            # 基建
+
+        lines.append("")
+        lines.append("________________")
+        lines.append(f"森空岛信息刷新时间：{format_time(player_info.data.current_ts, player_info.data.building.labor.last_update_time, CST, prefix_future="", prefix_past="", seconds=True)}")
+        lines.append("")
+        lines.append("# Generated by BioBot")
+        lines.append("# Made by bilibili@Bio-Hazard")
+        lines.append("https://space.bilibili.com/37179776")
+
+        result = "\n".join(lines)
+
+        if len(result) > 512:
+            image = text_to_image(
+                result,
+                tabs=list(accumulate([])),
+                font_size=14,
+                row_spacing=0,
+            )
+            await matcher.send(MessageSegment.image(image_to_bytesio(image.convert("L"), format="PNG")))
+        else:
+            await matcher.send(result)
+
+    except SKLandError as e:
+        await matcher.send(str(e))
+        raise e
+    except MatcherException as e:
+        raise e
+    except Exception as e:
+        await matcher.send("发生了苏茜解决不了的错误呢，怎么回事呢？")
+        raise e
+
+
+@skl_assistant.handle()
+async def skl_assistant_fail_func(args: ParserExit = ShellCommandArgs()) -> None:
+    await skl_assistant.finish(skl_assistant_parser.format_help())
+
+
 @skl_query.handle()
 async def skl_assistant_func(matcher: Matcher, event: MessageEvent, message: Message = CommandArg()) -> None:
     uid: str | None = message.extract_plain_text().strip()
