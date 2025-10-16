@@ -1,11 +1,4 @@
-from nonebot import get_plugin_config
-from pydantic import BaseModel, DirectoryPath, FilePath
+from arknights_game_model.config import Config
+from nonebot import get_driver
 
-
-class Config(BaseModel):
-    arknights_gamedata_folder: DirectoryPath
-    arknights_online_time_path: FilePath
-    arknights_yituliu_item_value_path: FilePath
-
-
-plugin_config: Config = get_plugin_config(Config)
+plugin_config = Config(_env_file=(".env", f".env.{get_driver().env}"))  # type: ignore

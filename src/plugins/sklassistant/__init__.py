@@ -3,11 +3,6 @@ TODO: 材料归蓝
 TODO: 给干员排序
 TODO: 如果账号很久没登录，则/api/v1/game/player/info 中 chars 的模组可能不包含该干员的全部模组。
 """
-
-import sys
-
-sys.path.append("src/arknights-game-model")  # NOQA
-
 import argparse
 import asyncio
 from datetime import datetime, timedelta, timezone

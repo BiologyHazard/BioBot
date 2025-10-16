@@ -1,7 +1,3 @@
-import sys
-
-sys.path.append("src/arknights-game-model")  # NOQA
-
 from collections import defaultdict
 
 import nonebot
@@ -38,17 +34,15 @@ help_str: str = f"""
 """.strip()
 
 __plugin_meta__ = PluginMetadata(
-    name='明日方舟数据',
-    description='明日方舟数据查询，提供基建技能、术语释义、满练消耗查询等各种实用功能。',
+    name="明日方舟数据",
+    description="明日方舟数据查询，提供基建技能、术语释义、满练消耗查询等各种实用功能。",
     usage=help_str,
 )
 
 
 @driver.on_startup
 def on_startup_func() -> None:
-    game_data.load_data(gamedata_folder=plugin_config.arknights_gamedata_folder,
-                        online_time_path=plugin_config.arknights_online_time_path,
-                        yituliu_item_value_path=plugin_config.arknights_yituliu_item_value_path)
+    game_data.load_data(**plugin_config.model_dump())
 
 
 ELITE_LEVEL_DICT = {
