@@ -12,7 +12,6 @@ aiofiles
 # sklassistant
 aioimaplib
 aiosmtplib
-quart
 pydantic[email]
 nonebot-plugin-apscheduler
 

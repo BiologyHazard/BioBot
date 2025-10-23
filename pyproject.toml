@@ -17,7 +17,6 @@ dependencies = [
     "pil-utils>=0.2.2",
     "pillow>=11.3.0",
     "pydantic[email]>=2.12.1",
-    "quart>=0.20.0",
 ]
 
 [tool.nonebot]
@@ -29,4 +28,4 @@ plugin_dirs = []
 builtin_plugins = []
 
 [tool.uv.sources]
-arknights-game-model = { path = "~/arknights/arknights-game-model", editable = true }
+arknights-game-model = { path = "../../arknights/arknights-game-model", editable = true }

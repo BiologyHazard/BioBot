@@ -18,51 +18,50 @@ logger_format: str = (
 
 def main() -> None:
     logger.remove()
-    logger.add(sys.stderr,
-               level=0,
-               format=logger_format,
-               filter=default_filter)
-    logger.add('logs/bot_{time:YYYY-MM-DD}.log',
-               level=0,
-               rotation='00:00',
-               format=logger_format,
-               filter=default_filter)
+    logger.add(sys.stderr, level=0, format=logger_format, filter=default_filter)
+    logger.add(
+        "logs/bot_{time:YYYY-MM-DD}.log",
+        level=0,
+        rotation="00:00",
+        format=logger_format,
+        filter=default_filter,
+    )
 
     nonebot.init()
 
     driver: Driver = nonebot.get_driver()
     driver.register_adapter(OneBotV11Adapter)
-    nonebot.load_from_toml('pyproject.toml')
+    nonebot.load_from_toml("pyproject.toml")
 
-    nonebot.load_builtin_plugins('echo')
-    nonebot.load_plugin('src.plugins.help')
-    nonebot.load_plugin('src.plugins.blacklist')
+    nonebot.load_builtin_plugins("echo")
+    nonebot.load_plugin("src.plugins.help")
+    nonebot.load_plugin("src.plugins.blacklist")
     # nonebot.load_plugin('src.plugins.fwdrequests')
     # nonebot.load_plugin('src.plugins.runcode')
-    nonebot.load_plugin('src.plugins.sklassistant')
+    nonebot.load_plugin("src.plugins.sklassistant")
     nonebot.load_plugin("src.plugins.arknights")
-    nonebot.load_plugin('src.plugins.chat')
+    nonebot.load_plugin("src.plugins.chat")
     # nonebot.load_plugin('src.plugins.maimai')
-    nonebot.load_plugin('src.plugins.autoreply')
-    nonebot.load_plugin('src.plugins.slscq')
-    nonebot.load_plugin('src.plugins.biliinfo')
-    nonebot.load_plugin('src.plugins.roll')
-    nonebot.load_plugin('src.plugins.poke')
+    nonebot.load_plugin("src.plugins.autoreply")
+    nonebot.load_plugin("src.plugins.slscq")
+    nonebot.load_plugin("src.plugins.biliinfo")
+    nonebot.load_plugin("src.plugins.roll")
+    nonebot.load_plugin("src.plugins.poke")
     # nonebot.load_plugin('src.plugins.simplemusic')
-    nonebot.load_plugin('src.plugins.repeater')
+    nonebot.load_plugin("src.plugins.repeater")
     nonebot.load_plugin("src.plugins.steal")
-    nonebot.load_plugin('src.plugins.boardgame')
+    nonebot.load_plugin("src.plugins.boardgame")
     # nonebot.load_plugin('src.plugins.text2sound')
-    nonebot.load_plugin('src.plugins.xxivgame')
-    nonebot.load_plugin('src.plugins.homo')
-    nonebot.load_plugin('src.plugins.mahjong')
-    nonebot.load_plugin('src.plugins.answersbook')
+    nonebot.load_plugin("src.plugins.xxivgame")
+    nonebot.load_plugin("src.plugins.homo")
+    nonebot.load_plugin("src.plugins.mahjong")
+    nonebot.load_plugin("src.plugins.answersbook")
     # nonebot.load_plugin('src.plugins.tygj')
-    nonebot.load_plugin('src.plugins.revoke')
+    nonebot.load_plugin("src.plugins.revoke")
     # nonebot.load_plugin('src.plugins.ncm')
-    nonebot.load_plugin('src.plugins.abbreply')
-    nonebot.load_plugin('src.plugins.kfccrazythu')
-    nonebot.load_plugin('src.plugins.choose')
+    nonebot.load_plugin("src.plugins.abbreply")
+    nonebot.load_plugin("src.plugins.kfccrazythu")
+    nonebot.load_plugin("src.plugins.choose")
     # nonebot.load_plugin('src.plugins.wordle')
     # nonebot.load_plugin('src.plugins.handle')
 
@@ -75,5 +74,5 @@ def main() -> None:
     nonebot.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

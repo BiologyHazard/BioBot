@@ -134,7 +134,7 @@ class SKLand:
                        json: dict[str, Any] | None,
                        sign: bool,
                        raise_error: bool = True,
-                       save: bool = False) -> dict[str, Any]:
+                       save: bool = True) -> dict[str, Any]:
         if sign:
             headers = get_sign_header(
                 url,

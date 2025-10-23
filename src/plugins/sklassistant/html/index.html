@@ -238,9 +238,13 @@
             event.preventDefault();
             document.getElementById("submitInput").value = "提交中...";
             const formData = new FormData(event.target);
+            const jsonData = Object.fromEntries(formData.entries());
             fetch("/BioBot/plugins/sklassistant/", {
                 method: "POST",
-                body: formData
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(jsonData)
             })
                 .then(response => {
                     return response.json();

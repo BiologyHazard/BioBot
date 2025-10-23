@@ -13,8 +13,7 @@ class Config(BaseModel):
     skl_tokens_file_path: FilePath = Path("data/sklassistant/tokens.json")
     skland_did: str
     skl_server_host: str
-    skl_quart_host: str = "0.0.0.0"
-    skl_quart_port: int = Field(default=5000, ge=1, le=65535)
+    port: int = Field(default=8080, ge=1, le=65535)
 
 
 plugin_config: Config = get_plugin_config(Config)
