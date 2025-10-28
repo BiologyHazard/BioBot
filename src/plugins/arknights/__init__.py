@@ -15,22 +15,9 @@ default_command_start: str = tuple(driver.config.command_start)[0]
 
 help_str: str = f"""
 【可用命令】
-- {default_command_start}绑定森空岛token <token>    # 绑定森空岛 token
-
-- {default_command_start}(关闭|开启)森空岛自动签到    # 关闭/开启森空岛自动签到
-
-- {default_command_start}森空岛小秘书 [<uid>]    # 森空岛实时数据分析
-- {default_command_start}森空岛小秘书 <森空岛用户名|森空岛 ID> <uid>    # 查别人的成分
-
-- {default_command_start}森空岛干员阵容查询 [<uid>]    # 查询已有干员
-- {default_command_start}未拥有干员 [<uid>]    # 查询未拥有干员
-
-- {default_command_start}我的仓库  # 查询仓库材料
-- {default_command_start}已消耗材料 [<uid>]    # 查询养成总消耗
-- {default_command_start}满练还差多少 [<uid>]    # 查询满练差多少材料
-
-# <uid> 为一串数字，可在游戏主界面昵称下方找到。
-# <uid> 为可选参数。若不指定 <uid>，则查询官网绑定的默认角色。
+- {default_command_start}基建技能 <干员名称>    # 查询基建技能
+- {default_command_start}术语释义 <术语>    # 查询术语释义
+- {default_command_start}<干员名称>满练消耗    # 查询干员满练消耗
 """.strip()
 
 __plugin_meta__ = PluginMetadata(
@@ -69,7 +56,11 @@ def get_term_ids(initial_queue: list[str]) -> list[str]:
             continue  # 有时候会因为解包库更新不及时导致找不到术语
 
         term_ids.append(term_id)
-        term_description = game_data.raw_data.excel.gamedata_const.term_description_dict[term_id].description
+        term_description = (
+            game_data.raw_data.excel.gamedata_const.term_description_dict[
+                term_id
+            ].description
+        )
         queue.extend(find_dollar_tags(term_description))
 
     return term_ids
@@ -82,7 +73,9 @@ evolve_cost = arknights_matcher_group.on_regex(r"^(.+)(?:满练|拉满)消耗$")
 
 
 @base_skill.handle()
-async def base_skill_func(regex_group: tuple[str, None] | tuple[None, str] = RegexGroup()):
+async def base_skill_func(
+    regex_group: tuple[str, None] | tuple[None, str] = RegexGroup(),
+):
     character_str = regex_group[0] if regex_group[0] is not None else regex_group[1]
 
     try:
@@ -96,7 +89,9 @@ async def base_skill_func(regex_group: tuple[str, None] | tuple[None, str] = Reg
     lines.append(f"干员 {character.id}（{character.name}）")
     lines.append("________________")
 
-    for skill_num, buff_char_item in enumerate(game_data.raw_data.excel.building_data.chars[character.id].buff_char, start=1):
+    for skill_num, buff_char_item in enumerate(
+        game_data.raw_data.excel.building_data.chars[character.id].buff_char, start=1
+    ):
         if buff_char_item.buff_data:
             lines.append("")
             lines.append(f"/- 基建技能 {skill_num} -/")
@@ -105,7 +100,9 @@ async def base_skill_func(regex_group: tuple[str, None] | tuple[None, str] = Reg
                 skill_id = buff_data_item.buff_id
                 skill = game_data.raw_data.excel.building_data.buffs[skill_id]
                 lines.append("")
-                lines.append(f"【{skill.buff_name}】{ELITE_LEVEL_DICT.get(buff_data_item.cond.phase)} {buff_data_item.cond.level} 级解锁")
+                lines.append(
+                    f"【{skill.buff_name}】{ELITE_LEVEL_DICT.get(buff_data_item.cond.phase)} {buff_data_item.cond.level} 级解锁"
+                )
                 lines.append(escape_description(skill.description))
                 initial_queue.extend(find_dollar_tags(skill.description))
 
@@ -117,7 +114,9 @@ async def base_skill_func(regex_group: tuple[str, None] | tuple[None, str] = Reg
         lines.append("________________")
         lines.append("")
         for term_id in term_id_list:
-            term = game_data.raw_data.excel.gamedata_const.term_description_dict[term_id]
+            term = game_data.raw_data.excel.gamedata_const.term_description_dict[
+                term_id
+            ]
             lines.append("")
             lines.append(f"/- {term.term_name} -/")
             lines.append("")
@@ -154,7 +153,9 @@ async def terminology_func(message: Message = CommandArg()):
             lines.append(f"未找到术语 {term_name} 的释义")
         else:
             for term_id in term_name_to_ids[term_name]:
-                term = game_data.raw_data.excel.gamedata_const.term_description_dict[term_id]
+                term = game_data.raw_data.excel.gamedata_const.term_description_dict[
+                    term_id
+                ]
                 lines.append("")
                 lines.append(f"/- {term.term_name} -/")
                 lines.append("")
@@ -186,7 +187,9 @@ async def evolve_cost_func(regex_group: tuple[str] = RegexGroup()):
     lines: list[str] = []
 
     if character_str.rstrip("干员") in ("全", "所有", "全部"):
-        item_info_list = game_data.characters.全干员拉满消耗().combine().sort_by_sort_id()
+        item_info_list = (
+            game_data.characters.全干员拉满消耗().combine().sort_by_sort_id()
+        )
 
         lines.append("/- 全干员拉满消耗 -/")
         lines.append("")
