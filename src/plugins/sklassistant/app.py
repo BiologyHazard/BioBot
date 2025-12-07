@@ -30,7 +30,11 @@ def get_home_html_content() -> str:
 
 async def home(request: Request) -> Response:
     logger.debug(f"有请求：{request!r}")
-    return Response(200, content=get_home_html_content())
+    return Response(
+        status_code=200,
+        headers={"Content-Type": "text/html; charset=utf-8"},
+        content=get_home_html_content(),
+    )
 
 
 async def commit(request: Request) -> Response:
@@ -59,7 +63,7 @@ async def commit(request: Request) -> Response:
     except ValidationError as e:
         return Response(
             status_code=400,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json; charset=utf-8"},
             content=json.dumps({"code": 400, "message": str(e), "data": None}),
         )
         # return {"code": 400, "message": str(e), "data": None}, 400
@@ -69,7 +73,7 @@ async def commit(request: Request) -> Response:
     except SKLandError as e:
         return Response(
             status_code=403,
-            headers={"Content-Type": "application/json"},
+            headers={"Content-Type": "application/json; charset=utf-8"},
             content=json.dumps(
                 {"code": 403, "message": f"绑定森空岛token失败：{e}", "data": None}
             ),
@@ -83,7 +87,7 @@ async def commit(request: Request) -> Response:
 
     return Response(
         status_code=200,
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json; charset=utf-8"},
         content=json.dumps({"code": 200, "message": "提交成功。", "data": None}),
     )
 

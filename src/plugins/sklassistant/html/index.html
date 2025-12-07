@@ -73,14 +73,24 @@
             margin: 10px 0;
         }
 
+        .input {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .input label {
+            width: 60px;
+            font-size: medium;
+        }
+
         input[type="text"],
         input[type="email"],
         input[type="number"],
         input[type="password"] {
+            flex: 1;
             font-size: medium;
-            width: 90%;
             padding: 10px;
-            margin-bottom: 10px;
             border: 1px solid #ccc;
         }
 
@@ -145,16 +155,16 @@
             </p>
 
             <form name="form" id="form" method="post" action="">
-                <div>
+                <div class="input">
                     <label for="qqInput">QQ: </label>
                     <input type="text" name="qq" id="qqInput" value="" required minlength="5" maxlength="20"
                         pattern="\d+" title="请填写QQ号" />
                 </div>
-                <div>
+                <div class="input">
                     <label for="qqInput">Email: </label>
                     <input type="email" name="email" id="emailInput" value="" required />
                 </div>
-                <div>
+                <div class="input">
                     <label for="qqInput">Token: </label>
                     <input type="text" name="token" id="tokenInput" value="" placeholder="不包含双引号" required
                         minlength="24" maxlength="24"
