@@ -6,7 +6,7 @@ import re
 import reprlib
 import time
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Literal
 from urllib import parse
 from warnings import deprecated
 
@@ -30,6 +30,7 @@ get_grant_code_url = "https://as.hypergryph.com/user/oauth2/v2/grant"
 get_cred_url = "https://zonai.skland.com/web/v1/user/auth/generate_cred_by_code"
 get_binding_list_url = "https://zonai.skland.com/api/v1/game/player/binding"
 attendance_url = "https://zonai.skland.com/api/v1/game/attendance"  # ?uid={uid}(&gameId={gameId}) 貌似可以不加gameId
+attendance_endfield_url = "https://zonai.skland.com/web/v1/game/endfield/attendance"
 player_info_url = "https://zonai.skland.com/api/v1/game/player/info"
 user_url = "https://zonai.skland.com/api/v1/user"
 cultivate_character_url = "https://zonai.skland.com/api/v1/game/cultivate/character"  # ?characterId={characterId}
@@ -62,6 +63,8 @@ login_headers: dict[str, str] = {
     "Connection": "close",
     "Content-Type": "application/json",
     "dId": plugin_config.skland_did,
+    "referer": "https://game.skland.com/",
+    "origin": "https://game.skland.com/",
 }
 
 # 签名请求头一定要这个顺序，否则失败
@@ -70,7 +73,7 @@ header_for_sign: dict[str, str] = {
     "platform": "3",
     "timestamp": "",
     "dId": plugin_config.skland_did,
-    "vName": "1.21.0",
+    "vName": "1.0.0",
 }
 
 
@@ -140,7 +143,7 @@ class SKLand:
         json: dict[str, Any] | None,
         sign: bool,
         raise_error: bool = True,
-        save: bool = False,
+        save: bool = True,
     ) -> dict[str, Any]:
         if sign:
             headers = get_sign_header(
@@ -332,6 +335,27 @@ class SKLand:
         )
         return obj
 
+    async def attendance_endfield(self, *, game_id: int, role_id: str, server_id: str):
+        headers = login_headers | {
+            # "Accept": "*/*",
+            # "Accept-Encoding": "gzip, deflate",
+            # "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+            # "User-Agent": "Mozilla/5.0 (Linux; Android 12; V2366GA Build/V417IR; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/101.0.4951.61 Safari/537.36; SKLand/1.52.1",
+            # "X-Requested-With": "com.hypergryph.skland",
+            # "Content-Type": "application/json",
+            # "Referer": "https://game.skland.com/",
+            # "Origin": "https://game.skland.com",
+            # "Sec-Fetch-Dest": "empty",
+            # "Sec-Fetch-Mode": "cors",
+            # "Sec-Fetch-Site": "same-site",
+            # "Connection": "keep-alive",
+            "sk-game-role": f"{game_id}_{role_id}_{server_id}",
+        }
+        obj = await self._request(
+            "POST", attendance_endfield_url, headers, {}, True, raise_error=False
+        )
+        return obj
+
     async def logout(self) -> dict[str, Any]:
         obj = await self._request(
             "POST",
@@ -343,11 +367,14 @@ class SKLand:
         )
         return obj
 
-    async def attendance_single_character(self, character: dict[str, Any]) -> str:
+    async def attendance_arknights_single_character(
+        self, character: dict[str, Any]
+    ) -> str:
         uid: str = character["uid"]
         nickname: str = character["nickName"]
         channel_master_id: str = character["channelMasterId"]
         channel_name: str = character["channelName"]
+        game_name: str = character["gameName"]
 
         obj = await self.attendance(uid, channel_master_id)
 
@@ -362,39 +389,78 @@ class SKLand:
                 if award_messages
                 else "未获得任何奖励。"
             )
-            return (
-                f"{channel_name}账号 Dr. {nickname} ({uid}) 签到成功！{award_message}"
-            )
+            return f"{game_name}{channel_name}账号 Dr. {nickname} ({uid}) 签到成功！{award_message}"
 
         elif obj["code"] == 10001:
-            return f"{channel_name}账号 Dr. {nickname} ({uid}) 今天已经签到！"
+            return (
+                f"{game_name}{channel_name}账号 Dr. {nickname} ({uid}) 今天已经签到！"
+            )
 
         else:
-            message: str = obj["message"]
             raise SKLandError(
-                f"{channel_name}账号 Dr. {nickname} ({uid}) 签到时出现未知错误：{message}"
+                f"{game_name}{channel_name}账号 Dr. {nickname} ({uid}) 签到时出现未知错误：{obj['message']}"
+            )
+
+    async def attendance_endfield_single_role(
+        self, character: dict[str, Any], role: dict[str, Any]
+    ):
+        channel_name = character["channelName"]
+        game_name = character["gameName"]
+        nickname = role["nickname"]
+        game_id = character["gameId"]
+        role_id = role["roleId"]
+        server_id = role["serverId"]
+
+        obj = await self.attendance_endfield(
+            game_id=game_id, role_id=role_id, server_id=server_id
+        )
+
+        if obj["code"] == 0:
+            award_messages: list[str] = []
+            for award_id in obj["data"]["awardIds"]:
+                award = obj["data"]["resourceInfoMap"][award_id["id"]]
+                award_name: str = award["name"]
+                award_count: int = award["count"] if "count" in award else 1
+                award_messages.append(f"{award_name} × {award_count}")
+            award_message = (
+                f"获得奖励{'、'.join(award_messages)}。"
+                if award_messages
+                else "未获得任何奖励。"
+            )
+            return f"{game_name}{channel_name}账号 {nickname} ({role_id}) 签到成功！{award_message}"
+
+        elif obj["code"] == 10001:
+            return f"{game_name}{channel_name}账号 Dr. {nickname} ({role_id}) 今天已经签到！"
+
+        else:
+            raise SKLandError(
+                f"{game_name}{channel_name}账号 Dr. {nickname} ({role_id}) 签到时出现未知错误：{obj['message']}"
             )
 
     async def attendance_multi_characters(self, token: str) -> dict[str, Any]:
         try:
             await self.login_by_token(token)
 
-            binding_list: list[dict[str, Any]] = (
-                self.extract_specific_game_player_binding(
-                    await self.player_binding(), "arknights"
-                )
+            player_binding = await self.player_binding()
+            arknights_binding_list: list[dict[str, Any]] = (
+                self.extract_specific_game_player_binding(player_binding, "arknights")
             )
+            endfield_binding_list: list[dict[str, Any]] = (
+                self.extract_specific_game_player_binding(player_binding, "endfield")
+            )
+            tasks = []
+            for character in arknights_binding_list:
+                tasks.append(self.attendance_arknights_single_character(character))
+            for character in endfield_binding_list:
+                for role in character["roles"]:
+                    tasks.append(self.attendance_endfield_single_role(character, role))
 
-            if not binding_list:
+            if not tasks:
                 return {
                     "code": 1,
                     "msg": "获取账号绑定角色信息失败，该账号未绑定任何角色。",
                 }
 
-            tasks = [
-                self.attendance_single_character(character)
-                for character in binding_list
-            ]
             result: list[str | BaseException] = await asyncio.gather(
                 *tasks, return_exceptions=True
             )
