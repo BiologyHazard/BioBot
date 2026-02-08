@@ -1,7 +1,8 @@
 import json
-from pathlib import Path
-from typing import Any, Generator, Literal, Self, overload
 import time
+from collections.abc import Generator
+from pathlib import Path
+from typing import Any, Literal, Self, overload
 
 from .config import plugin_config
 
@@ -15,22 +16,26 @@ class Manager(list[dict[str, Any]]):
     def load_from_file(cls, file_path: Path = file_path) -> Self:
         if not file_path.is_file():
             return cls()
-        return cls(json.loads(file_path.read_text('utf-8')))
+        return cls(json.loads(file_path.read_text("utf-8")))
 
     def has_token(self, token: str) -> bool:
-        return any(token == data['token'] for data in self)
+        return any(token == data["token"] for data in self)
 
     def add_item(self, qq: int, email: str, token: str, strict: bool = False) -> bool:
         if self.has_token(token):
             if strict:
-                raise ValueError('Token already exists.')
+                raise ValueError("Token already exists.")
             return False
-        self.append({'qq': qq,
-                     'email': email,
-                     'token': token,
-                     'enabled': True,
-                     'remind': True,
-                     'time': time.time()})
+        self.append(
+            {
+                "qq": qq,
+                "email": email,
+                "token": token,
+                "enabled": True,
+                "remind": True,
+                "time": time.time(),
+            }
+        )
         self.save_to_file()
         return True
 
@@ -76,7 +81,7 @@ class Manager(list[dict[str, Any]]):
     #     else:
     #         raise ValueError
 
-    def remove_item(self, key: Literal['qq', 'email', 'token'], value: Any) -> int:
+    def remove_item(self, key: Literal["qq", "email", "token"], value: Any) -> int:
         count = 0
         for i in range(len(self)):
             if self[i][key] == value:
@@ -85,29 +90,44 @@ class Manager(list[dict[str, Any]]):
         self.save_to_file()
         return count
 
-    def set_enable_state(self, key: Literal['qq', 'email', 'token'], value: Any, enable=True) -> int:
+    def set_enable_state(
+        self, key: Literal["qq", "email", "token"], value: Any, enable=True
+    ) -> int:
         count = 0
         for data in self:
             if data[key] == value:
-                data['enabled'] = enable
+                data["enabled"] = enable
                 count += 1
         self.save_to_file()
         return count
 
-    def filter(self,
-               qq: int | None = None,
-               email: str | None = None,
-               token: str | None = None,
-               enabled: bool | None = None) -> 'Manager':
+    def set_remind_state(
+        self, key: Literal["qq", "email", "token"], value: Any, remind=True
+    ) -> int:
+        count = 0
+        for data in self:
+            if data[key] == value:
+                data["remind"] = remind
+                count += 1
+        self.save_to_file()
+        return count
+
+    def filter(
+        self,
+        qq: int | None = None,
+        email: str | None = None,
+        token: str | None = None,
+        enabled: bool | None = None,
+    ) -> "Manager":
         result = self.__class__()
         for data in self:
-            if qq is not None and data['qq'] != qq:
+            if qq is not None and data["qq"] != qq:
                 continue
-            if email is not None and data['email'] != email:
+            if email is not None and data["email"] != email:
                 continue
-            if token is not None and data['token'] != token:
+            if token is not None and data["token"] != token:
                 continue
-            if enabled is not None and data['enabled'] != enabled:
+            if enabled is not None and data["enabled"] != enabled:
                 continue
             result.append(data)
         return result
@@ -120,7 +140,7 @@ class Manager(list[dict[str, Any]]):
 
     def save_to_file(self, path: Path = file_path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(self, ensure_ascii=False, indent=4), 'utf-8')
+        path.write_text(json.dumps(self, ensure_ascii=False, indent=4), "utf-8")
 
 
 tokens: Manager = Manager.load_from_file(file_path)

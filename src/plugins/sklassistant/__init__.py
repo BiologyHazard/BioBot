@@ -67,7 +67,7 @@ require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler  # NOQA: E402
 
 driver: Driver = get_driver()
-default_command_start: str = tuple(driver.config.command_start)[0]
+default_command_start: str = tuple(driver.config.command_start)[0]  # noqa: RUF015
 
 token_str = f"""
 【如何绑定森空岛 token】
@@ -85,8 +85,10 @@ help_str: str = f"""
 
 【可用命令】
 - {default_command_start}绑定森空岛token <token>    # 绑定森空岛 token
+- {default_command_start}解除绑定全部森空岛token    # 解除绑定全部森空岛 token
 
 - {default_command_start}(关闭|开启)森空岛自动签到    # 关闭/开启森空岛自动签到
+- {default_command_start}(关闭|开启)邮件提醒    # 关闭/开启邮件提醒
 
 - {default_command_start}森空岛小秘书 [-n <name> | -i <skland_id>] [-u <uid>]    # 森空岛实时数据分析
 
@@ -182,8 +184,17 @@ delete_all_skl_token = matcher_group.on_command(
     aliases={"解绑全部森空岛token", "删除全部森空岛token", "删除所有森空岛token"},
     permission=SUPERUSER,
 )
+unbind_all_skl_token = matcher_group.on_command(
+    "解除绑定全部森空岛token",
+    aliases={
+        "解除全部森空岛token绑定",
+        "解除绑定所有森空岛token",
+        "解除所有森空岛token绑定",
+    },
+)
 
 skl_auto_attendance = matcher_group.on_keyword({"森空岛自动签到"})
+skl_email_remind = matcher_group.on_keyword({"邮件提醒"})
 skl_attendance_all = matcher_group.on_command("森空岛签到全部", permission=SUPERUSER)
 
 skl_assistant = matcher_group.on_shell_command(
@@ -369,6 +380,16 @@ async def delete_all_skl_token_func(matcher: Matcher, event: MessageEvent) -> No
     await delete_all_skl_token.finish("成功解绑所有森空岛token。")
 
 
+@unbind_all_skl_token.handle()
+async def unbind_all_skl_token_func(matcher: Matcher, event: MessageEvent) -> None:
+    if not tokens.filter(qq=event.user_id):
+        await unbind_all_skl_token.finish("还没有绑定过森空岛 token。")
+
+    tokens.remove_item("qq", event.user_id)
+
+    await unbind_all_skl_token.finish("成功解除绑定全部森空岛token。")
+
+
 @skl_auto_attendance.handle()
 async def skl_auto_attendance_func(
     event: MessageEvent, message: str = EventPlainText()
@@ -405,6 +426,30 @@ async def skl_auto_attendance_func(
         )
     else:
         await skl_auto_attendance.finish("已关闭森空岛自动签到。")
+
+
+@skl_email_remind.handle()
+async def skl_email_remind_func(
+    event: MessageEvent, message: str = EventPlainText()
+) -> None:
+    if "关闭" in message:
+        remind: bool = False
+    elif "开启" in message:
+        remind = True
+    else:
+        await skl_email_remind.finish()
+
+    if not tokens.filter(qq=event.user_id):
+        await skl_email_remind.finish(no_token_str)
+
+    tokens.set_remind_state("qq", event.user_id, remind)
+
+    if remind:
+        await skl_email_remind.finish(
+            "已开启邮件提醒。以后签到结果将发送到您的 QQ 邮箱。"
+        )
+    else:
+        await skl_email_remind.finish("已关闭邮件提醒。")
 
 
 @skl_attendance_all.handle()
@@ -614,7 +659,7 @@ async def skl_character_list_succeed_func(
         )
 
         if binding_character is None:
-            await matcher.finish(f"未找到该用户的绑定角色。")
+            await matcher.finish("未找到该用户的绑定角色。")
 
         obj = await skland.get_player_info(
             uid=binding_character["uid"], user_id=args.skland_user_id
@@ -947,7 +992,7 @@ async def skl_binding_succeed_func(
             await skland.login_by_token(token)
 
             url = httpx.URL(api_v1_search_user_url).copy_merge_params(
-                dict(keyword=args.skland_name, pageSize=20)
+                dict(keyword=args.skland_name, pageSize=20)  # noqa: C408
             )
             search_result_obj = await skland._request(
                 "GET", str(url), login_headers, json=None, sign=True
