@@ -2,12 +2,26 @@ import asyncio
 import json
 from pathlib import Path
 
-from nonebot import get_driver, logger
+from nonebot import get_driver, logger, get_app
 from nonebot.drivers import URL, ASGIMixin, HTTPServerSetup, Request, Response
 
 from .manager import tokens
 from .skland import TOKEN_LENGTH, SKLand, SKLandError, attendance_and_send_email
 from .utils import is_base64, is_valid_email
+
+try:
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+except ImportError:
+    logger.warning("未安装 fastapi，无法添加 CORS 中间件。")
+else:
+    app = get_app()
+    if isinstance(app, FastAPI):
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["http://biohazard.dpdns.org"],
+            allow_methods=["*"],
+        )
 
 
 class ValidationError(Exception):
@@ -38,6 +52,11 @@ async def home(request: Request) -> Response:
 
 
 async def commit(request: Request) -> Response:
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Access-Control-Allow-Origin": "*",
+    }
+
     def validate_qq(qq: str) -> int:
         if 5 <= len(qq) < 20 and qq.isdigit():
             return int(qq)
@@ -63,17 +82,16 @@ async def commit(request: Request) -> Response:
     except ValidationError as e:
         return Response(
             status_code=400,
-            headers={"Content-Type": "application/json; charset=utf-8"},
+            headers=headers,
             content=json.dumps({"code": 400, "message": str(e), "data": None}),
         )
-        # return {"code": 400, "message": str(e), "data": None}, 400
 
     try:
         await SKLand().login_by_token(token)
     except SKLandError as e:
         return Response(
             status_code=403,
-            headers={"Content-Type": "application/json; charset=utf-8"},
+            headers=headers,
             content=json.dumps(
                 {"code": 403, "message": f"绑定森空岛token失败：{e}", "data": None}
             ),
@@ -87,9 +105,10 @@ async def commit(request: Request) -> Response:
 
     return Response(
         status_code=200,
-        headers={"Content-Type": "application/json; charset=utf-8"},
+        headers=headers,
         content=json.dumps({"code": 200, "message": "提交成功。", "data": None}),
     )
+
 
 
 def on_startup():
