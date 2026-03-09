@@ -1,77 +1,117 @@
-from .boardgame import BoardGame, MoveResult, Placement, Pos
-
-
-delta = ((0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1))
+from .boardgame import (
+    BoardGame,
+    MoveResult,
+    MoveSide,
+    Piece,
+    Placement,
+    Pos,
+)
 
 
 class Othello(BoardGame):
-    name: str = "黑白棋"
+    """黑白棋游戏，8x8 棋盘，落于格子内。"""
 
     def __init__(self):
+        """初始化 8x8 黑白棋棋局，并采用标准开局布局。"""
         size = 8
-        super().__init__(size, placement=Placement.GRID)
+        super().__init__(size=size, placement=Placement.GRID)
 
-        mid = int(size / 2)
-        self.set(Pos(mid - 1, mid - 1), -1)
-        self.set(Pos(mid - 1, mid), 1)
-        self.set(Pos(mid, mid - 1), 1)
-        self.set(Pos(mid, mid), -1)
-        self.history.pop()
-        self.save()
+        mid = size // 2
+        self._set(Pos(mid - 1, mid - 1), Piece.WHITE)
+        self._set(Pos(mid - 1, mid), Piece.BLACK)
+        self._set(Pos(mid, mid - 1), Piece.BLACK)
+        self._set(Pos(mid, mid), Piece.WHITE)
+        self._history.pop()
+        self._save()
 
-    def legal(self, pos: Pos, value: int) -> int:
-        diff = 0
-        for (dx, dy) in delta:
+    def flip_poses(self, pos: Pos, move_side: MoveSide) -> list[Pos]:
+        """计算在 `pos` 位置落子时，`move_side` 方将翻转的所有对方棋子的位置列表。
+
+        Returns:
+            所有可被翻转的棋子位置列表，若该落点非法则返回空列表。
+        """
+        delta = ((0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1))
+
+        flipped = []
+        our_piece = Piece.from_move_side(move_side)
+        opponent_piece = Piece.from_move_side(move_side.flip())
+
+        for dx, dy in delta:
             p = Pos(pos.x + dx, pos.y + dy)
-            if not self.in_range(p) or self.get(p) != -value:
+            if not self.in_range(p) or self.get(p) != opponent_piece:
                 continue
-            temp = 0
+            temp = []
             while True:
-                temp |= self.bit(p)
-                p.x += dx
-                p.y += dy
-                if not self.in_range(p) or self.get(p) != -value:
+                temp.append(p)
+                p = Pos(p.x + dx, p.y + dy)
+                if not self.in_range(p) or self.get(p) != opponent_piece:
                     break
-            if self.in_range(p) and self.get(p) == value:
-                diff |= temp
-        return diff
+            if self.in_range(p) and self.get(p) == our_piece:
+                flipped.extend(temp)
+        return flipped
 
-    def has_legal_move(self, value: int) -> bool:
+    def has_legal_move(self, move_side: MoveSide) -> bool:
+        """判断 `move_side` 方在当前棋盘上是否存在合法落点。"""
         size = self.size
         for i in range(size):
             for j in range(size):
                 p = Pos(i, j)
-                if not self.get(p) and self.legal(p, value):
+                if self.get(p) == Piece.EMPTY and self.flip_poses(p, move_side):
                     return True
         return False
 
     def check(self) -> MoveResult:
-        def total(board: int) -> int:
-            count = 0
-            for i in range(self.area):
-                count += 1 if board & 1 << i else 0
-            return count
+        """统计双方棋子数量，返回当前领先方的胜负结果。"""
 
-        b_count = total(self.b_board)
-        w_count = total(self.w_board)
-        def sign(a): return 1 if a > 0 else -1 if a < 0 else 0
-        return MoveResult(sign(b_count - w_count))
+        b_count = self._b_board.bit_count()
+        w_count = self._w_board.bit_count()
 
-    def update(self, pos: Pos) -> MoveResult | None:
+        if b_count > w_count:
+            return MoveResult.BLACK_WIN
+        elif b_count < w_count:
+            return MoveResult.WHITE_WIN
+        else:
+            return MoveResult.DRAW
+
+    def update(self, pos: Pos | None):
+        """在指定坐标落子，翻转夹住的对方棋子，并判断游戏是否结束。"""
+
+        if pos is None:
+            return MoveResult.ILLEGAL, "黑白棋不允许跳过回合"
+
         if not self.in_range(pos):
-            self.push(pos)
-            return MoveResult.SKIP
-        moveside = self.moveside
-        diff = self.legal(pos, moveside)
-        if not diff:
-            return MoveResult.ILLEGAL
-        self.w_board ^= diff
-        self.b_board ^= diff
-        self.push(pos)
+            return MoveResult.ILLEGAL, "落子超出边界"
+
+        if self.get(pos) != Piece.EMPTY:
+            return MoveResult.ILLEGAL, "此处已有落子"
+
+        # 获取要翻转的棋子列表，若列表为空则表示该落点非法
+        flipped_pieces = self.flip_poses(pos, self.next_move_side)
+        if not flipped_pieces:
+            return MoveResult.ILLEGAL, "该位置无法落子"
+
+        # 翻转所有被夹住的棋子
+        for p in flipped_pieces:
+            self._set(p, Piece.from_move_side(self.next_move_side))
+
+        # 落子并更新棋盘状态
+        self._push(pos)
+
+        # 如果棋盘已满则游戏结束
         if self.is_full():
-            return MoveResult(self.check())
-        if not self.has_legal_move(-moveside):
-            if not self.has_legal_move(moveside):
-                return self.check()
-            return MoveResult.SKIP
-        return None
+            return self.check(), ""
+
+        # 判断对方是否有合法落点
+        current_side = self.next_move_side.flip()
+        next_side = self.next_move_side  # self.moveside 已经在 _push 中翻转了
+        if not self.has_legal_move(next_side):
+            if not self.has_legal_move(current_side):
+                # 双方都无法落子则游戏结束
+                return self.check(), ""
+
+            # 对方无法落子，自己可以落子则继续由当前玩家落子
+            self.next_move_side = current_side
+            return MoveResult.CONTINUE, ""
+
+        # 正常情况下轮到对方落子
+        return MoveResult.CONTINUE, ""
