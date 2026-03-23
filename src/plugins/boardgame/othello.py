@@ -13,14 +13,15 @@ class Othello(BoardGame):
 
     def __init__(self):
         """初始化 8x8 黑白棋棋局，并采用标准开局布局。"""
-        size = 8
-        super().__init__(size=size, placement=Placement.GRID)
+        width = height = 8
+        super().__init__(width=width, height=height, placement=Placement.GRID)
 
-        mid = size // 2
-        self._set(Pos(mid - 1, mid - 1), Piece.WHITE)
-        self._set(Pos(mid - 1, mid), Piece.BLACK)
-        self._set(Pos(mid, mid - 1), Piece.BLACK)
-        self._set(Pos(mid, mid), Piece.WHITE)
+        mid_x = width // 2
+        mid_y = height // 2
+        self._set(Pos(mid_x - 1, mid_y - 1), Piece.WHITE)
+        self._set(Pos(mid_x - 1, mid_y), Piece.BLACK)
+        self._set(Pos(mid_x, mid_y - 1), Piece.BLACK)
+        self._set(Pos(mid_x, mid_y), Piece.WHITE)
         self._history.pop()
         self._save()
 
@@ -52,9 +53,8 @@ class Othello(BoardGame):
 
     def has_legal_move(self, move_side: MoveSide) -> bool:
         """判断 `move_side` 方在当前棋盘上是否存在合法落点。"""
-        size = self.size
-        for i in range(size):
-            for j in range(size):
+        for i in range(self.width):
+            for j in range(self.height):
                 p = Pos(i, j)
                 if self.get(p) == Piece.EMPTY and self.flip_poses(p, move_side):
                     return True

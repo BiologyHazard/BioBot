@@ -22,12 +22,16 @@ class Go(BoardGame):
         ],
     }
 
-    def __init__(self, size: int):
+    def __init__(self, width: int, height: int):
         """初始化围棋棋局。"""
+        star_positions = (
+            self.star_position_map.get(width, []) if width == height else []
+        )
         super().__init__(
-            size=size,
+            width=width,
+            height=height,
             placement=Placement.CROSS,
-            star_positions=self.star_position_map.get(size, []),
+            star_positions=star_positions,
         )
         self._pass_count: int = 0
 

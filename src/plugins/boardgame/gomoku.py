@@ -14,7 +14,8 @@ class Gomoku(BoardGame):
     def __init__(self):
         """初始化 15x15 五子棋棋局。"""
         super().__init__(
-            size=15,
+            width=15,
+            height=15,
             placement=Placement.CROSS,
             star_positions=[
                 Pos(3, 3),

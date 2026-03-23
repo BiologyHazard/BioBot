@@ -62,13 +62,20 @@ async def start_game_func(
         await matcher.finish("有正在进行中的游戏，发送“结束游戏”停止下棋")
 
     if isinstance(matcher, start_go):
+        arg = message.extract_plain_text().strip()
         try:
-            size = int(message.extract_plain_text().strip())
+            if "x" in arg:
+                width, height = map(int, arg.split("x"))
+            elif "*" in arg:
+                width, height = map(int, arg.split("*"))
+            else:
+                width = height = int(arg) if arg else 19
         except ValueError:
-            size = 19  # 默认棋盘大小为 19x19
-        if not 1 <= size <= 25:
-            await matcher.finish("棋盘大小必须在 1 到 25 之间")
-        game = Go(size)
+            width = height = 19  # 默认棋盘大小
+
+        if not (1 <= width <= 25 and 1 <= height <= 25):
+            await matcher.finish("棋盘尺寸必须在 1 到 25 之间")
+        game = Go(width, height)
     elif isinstance(matcher, start_gomoku):
         game = Gomoku()
     elif isinstance(matcher, start_othello):

@@ -131,18 +131,21 @@ class BoardGame:
     def __init__(
         self,
         *,
-        size: int,
+        width: int,
+        height: int,
         placement: Placement,
         star_positions: list[Pos] | None = None,
     ) -> None:
         """初始化棋局。
 
         Args:
-            size: 棋盘边长（size x size）。
+            width: 棋盘宽度（列数）。
+            height: 棋盘高度（行数）。
             placement: 落子方式，CROSS 为交叉点，GRID 为格子内。
             star_positions: 星位坐标列表，默认为空列表。
         """
-        self.size: int = size
+        self.width: int = width
+        self.height: int = height
         self.placement: Placement = placement
         self.star_positions: list[Pos] = (
             star_positions if star_positions is not None else []
@@ -190,8 +193,8 @@ class BoardGame:
 
     @property
     def _area(self) -> int:
-        """棋盘总格数（size x size）。"""
-        return self.size * self.size
+        """棋盘总格数（width x height）。"""
+        return self.width * self.height
 
     @property
     def _full(self) -> int:
@@ -204,11 +207,11 @@ class BoardGame:
 
     def _bit(self, pos: Pos) -> int:
         """返回坐标 pos 对应的位掩码（用于位板运算）。"""
-        return 1 << (pos.x * self.size + pos.y)
+        return 1 << (pos.x * self.height + pos.y)
 
     def in_range(self, pos: Pos) -> bool:
         """判断坐标是否在棋盘范围内。"""
-        return 0 <= pos.x < self.size and 0 <= pos.y < self.size
+        return 0 <= pos.x < self.width and 0 <= pos.y < self.height
 
     def get(self, pos: Pos) -> Piece:
         """获取指定坐标的棋子：BLACK 为黑子，WHITE 为白子，EMPTY 为空。"""
@@ -347,10 +350,10 @@ class BoardGame:
                 ),
             )
 
-        width = height = round((self.size + 2 * border) * grid_pixels)
-        width_anti_alias = height_anti_alias = round(
-            (self.size + 2 * border) * grid_pixels * anti_alias
-        )
+        width = round((self.width + 2 * border) * grid_pixels)
+        height = round((self.height + 2 * border) * grid_pixels)
+        width_anti_alias = round((self.width + 2 * border) * grid_pixels * anti_alias)
+        height_anti_alias = round((self.height + 2 * border) * grid_pixels * anti_alias)
 
         # image0 用于绘制网格和坐标，image1 用于绘制棋子和最后落子标记，最后合成两者得到最终图像
         # image0 不需要抗锯齿，image1 需要抗锯齿以保证棋子和标记边缘平滑
@@ -363,10 +366,10 @@ class BoardGame:
 
         # 画格子
         if self.placement == Placement.CROSS:
-            for i in range(self.size):
+            for i in range(self.width):
                 draw1.line(
                     xy_to_pixel(
-                        ((i, 0), (i, self.size - 1)),
+                        ((i, 0), (i, self.height - 1)),
                         grid_pixels=grid_pixels,
                         border=border,
                         anti_alias=anti_alias,
@@ -375,10 +378,10 @@ class BoardGame:
                     "black",
                     round(grid_width * grid_pixels * anti_alias),
                 )
-            for i in range(self.size):
+            for i in range(self.height):
                 draw1.line(
                     xy_to_pixel(
-                        ((0, i), (self.size - 1, i)),
+                        ((0, i), (self.width - 1, i)),
                         grid_pixels=grid_pixels,
                         border=border,
                         anti_alias=anti_alias,
@@ -388,10 +391,10 @@ class BoardGame:
                     round(grid_width * grid_pixels * anti_alias),
                 )
         elif self.placement == Placement.GRID:
-            for i in range(self.size + 1):
+            for i in range(self.width + 1):
                 draw1.line(
                     xy_to_pixel(
-                        ((i - 1 / 2, -1 / 2), (i - 1 / 2, self.size - 1 / 2)),
+                        ((i - 1 / 2, -1 / 2), (i - 1 / 2, self.height - 1 / 2)),
                         grid_pixels=grid_pixels,
                         border=border,
                         anti_alias=anti_alias,
@@ -400,10 +403,10 @@ class BoardGame:
                     "black",
                     round(grid_width * grid_pixels * anti_alias),
                 )
-            for i in range(self.size + 1):
+            for i in range(self.height + 1):
                 draw1.line(
                     xy_to_pixel(
-                        ((-1 / 2, i - 1 / 2), (self.size - 1 / 2, i - 1 / 2)),
+                        ((-1 / 2, i - 1 / 2), (self.width - 1 / 2, i - 1 / 2)),
                         grid_pixels=grid_pixels,
                         border=border,
                         anti_alias=anti_alias,
@@ -422,7 +425,7 @@ class BoardGame:
             round(move_number_font_size * grid_pixels * anti_alias),
         )
         # 上面列字母
-        for i in range(self.size):
+        for i in range(self.width):
             draw1.text(
                 pos_to_pixel(
                     (i, -1 / 2 - 0.1),
@@ -437,10 +440,10 @@ class BoardGame:
                 anchor="ms",
             )
         # 下面列字母
-        for i in range(self.size):
+        for i in range(self.width):
             draw1.text(
                 pos_to_pixel(
-                    (i, self.size - 1 / 2 + 0.1),
+                    (i, self.height - 1 / 2 + 0.1),
                     grid_pixels=grid_pixels,
                     border=border,
                     anti_alias=anti_alias,
@@ -452,7 +455,7 @@ class BoardGame:
                 anchor="ma",
             )
         # 左边行号
-        for i in range(self.size):
+        for i in range(self.height):
             draw1.text(
                 pos_to_pixel(
                     (-1 / 2 - 0.1, i),
@@ -467,10 +470,10 @@ class BoardGame:
                 anchor="rm",
             )
         # 右边行号
-        for i in range(self.size):
+        for i in range(self.height):
             draw1.text(
                 pos_to_pixel(
-                    (self.size - 1 / 2 + 0.1, i),
+                    (self.width - 1 / 2 + 0.1, i),
                     grid_pixels=grid_pixels,
                     border=border,
                     anti_alias=anti_alias,
@@ -499,8 +502,8 @@ class BoardGame:
             )
 
         # 画棋子
-        for x in range(self.size):
-            for y in range(self.size):
+        for x in range(self.width):
+            for y in range(self.height):
                 xy: XY = xy_to_pixel(
                     ((x - dot_r, y - dot_r), (x + dot_r, y + dot_r)),
                     grid_pixels=grid_pixels,
