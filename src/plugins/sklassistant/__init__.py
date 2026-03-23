@@ -491,7 +491,7 @@ async def skl_assistant_succeed_func(
             search_result_obj = await skland._request(
                 "GET", str(url), login_headers, json=None, sign=True
             )
-            search_user = SearchUser.model_validate(search_result_obj)
+            search_user = SearchUser.model_validate(search_result_obj, strict=False, extra="allow")
             if search_user.data.list:
                 args.skland_user_id = search_user.data.list[0].user.id
             else:
@@ -514,7 +514,7 @@ async def skl_assistant_succeed_func(
         obj = await skland.get_player_info(
             uid=binding_character["uid"], user_id=args.skland_user_id
         )
-        player_info = PlayerInfo.model_validate(obj)
+        player_info = PlayerInfo.model_validate(obj, strict=False, extra="allow")
 
         result = await skl_assistant_func(player_info, args.verbose)
 
@@ -643,7 +643,7 @@ async def skl_character_list_succeed_func(
             search_result_obj = await skland._request(
                 "GET", str(url), login_headers, json=None, sign=True
             )
-            search_user = SearchUser.model_validate(search_result_obj)
+            search_user = SearchUser.model_validate(search_result_obj, strict=False, extra="allow")
             if search_user.data.list:
                 args.skland_user_id = search_user.data.list[0].user.id
             else:
@@ -665,7 +665,7 @@ async def skl_character_list_succeed_func(
             uid=binding_character["uid"], user_id=args.skland_user_id
         )
 
-        player_info = PlayerInfo.model_validate(obj)
+        player_info = PlayerInfo.model_validate(obj, strict=False, extra="allow")
 
         owned_character_id_set = {
             character.char_id for character in player_info.data.chars
@@ -799,7 +799,7 @@ async def skl_missing_characters_func(
 
     obj = await skland.cultivate_player(binding_character["uid"])
 
-    cultivate_player = CultivatePlayer.model_validate(obj)
+    cultivate_player = CultivatePlayer.model_validate(obj, strict=False, extra="allow")
 
     missing_character_list = []
     for character_id, character in game_data.characters.items():
@@ -842,7 +842,7 @@ async def skl_my_depot_func(
 
     obj = await skland.cultivate_player(binding_character["uid"])
 
-    cultivate_player = CultivatePlayer.model_validate(obj)
+    cultivate_player = CultivatePlayer.model_validate(obj, strict=False, extra="allow")
 
     item_info_list: ItemInfoList = ItemInfoList()
     for item in cultivate_player.data.items:
@@ -936,7 +936,7 @@ async def skl_consumed_or_missing_items_func(
 
     obj = await skland.cultivate_player(binding_character["uid"])
 
-    cultivate_player = CultivatePlayer.model_validate(obj)
+    cultivate_player = CultivatePlayer.model_validate(obj, strict=False, extra="allow")
 
     if isinstance(matcher, skl_consumed_items):
         item_info_list = get_consumed_item_info_list(cultivate_player)
@@ -997,7 +997,7 @@ async def skl_binding_succeed_func(
             search_result_obj = await skland._request(
                 "GET", str(url), login_headers, json=None, sign=True
             )
-            search_user = SearchUser.model_validate(search_result_obj)
+            search_user = SearchUser.model_validate(search_result_obj, strict=False, extra="allow")
             if search_user.data.list:
                 args.skland_user_id = search_user.data.list[0].user.id
             else:
@@ -1015,7 +1015,7 @@ async def skl_binding_succeed_func(
                 await skland.login_by_token(token)
 
             player_binding_obj = await skland.player_binding(uid=args.skland_user_id)
-            player_binding = PlayerBinding.model_validate(player_binding_obj)
+            player_binding = PlayerBinding.model_validate(player_binding_obj, strict=False, extra="allow")
 
             lines: list[str] = []
             lines.append("用户绑定列表")
