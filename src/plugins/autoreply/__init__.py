@@ -361,15 +361,32 @@ async def query_all_func(
 
 @reply.handle()
 async def reply_func(
+    session: async_scoped_session,
     state: T_State,
 ) -> None:
     replies: list[AutoReply] = state["replies"]
     if not replies:
         return
 
-    # 随机选择一个回复（这里目前保持简单的随机选择，
-    # 如果需要之前的权重逻辑，可以后续再重构 not_reply_count）
-    selected_reply = random.choice(replies)
+    # 计算权重：untriggered_count + 1
+    weights = [r.untriggered_count + 1 for r in replies]
 
-    reply_message = send_message_preprocess(Message(selected_reply.reply))
+    # 使用 random.choices 进行加权随机抽取
+    selected_reply = random.choices(replies, weights=weights, k=1)[0]
+    selected_id = selected_reply.id
+    reply_content = selected_reply.reply
+
+    # 更新数据库中的 untriggered_count
+    for r in replies:
+        # 使用 merge 将对象合并到当前 session，避免 session 冲突
+        # load=False 表示不从数据库重新加载，而是直接更新
+        merged_r = await session.merge(r, load=False)
+        if merged_r.id == selected_id:
+            merged_r.untriggered_count = 0
+        else:
+            merged_r.untriggered_count += 1
+
+    await session.commit()
+
+    reply_message = send_message_preprocess(Message(reply_content))
     await reply.finish(reply_message)

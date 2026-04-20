@@ -14,5 +14,6 @@ class AutoReply(Model):
     card: Mapped[str] = mapped_column(String, nullable=True)
     role: Mapped[str] = mapped_column(String, nullable=True)
     created_at: Mapped[int] = mapped_column(Integer)
+    untriggered_count: Mapped[int] = mapped_column(Integer, default=0)
 
     __table_args__ = (Index("idx_group_trigger", "group_id", "trigger"),)
