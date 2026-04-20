@@ -34,7 +34,6 @@ def main() -> None:
 
     driver: Driver = nonebot.get_driver()
     driver.register_adapter(OneBotV11Adapter)
-    nonebot.load_from_toml("pyproject.toml")
 
     nonebot.load_builtin_plugins("echo")
     nonebot.load_plugin("src.plugins.help")
@@ -59,6 +58,7 @@ def main() -> None:
     nonebot.load_plugin("src.plugins.abbreply")
     nonebot.load_plugin("src.plugins.kfccrazythu")
     nonebot.load_plugin("src.plugins.choose")
+
     # nonebot.load_plugin('src.plugins.fwdrequests')
     # nonebot.load_plugin('src.plugins.runcode')
     # nonebot.load_plugin('src.plugins.maimai')

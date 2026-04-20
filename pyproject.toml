@@ -25,21 +25,5 @@ dev = [
     "nonebot2[websockets]>=2.5.0",
 ]
 
-[tool.nonebot]
-plugin_dirs = []
-builtin_plugins = []
-
-[tool.nonebot.adapters]
-nonebot-adapter-onebot = [
-    { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" }
-]
-"@local" = []
-
-[tool.nonebot.plugins]
-"@local" = [
-    "src.plugins.autoreply"
-]
-nonebot-plugin-orm = ["nonebot_plugin_orm"]
-
 [tool.uv.sources]
 arknights-game-model = { git = "https://github.com/BiologyHazard/arknights-game-model", rev = "main" }
