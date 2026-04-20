@@ -72,7 +72,7 @@ default_command_start: str = tuple(driver.config.command_start)[0]  # noqa: RUF0
 token_str = f"""
 【如何绑定森空岛 token】
 方法一：点击下面链接，按照提示操作
-http://{plugin_config.skl_server_host}:{plugin_config.port}/BioBot/plugins/sklassistant
+{plugin_config.skl_origin}/BioBot/plugins/sklassistant
 方法二：点击上面链接查看如何获取森空岛 token，
 然后添加 bot 为好友，私聊发送“{default_command_start}绑定森空岛token <token>”
 # 为了您的账号安全，请不要在群聊中直接发送 token！
@@ -491,7 +491,9 @@ async def skl_assistant_succeed_func(
             search_result_obj = await skland._request(
                 "GET", str(url), login_headers, json=None, sign=True
             )
-            search_user = SearchUser.model_validate(search_result_obj, strict=False, extra="allow")
+            search_user = SearchUser.model_validate(
+                search_result_obj, strict=False, extra="allow"
+            )
             if search_user.data.list:
                 args.skland_user_id = search_user.data.list[0].user.id
             else:
@@ -643,7 +645,9 @@ async def skl_character_list_succeed_func(
             search_result_obj = await skland._request(
                 "GET", str(url), login_headers, json=None, sign=True
             )
-            search_user = SearchUser.model_validate(search_result_obj, strict=False, extra="allow")
+            search_user = SearchUser.model_validate(
+                search_result_obj, strict=False, extra="allow"
+            )
             if search_user.data.list:
                 args.skland_user_id = search_user.data.list[0].user.id
             else:
@@ -997,7 +1001,9 @@ async def skl_binding_succeed_func(
             search_result_obj = await skland._request(
                 "GET", str(url), login_headers, json=None, sign=True
             )
-            search_user = SearchUser.model_validate(search_result_obj, strict=False, extra="allow")
+            search_user = SearchUser.model_validate(
+                search_result_obj, strict=False, extra="allow"
+            )
             if search_user.data.list:
                 args.skland_user_id = search_user.data.list[0].user.id
             else:
@@ -1015,7 +1021,9 @@ async def skl_binding_succeed_func(
                 await skland.login_by_token(token)
 
             player_binding_obj = await skland.player_binding(uid=args.skland_user_id)
-            player_binding = PlayerBinding.model_validate(player_binding_obj, strict=False, extra="allow")
+            player_binding = PlayerBinding.model_validate(
+                player_binding_obj, strict=False, extra="allow"
+            )
 
             lines: list[str] = []
             lines.append("用户绑定列表")

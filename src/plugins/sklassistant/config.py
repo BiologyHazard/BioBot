@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from nonebot import get_plugin_config
-from pydantic import BaseModel, Field, FilePath, NameEmail
+from pydantic import BaseModel, FilePath, NameEmail
 
 
 class Config(BaseModel):
@@ -12,8 +12,7 @@ class Config(BaseModel):
     skl_email_smtp_port: int = 465
     skl_tokens_file_path: FilePath = Path("data/sklassistant/tokens.json")
     skland_did: str
-    skl_server_host: str
-    port: int = Field(default=8080, ge=1, le=65535)
+    skl_origin: str
 
 
 plugin_config: Config = get_plugin_config(Config)
