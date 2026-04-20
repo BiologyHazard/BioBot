@@ -19,7 +19,7 @@ async def migrate():
     async with get_session() as session:
         for path in data_dir.glob("*.json"):
             try:
-                group_id = int(path.stem)
+                group_id = path.stem
                 with path.open("r", encoding="utf-8") as f:
                     data = json.load(f)
 
@@ -40,11 +40,11 @@ async def migrate():
                             group_id=group_id,
                             trigger=trigger,
                             reply=reply_content,
-                            user_id=info.get("qqid"),
+                            user_id=info["qqid"],
                             nickname=info.get("nickname"),
                             card=info.get("card"),
                             role=info.get("role"),
-                            created_at=info.get("time", 0),
+                            created_at=info["time"],
                         )
                         session.add(new_entry)
                 await session.commit()
