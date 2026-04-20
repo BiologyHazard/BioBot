@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """
 自动回复
 
@@ -9,17 +10,16 @@
 3. #查询 <触发语>  # 查询<触发语>的全部回复内容（仅限管理员使用该命令）
 """
 
-import json
 import random
 import shutil
-from collections import defaultdict
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Annotated, Any
 
-import aiofiles
-from nonebot import MatcherGroup, get_driver, logger, on_message
+from nonebot import MatcherGroup, get_driver, on_message, require
+
+require("nonebot_plugin_orm")
+
 from nonebot.adapters.onebot.v11 import (
     GROUP_ADMIN,
     GROUP_OWNER,
@@ -29,16 +29,19 @@ from nonebot.adapters.onebot.v11 import (
     MessageEvent,
     MessageSegment,
 )
-from nonebot.adapters.onebot.v11.event import Sender
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
 from nonebot.params import CommandArg, CommandStart, EventMessage, EventToMe
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
+from nonebot.typing import T_State
+from nonebot_plugin_orm import async_scoped_session
+from sqlalchemy import delete, func, select
 
 from .config import plugin_config
 from .image import image_to_bytesio, text_to_image
+from .models import AutoReply
 
 __plugin_meta__: PluginMetadata = PluginMetadata(
     name="自动回复",
@@ -72,24 +75,6 @@ query_no_permission_text: str = f"只有管理员可以查询回复语！"
 query_failed_text = f"{bot_nickname}没学过呢！"
 
 
-class sender_dict_T(TypedDict):
-    qqid: int | None
-    nickname: str | None
-    card: str | None
-    role: str | None
-    time: int
-
-
-type ReplyDictT = dict[str, sender_dict_T]
-type GroupDictT = defaultdict[str, ReplyDictT]
-type MainDictT = defaultdict[int, GroupDictT]
-
-main_dict: MainDictT = defaultdict(lambda: defaultdict(dict))
-not_reply_count: defaultdict[int, defaultdict[str, defaultdict[str, int]]] = (
-    defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
-)
-
-
 def receive_message_preprocess(message: Message) -> Message:
     """预处理 message, 下载所有图片, 对于 `CQ:image` 仅保留 `file` 字段"""
     for message_segment in message:
@@ -121,31 +106,7 @@ async def download_images_from_message(message: Message, bot: Bot) -> None:
             shutil.copy2(path, destination_path)
 
 
-def get_sender_info(sender: Sender, timestamp: int) -> sender_dict_T:
-    return sender_dict_T(
-        qqid=sender.user_id,
-        nickname=sender.nickname,
-        card=sender.card,
-        role=sender.role,
-        time=timestamp,
-    )
-
-
-async def load_from_file(group_id: int) -> None:
-    if group_id in main_dict:
-        return
-
-    file_path: Path = plugin_config.data_folder / f"{group_id}.json"
-    if file_path.is_file():
-        async with aiofiles.open(file_path, "r", encoding="utf-8") as fp:
-            group_dict = json.loads(await fp.read())
-        main_dict[group_id] = defaultdict(dict, group_dict)
-
-
-async def save_to_file(group_id: int) -> None:
-    file_path: Path = plugin_config.data_folder / f"{group_id}.json"
-    async with aiofiles.open(file_path, "w", encoding="utf-8") as fp:
-        await fp.write(json.dumps(main_dict[group_id], ensure_ascii=False))
+driver: Driver = get_driver()
 
 
 @Rule
@@ -157,12 +118,22 @@ async def with_command_start_or_to_me(
 
 @Rule
 async def should_reply(
-    event: GroupMessageEvent, message: Message = EventMessage()
+    session: async_scoped_session,
+    event: GroupMessageEvent,
+    state: T_State,
+    message: Annotated[Message, EventMessage()],
 ) -> bool:
-    await load_from_file(event.group_id)
     message_str = str(message).strip()
     message_str = str(receive_message_preprocess(Message(message_str)))
-    return message_str in main_dict[event.group_id]
+
+    statement = select(AutoReply).where(
+        AutoReply.group_id == str(event.group_id), AutoReply.trigger == message_str
+    )
+    replies = (await session.scalars(statement)).all()
+    if replies:
+        state["replies"] = replies
+        return True
+    return False
 
 
 autoreply_command_group = MatcherGroup(
@@ -183,7 +154,11 @@ query_all: type[Matcher] = autoreply_command_group.on_command(
 reply: type[Matcher] = on_message(rule=should_reply, block=False, priority=15)
 
 
-driver: Driver = get_driver()
+@driver.on_startup
+async def on_startup_func() -> None:
+    from .migrate_data import migrate
+
+    await migrate()
 
 
 # @driver.on_bot_connect
@@ -197,7 +172,10 @@ driver: Driver = get_driver()
 
 @learn.handle()
 async def learn_func(
-    bot: Bot, event: MessageEvent, message: Message = CommandArg()
+    bot: Bot,
+    event: MessageEvent,
+    session: async_scoped_session,
+    message: Annotated[Message, CommandArg()],
 ) -> None:
     if not isinstance(event, GroupMessageEvent):
         await learn.finish(not_group_text)
@@ -214,20 +192,40 @@ async def learn_func(
     reply_message = receive_message_preprocess(Message(reply_message_str))
     await download_images_from_message(reply_message, bot)
 
-    await load_from_file(event.group_id)
-    reply_messages_dict: ReplyDictT = main_dict[event.group_id][str(trigger_message)]
-    if str(reply_message) in reply_messages_dict:
+    trigger_str = str(trigger_message)
+    reply_str = str(reply_message)
+
+    statement = select(AutoReply).where(
+        AutoReply.group_id == str(event.group_id),
+        AutoReply.trigger == trigger_str,
+        AutoReply.reply == reply_str,
+    )
+    existing = await session.scalar(statement)
+    if existing:
         await learn.finish(learn_duplicated_text, at_sender=True)
 
-    reply_messages_dict[str(reply_message)] = get_sender_info(event.sender, event.time)
-    await save_to_file(event.group_id)
+    new_reply = AutoReply(
+        group_id=str(event.group_id),
+        trigger=trigger_str,
+        reply=reply_str,
+        user_id=str(event.user_id),
+        nickname=event.sender.nickname,
+        card=event.sender.card,
+        role=event.sender.role,
+        created_at=event.time,
+    )
+    session.add(new_reply)
+    await session.commit()
 
     await learn.finish(learn_success_text, at_sender=True)
 
 
 @forget.handle()
 async def forget_func(
-    bot: Bot, event: MessageEvent, message: Message = CommandArg()
+    bot: Bot,
+    event: MessageEvent,
+    session: async_scoped_session,
+    message: Annotated[Message, CommandArg()],
 ) -> None:
     if not isinstance(event, GroupMessageEvent):
         await forget.finish(not_group_text)
@@ -243,35 +241,34 @@ async def forget_func(
     if (not trigger_message_str) or (not reply_message_str):
         await forget.finish(forget_missing_para_text, at_sender=True)
 
-    trigger_message_str = str(receive_message_preprocess(Message(trigger_message_str)))
-    reply_message = receive_message_preprocess(Message(reply_message_str))
-    reply_message_str = str(reply_message)
+    trigger_str = str(receive_message_preprocess(Message(trigger_message_str)))
+    reply_str = str(receive_message_preprocess(Message(reply_message_str)))
 
-    await load_from_file(event.group_id)
-    if trigger_message_str not in main_dict[event.group_id]:
-        await forget.finish(forget_failed_text, at_sender=True)
-
-    reply_message_dict: ReplyDictT = main_dict[event.group_id][trigger_message_str]
-    if str(reply_message) not in reply_message_dict:
+    statement = select(AutoReply).where(
+        AutoReply.group_id == str(event.group_id),
+        AutoReply.trigger == trigger_str,
+        AutoReply.reply == reply_str,
+    )
+    target = await session.scalar(statement)
+    if not target:
         await forget.finish(forget_failed_text, at_sender=True)
 
     sender_permission: bool = await (GROUP_OWNER | GROUP_ADMIN | SUPERUSER)(bot, event)
-    if (not sender_permission) and (
-        reply_message_dict[reply_message_str]["role"] in ["owner", "admin"]
-    ):
+    if (not sender_permission) and (target.role in ["owner", "admin"]):
         await forget.finish(forget_no_permission_text, at_sender=True)
 
-    del reply_message_dict[reply_message_str]
-    if not reply_message_dict:
-        del main_dict[event.group_id][trigger_message_str]
-    await save_to_file(event.group_id)
+    await session.delete(target)
+    await session.commit()
 
     await forget.finish(forget_success_text, at_sender=True)
 
 
 @forget_all.handle()
 async def forget_all_func(
-    bot: Bot, event: MessageEvent, message: Message = CommandArg()
+    bot: Bot,
+    event: MessageEvent,
+    session: async_scoped_session,
+    message: Annotated[Message, CommandArg()],
 ) -> None:
     if not isinstance(event, GroupMessageEvent):
         await forget_all.finish(not_group_text)
@@ -283,21 +280,27 @@ async def forget_all_func(
     if not trigger_message_str:
         await forget_all.finish(forget_empty_message_text, at_sender=True)
 
-    trigger_message_str = str(receive_message_preprocess(Message(trigger_message_str)))
-    await load_from_file(event.group_id)
-    if trigger_message_str not in main_dict[event.group_id]:
-        await forget_all.finish(forget_failed_text, at_sender=True)
+    trigger_str = str(receive_message_preprocess(Message(trigger_message_str)))
 
-    num = len(main_dict[event.group_id][trigger_message_str])
-    del main_dict[event.group_id][trigger_message_str]
-    await save_to_file(event.group_id)
+    statement = delete(AutoReply).where(
+        AutoReply.group_id == str(event.group_id), AutoReply.trigger == trigger_str
+    )
+    result = await session.execute(statement)
+    num = result.rowcount  # type: ignore
+    await session.commit()
+
+    if num == 0:
+        await forget_all.finish(forget_failed_text, at_sender=True)
 
     await forget_all.finish(f"成功忘记了 {num} 条回复语！", at_sender=True)
 
 
 @query.handle()
 async def query_func(
-    bot: Bot, event: MessageEvent, message: Message = CommandArg()
+    bot: Bot,
+    event: MessageEvent,
+    session: async_scoped_session,
+    message: Annotated[Message, CommandArg()],
 ) -> None:
     if not isinstance(event, GroupMessageEvent):
         await query.finish(not_group_text)
@@ -305,20 +308,18 @@ async def query_func(
     if not await (GROUP_OWNER | GROUP_ADMIN | SUPERUSER)(bot, event):
         await query.finish(query_no_permission_text, at_sender=True)
 
-    message_str = str(receive_message_preprocess(Message(message))).strip()
+    trigger_str = str(receive_message_preprocess(Message(message))).strip()
 
-    await load_from_file(event.group_id)
-    if message_str not in main_dict[event.group_id]:
+    statement = select(AutoReply).where(
+        AutoReply.group_id == str(event.group_id), AutoReply.trigger == trigger_str
+    )
+    replies = (await session.scalars(statement)).all()
+    if not replies:
         await query.finish(query_failed_text, at_sender=True)
 
-    text = (
-        f"{message} 的回复语（共 {len(main_dict[event.group_id][message_str])} 条）：\n"
-        + "\n".join(
-            f"{i}. {reply_message_str}  # 由 {sender_info['card'] or sender_info['nickname']} ({sender_info['qqid']}) 于 {datetime.fromtimestamp(sender_info['time']).strftime('%Y-%m-%d %H:%M:%S')} 设置"
-            for i, (reply_message_str, sender_info) in enumerate(
-                main_dict[event.group_id][message_str].items(), start=1
-            )
-        )
+    text = f"{message} 的回复语（共 {len(replies)} 条）：\n" + "\n".join(
+        f"{i}. {r.reply}  # 由 {r.card or r.nickname} ({r.user_id}) 于 {datetime.fromtimestamp(r.created_at).astimezone()} 设置"
+        for i, r in enumerate(replies, start=1)
     )
 
     if len(text) < 256:
@@ -328,20 +329,28 @@ async def query_func(
 
 
 @query_all.handle()
-async def query_all_func(bot: Bot, event: MessageEvent) -> None:
+async def query_all_func(
+    bot: Bot, event: MessageEvent, session: async_scoped_session
+) -> None:
     if not isinstance(event, GroupMessageEvent):
         await query.finish(not_group_text)
 
     if not await (GROUP_OWNER | GROUP_ADMIN | SUPERUSER)(bot, event):
         await query.finish(query_no_permission_text, at_sender=True)
 
-    await load_from_file(event.group_id)
-    if not main_dict[event.group_id]:
+    statement = (
+        select(AutoReply.trigger, func.count(AutoReply.id))
+        .where(AutoReply.group_id == str(event.group_id))
+        .group_by(AutoReply.trigger)
+    )
+    results = (await session.execute(statement)).all()
+
+    if not results:
         await query.finish("本群未设置自动回复！", at_sender=True)
 
-    text = f"本群的全部回复语（共{len(main_dict[event.group_id])}条）\n" + "\n".join(
-        f"{i}. {trigger_message_str}  # 共 {len(main_dict[event.group_id][trigger_message_str])} 条"
-        for i, trigger_message_str in enumerate(main_dict[event.group_id], start=1)
+    text = f"本群的全部回复语（共{len(results)}条）\n" + "\n".join(
+        f"{i}. {trigger}  # 共 {count} 条"
+        for i, (trigger, count) in enumerate(results, start=1)
     )
 
     if len(text) < 256:
@@ -352,21 +361,32 @@ async def query_all_func(bot: Bot, event: MessageEvent) -> None:
 
 @reply.handle()
 async def reply_func(
-    event: GroupMessageEvent, message: Message = EventMessage()
+    session: async_scoped_session,
+    state: T_State,
 ) -> None:
-    await load_from_file(event.group_id)
-    message_str = str(message).strip()
-    message_str = str(receive_message_preprocess(Message(message_str)))
-    for reply_message_str in main_dict[event.group_id][message_str]:
-        not_reply_count[event.group_id][message_str][reply_message_str] += 1
-    reply_message_str = random.sample(
-        list(main_dict[event.group_id][message_str].keys()),
-        1,
-        counts=[
-            not_reply_count[event.group_id][message_str][reply_message_str] + 1
-            for reply_message_str in main_dict[event.group_id][message_str]
-        ],
-    )[0]
-    not_reply_count[event.group_id][message_str][reply_message_str] = 0
-    reply_message = send_message_preprocess(Message(reply_message_str))
+    replies: list[AutoReply] = state["replies"]
+    if not replies:
+        return
+
+    # 计算权重：untriggered_count + 1
+    weights = [r.untriggered_count + 1 for r in replies]
+
+    # 使用 random.choices 进行加权随机抽取
+    selected_reply = random.choices(replies, weights=weights, k=1)[0]
+    selected_id = selected_reply.id
+    reply_content = selected_reply.reply
+
+    # 更新数据库中的 untriggered_count
+    for r in replies:
+        # 使用 merge 将对象合并到当前 session，避免 session 冲突
+        # load=False 表示不从数据库重新加载，而是直接更新
+        merged_r = await session.merge(r, load=False)
+        if merged_r.id == selected_id:
+            merged_r.untriggered_count = 0
+        else:
+            merged_r.untriggered_count += 1
+
+    await session.commit()
+
+    reply_message = send_message_preprocess(Message(reply_content))
     await reply.finish(reply_message)
