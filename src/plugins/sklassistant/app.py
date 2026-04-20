@@ -2,26 +2,31 @@ import asyncio
 import json
 from pathlib import Path
 
-from nonebot import get_driver, logger, get_app
+from nonebot import get_app, get_driver, logger
 from nonebot.drivers import URL, ASGIMixin, HTTPServerSetup, Request, Response
 
+from .config import plugin_config
 from .manager import tokens
 from .skland import TOKEN_LENGTH, SKLand, SKLandError, attendance_and_send_email
 from .utils import is_base64, is_valid_email
 
-try:
-    from fastapi import FastAPI
-    from fastapi.middleware.cors import CORSMiddleware
-except ImportError:
-    logger.warning("未安装 fastapi，无法添加 CORS 中间件。")
+driver = get_driver()
+if not isinstance(driver, ASGIMixin):
+    logger.error(f"驱动器 {driver} 不为服务端类型，无法添加 CORS 中间件。")
 else:
-    app = get_app()
-    if isinstance(app, FastAPI):
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["http://biohazard.dpdns.org"],
-            allow_methods=["*"],
-        )
+    try:
+        from fastapi import FastAPI
+        from fastapi.middleware.cors import CORSMiddleware
+    except ImportError:
+        logger.error("未安装 fastapi，无法添加 CORS 中间件。")
+    else:
+        app = get_app()
+        if isinstance(app, FastAPI):
+            app.add_middleware(
+                CORSMiddleware,
+                allow_origins=[plugin_config.skl_origin],
+                allow_methods=["GET", "POST"],
+            )
 
 
 class ValidationError(Exception):
@@ -97,7 +102,7 @@ async def commit(request: Request) -> Response:
             ),
         )
 
-    tokens.add_item(qq, email, token)
+    await tokens.add_item(qq, email, token)
 
     task = asyncio.create_task(attendance_and_send_email(token, True, email))
     background_tasks.add(task)
@@ -108,7 +113,6 @@ async def commit(request: Request) -> Response:
         headers=headers,
         content=json.dumps({"code": 200, "message": "提交成功。", "data": None}),
     )
-
 
 
 def on_startup():

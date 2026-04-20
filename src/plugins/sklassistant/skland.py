@@ -6,7 +6,7 @@ import re
 import reprlib
 import time
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any
 from urllib import parse
 from warnings import deprecated
 
@@ -143,7 +143,7 @@ class SKLand:
         json: dict[str, Any] | None,
         sign: bool,
         raise_error: bool = True,
-        save: bool = True,
+        save: bool = plugin_config.skl_save_response,
     ) -> dict[str, Any]:
         if sign:
             headers = get_sign_header(

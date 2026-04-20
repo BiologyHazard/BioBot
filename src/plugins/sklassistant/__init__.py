@@ -1,9 +1,15 @@
+# ruff: noqa: E402
 """
 TODO: 材料归蓝
 TODO: 菲亚梅塔心情预测
 TODO: 给干员排序
 TODO: 如果账号很久没登录，则/api/v1/game/player/info 中 chars 的模组可能不包含该干员的全部模组。
 """
+
+from nonebot import require
+
+require("nonebot_plugin_apscheduler")
+require("nonebot_plugin_orm")
 
 import asyncio
 from datetime import datetime
@@ -40,6 +46,7 @@ from nonebot.params import CommandArg, EventPlainText, RegexGroup, ShellCommandA
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import ArgumentParser, Namespace
+from nonebot_plugin_apscheduler import scheduler
 
 from .app import on_startup
 from .assistant import (
@@ -52,6 +59,7 @@ from .assistant import (
 from .config import plugin_config
 from .image import image_to_bytesio, text_to_image
 from .manager import tokens
+from .migrate_data import migrate_skl_tokens
 from .skland import (
     TOKEN_LENGTH,
     SKLand,
@@ -61,10 +69,6 @@ from .skland import (
     login_headers,
 )
 from .utils import get_qq_mail_address, is_base64
-
-require("nonebot_plugin_apscheduler")
-
-from nonebot_plugin_apscheduler import scheduler  # NOQA: E402
 
 driver: Driver = get_driver()
 default_command_start: str = tuple(driver.config.command_start)[0]  # noqa: RUF015
@@ -234,10 +238,10 @@ skl_binding = matcher_group.on_shell_command(
 # @driver.on_startup
 async def skl_sign_in_all() -> list[dict[str, Any] | BaseException]:
     logger.info("开始森空岛自动签到")
+    enabled_tokens = await tokens.filter(enabled=True)
     tasks = [
-        attendance_and_send_email(item["token"], item["remind"], item["email"])
-        for item in tokens
-        if item["enabled"]
+        attendance_and_send_email(item.token, item.remind, item.email)
+        for item in enabled_tokens
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     for result in results:
@@ -247,6 +251,7 @@ async def skl_sign_in_all() -> list[dict[str, Any] | BaseException]:
 
 @driver.on_startup
 async def _():
+    await migrate_skl_tokens()
     on_startup()
 
 
@@ -269,14 +274,13 @@ async def get_character(  # noqa: RET503
         uid = None
 
     # 检查是否绑定了森空岛 token
-    token_list = tokens.filter(qq=qq)
+    token_list = await tokens.filter(qq=qq)
     if not token_list:
         await matcher.finish(no_token_str)
 
     for item in token_list:
-        token = item["token"]
         # 尝试登录，如果登录失败则直接抛出异常
-        await skland.login_by_token(token)
+        await skland.login_by_token(item.token)
         player_binding = await skland.player_binding()
         character = skland.get_character(player_binding, uid, app_code)
         if character is not None:
@@ -320,12 +324,12 @@ async def bind_skl_token_func(
                 "token 格式错误，请确认 token 不带引号。如需帮助，请发送“help sklassistant”。"
             )
 
-        if tokens.has_token(token):
+        if await tokens.has_token(token):
             await matcher.finish("token 已存在。")
 
         await SKLand().login_by_token(token)
 
-        tokens.add_item(event.user_id, get_qq_mail_address(event.user_id), token)
+        await tokens.add_item(event.user_id, get_qq_mail_address(event.user_id), token)
         await matcher.send(
             "成功绑定森空岛 token。立即进行一次签到。\n"
             "已为您开启自动签到和邮件提醒（发送到您的 QQ 邮箱），以后将于每日 00:00 签到。\n"
@@ -362,30 +366,30 @@ async def delete_skl_token_func(
             "token 格式错误，请确认 token 不带引号。如需帮助，请发送“绑定森空岛token”。"
         )
 
-    if not tokens.filter(qq=event.user_id, token=token):
+    if not await tokens.filter(qq=event.user_id, token=token):
         await delete_skl_token.finish("未找到该 token。")
 
-    tokens.remove_item("token", token)
+    await tokens.remove_item("token", token)
 
     await delete_skl_token.finish("成功删除森空岛token。")
 
 
 @delete_all_skl_token.handle()
 async def delete_all_skl_token_func(matcher: Matcher, event: MessageEvent) -> None:
-    if not tokens.filter(qq=event.user_id):
+    if not await tokens.filter(qq=event.user_id):
         await delete_all_skl_token.finish("还没有绑定过森空岛 token。")
 
-    tokens.remove_item("qq", event.user_id)
+    await tokens.remove_item("qq", event.user_id)
 
     await delete_all_skl_token.finish("成功解绑所有森空岛token。")
 
 
 @unbind_all_skl_token.handle()
 async def unbind_all_skl_token_func(matcher: Matcher, event: MessageEvent) -> None:
-    if not tokens.filter(qq=event.user_id):
+    if not await tokens.filter(qq=event.user_id):
         await unbind_all_skl_token.finish("还没有绑定过森空岛 token。")
 
-    tokens.remove_item("qq", event.user_id)
+    await tokens.remove_item("qq", event.user_id)
 
     await unbind_all_skl_token.finish("成功解除绑定全部森空岛token。")
 
@@ -401,19 +405,19 @@ async def skl_auto_attendance_func(
     else:
         await skl_auto_attendance.finish()
 
-    if not tokens.filter(qq=event.user_id):
+    token_list = await tokens.filter(qq=event.user_id)
+    if not token_list:
         await skl_auto_attendance.finish(no_token_str)
 
-    tokens.set_enable_state("qq", event.user_id, enable)
+    await tokens.set_enable_state("qq", event.user_id, enable)
 
     if enable:
         await skl_auto_attendance.send(
             "已开启森空岛自动签到。立即进行一次签到。以后将于每日00:00签到。"
         )
         tasks = (
-            attendance_and_send_email(item["token"], True, item["email"])
-            for item in tokens
-            if item["qq"] == event.user_id
+            attendance_and_send_email(item.token, True, item.email)
+            for item in token_list
         )
         results: list[dict[str, Any] | BaseException] = await asyncio.gather(
             *tasks, return_exceptions=True
@@ -439,10 +443,10 @@ async def skl_email_remind_func(
     else:
         await skl_email_remind.finish()
 
-    if not tokens.filter(qq=event.user_id):
+    if not await tokens.filter(qq=event.user_id):
         await skl_email_remind.finish(no_token_str)
 
-    tokens.set_remind_state("qq", event.user_id, remind)
+    await tokens.set_remind_state("qq", event.user_id, remind)
 
     if remind:
         await skl_email_remind.finish(
@@ -464,10 +468,10 @@ async def skl_assistant_succeed_func(
 ) -> None:
     try:
         # 检查是否绑定了森空岛 token
-        token_list = tokens.filter(qq=event.user_id)
+        token_list = await tokens.filter(qq=event.user_id)
         if not token_list:
             await matcher.finish(no_token_str)
-        token = token_list[0]["token"]
+        token = token_list[0].token
 
         # 处理用户输入
         if args.skland_user_id is not None and not args.skland_user_id.isdigit():
@@ -556,13 +560,13 @@ async def skl_query_func(
     if not uid.isdigit():
         uid = None
 
-    token_list = tokens.filter(qq=event.user_id)
+    token_list = await tokens.filter(qq=event.user_id)
     if not token_list:
         await matcher.finish(no_token_str)
 
     exception = None
     for item in token_list:
-        token = item["token"]
+        token = item.token
         try:
             if type(matcher) is skl_assistant:
                 result: str = await 森空岛实时数据分析(token, uid)
@@ -621,10 +625,10 @@ async def skl_character_list_succeed_func(
 ) -> None:
     try:
         # 检查是否绑定了森空岛 token
-        token_list = tokens.filter(qq=event.user_id)
+        token_list = await tokens.filter(qq=event.user_id)
         if not token_list:
             await matcher.finish(no_token_str)
-        token = token_list[0]["token"]
+        token = token_list[0].token
 
         if args.skland_user_id is not None and not args.skland_user_id.isdigit():
             await matcher.finish(
@@ -981,10 +985,10 @@ async def skl_binding_succeed_func(
 ) -> None:
     try:
         # 检查是否绑定了森空岛 token
-        token_list = tokens.filter(qq=event.user_id)
+        token_list = await tokens.filter(qq=event.user_id)
         if not token_list:
             await matcher.finish(no_token_str)
-        token = token_list[0]["token"]
+        token = token_list[0].token
 
         if args.skland_user_id is not None and not args.skland_user_id.isdigit():
             await matcher.finish(
@@ -1014,7 +1018,7 @@ async def skl_binding_succeed_func(
             token_list = token_list[:1]
 
         for item in token_list:
-            token = item["token"]
+            token = item.token
 
             # 尝试登录
             if getattr(skland, "token", None) != token:
