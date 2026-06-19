@@ -128,7 +128,7 @@ class SKLand:
     """
 
     def __init__(self) -> None:
-        self.client = AsyncClient()
+        self.client = AsyncClient(timeout=120)
         self.attended: list[str] = []
         self.token: str
         self.grant_code: str

@@ -154,13 +154,6 @@ query_all: type[Matcher] = autoreply_command_group.on_command(
 reply: type[Matcher] = on_message(rule=should_reply, block=False, priority=15)
 
 
-@driver.on_startup
-async def on_startup_func() -> None:
-    from .migrate_data import migrate
-
-    await migrate()
-
-
 # @driver.on_bot_connect
 # async def on_bot_connect_func(bot: Bot) -> None:
 #     '''bot连接成功时运行，获取群自动回复列表'''

@@ -251,7 +251,6 @@ async def skl_sign_in_all() -> list[dict[str, Any] | BaseException]:
 
 @driver.on_startup
 async def _():
-    await migrate_skl_tokens()
     on_startup()
 
 
