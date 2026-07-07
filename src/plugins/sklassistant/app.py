@@ -24,7 +24,7 @@ else:
         if isinstance(app, FastAPI):
             app.add_middleware(
                 CORSMiddleware,
-                allow_origins=[plugin_config.skl_origin],
+                allow_origins=plugin_config.skl_origin,
                 allow_methods=["GET", "POST"],
             )
 
@@ -59,7 +59,6 @@ async def home(request: Request) -> Response:
 async def commit(request: Request) -> Response:
     headers = {
         "Content-Type": "application/json; charset=utf-8",
-        "Access-Control-Allow-Origin": "*",
     }
 
     def validate_qq(qq: str) -> int:

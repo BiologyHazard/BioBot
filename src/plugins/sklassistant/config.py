@@ -11,7 +11,7 @@ class Config(BaseModel):
     skl_email_smtp_host: str = "smtp.qq.com"
     skl_email_smtp_port: int = 465
     skland_did: str
-    skl_origin: str
+    skl_origin: list[str]
     skl_save_response: bool = False
 
 
