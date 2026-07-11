@@ -76,7 +76,7 @@ default_command_start: str = tuple(driver.config.command_start)[0]  # noqa: RUF0
 token_str = f"""
 【如何绑定森空岛 token】
 方法一：点击下面链接，按照提示操作
-{plugin_config.skl_origin}/BioBot/plugins/sklassistant
+{plugin_config.skl_link}
 方法二：点击上面链接查看如何获取森空岛 token，
 然后添加 bot 为好友，私聊发送“{default_command_start}绑定森空岛token <token>”
 # 为了您的账号安全，请不要在群聊中直接发送 token！

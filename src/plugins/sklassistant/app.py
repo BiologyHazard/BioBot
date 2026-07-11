@@ -27,6 +27,8 @@ else:
                 allow_origins=plugin_config.skl_origin,
                 allow_methods=["GET", "POST"],
             )
+        else:
+            logger.error(f"驱动器 {driver} 不是 FastAPI 实例，无法添加 CORS 中间件。")
 
 
 class ValidationError(Exception):
@@ -64,17 +66,17 @@ async def commit(request: Request) -> Response:
     def validate_qq(qq: str) -> int:
         if 5 <= len(qq) < 20 and qq.isdigit():
             return int(qq)
-        raise ValidationError("QQ号输入错误。")
+        raise ValidationError("QQ 号输入错误。")
 
     def validate_email(email: str) -> str:
         if is_valid_email(email):
             return email
-        raise ValidationError("Email输入错误。")
+        raise ValidationError("Email 输入错误。")
 
     def validate_token(token: str) -> str:
         if len(token) == TOKEN_LENGTH and is_base64(token):
             return token
-        raise ValidationError("token输入错误。")
+        raise ValidationError("token 输入错误。")
 
     logger.debug(f"有请求：{request.__dict__}")
 
@@ -97,7 +99,7 @@ async def commit(request: Request) -> Response:
             status_code=403,
             headers=headers,
             content=json.dumps(
-                {"code": 403, "message": f"绑定森空岛token失败：{e}", "data": None}
+                {"code": 403, "message": f"绑定森空岛 token 失败：{e}", "data": None}
             ),
         )
 
