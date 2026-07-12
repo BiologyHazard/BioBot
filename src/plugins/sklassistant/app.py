@@ -1,6 +1,7 @@
 import asyncio
 import json
 from pathlib import Path
+from typing import Any
 
 from nonebot import get_app, get_driver, logger
 from nonebot.drivers import URL, ASGIMixin, HTTPServerSetup, Request, Response
@@ -63,28 +64,38 @@ async def commit(request: Request) -> Response:
         "Content-Type": "application/json; charset=utf-8",
     }
 
-    def validate_qq(qq: str) -> int:
-        if 5 <= len(qq) < 20 and qq.isdigit():
+    def validate_qq(qq: Any) -> int:
+        if isinstance(qq, str) and 5 <= len(qq) < 20 and qq.isdigit():
             return int(qq)
         raise ValidationError("QQ 号输入错误。")
 
-    def validate_email(email: str) -> str:
-        if is_valid_email(email):
+    def validate_email(email: Any) -> str:
+        if isinstance(email, str) and is_valid_email(email):
             return email
         raise ValidationError("Email 输入错误。")
 
-    def validate_token(token: str) -> str:
-        if len(token) == TOKEN_LENGTH and is_base64(token):
+    def validate_token(token: Any) -> str:
+        if isinstance(token, str) and len(token) == TOKEN_LENGTH and is_base64(token):
             return token
         raise ValidationError("token 输入错误。")
+
+    def validate_remind(remind: Any) -> bool:
+        if isinstance(remind, bool):
+            return remind
+        if remind == "on":
+            return True
+        raise ValidationError("remind 输入错误。")
 
     logger.debug(f"有请求：{request.__dict__}")
 
     form = request.json
     try:
-        qq = validate_qq(form["qq"])
-        email = validate_email(form["email"])
-        token = validate_token(form["token"])
+        if not isinstance(form, dict):
+            raise ValidationError("请求体格式错误，应为 JSON 对象。")
+        qq = validate_qq(form.get("qq", None))
+        email = validate_email(form.get("email", None))
+        token = validate_token(form.get("token", None))
+        remind = validate_remind(form.get("remind", False))
     except ValidationError as e:
         return Response(
             status_code=400,
@@ -105,7 +116,7 @@ async def commit(request: Request) -> Response:
 
     await tokens.add_item(qq, email, token)
 
-    task = asyncio.create_task(attendance_and_send_email(token, True, email))
+    task = asyncio.create_task(attendance_and_send_email(token, remind, email))
     background_tasks.add(task)
     task.add_done_callback(background_tasks.discard)
 

@@ -31,7 +31,7 @@ from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_info 
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_search_user import (
     HttpsZonaiSklandComApiV1SearchUser as SearchUser,
 )
-from nonebot import MatcherGroup, get_driver, logger, require
+from nonebot import MatcherGroup, get_driver, logger
 from nonebot.adapters.onebot.v11 import (
     Bot,
     GroupMessageEvent,
@@ -407,7 +407,7 @@ async def skl_auto_attendance_func(
         )
         tasks = (
             attendance_and_send_email(
-                item.token, True, item.email, DISABLE_REMINDER_MESSAGE
+                item.token, item.remind, item.email, DISABLE_REMINDER_MESSAGE
             )
             for item in token_list
         )

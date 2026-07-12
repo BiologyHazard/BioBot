@@ -21,26 +21,33 @@ class Manager:
             )
             return result is not None
 
-    async def add_item(
-        self, qq: int, email: str, token: str, strict: bool = False
-    ) -> bool:
-        if await self.has_token(token):
-            if strict:
-                raise ValueError("Token already exists.")
-            return False
-
+    async def add_item(self, qq: int, email: str, token: str) -> bool:
         async with get_session() as session:
-            item = SKLToken(
-                qq=qq,
-                email=email,
-                token=token,
-                enabled=True,
-                remind=True,
-                time=time.time(),
+            existing = await session.scalar(
+                select(SKLToken).where(SKLToken.token == token)
             )
-            session.add(item)
-            await session.commit()
-            return True
+            if existing is not None:
+                # Token 已存在，检查 qq 或 email 是否有变化
+                if existing.qq == str(qq) and existing.email == email:
+                    return False  # 完全相同，不需要更新
+                # 更新 qq 和/或 email
+                existing.qq = str(qq)
+                existing.email = email
+                await session.commit()
+                return True
+
+            else:
+                item = SKLToken(
+                    qq=str(qq),
+                    email=email,
+                    token=token,
+                    enabled=True,
+                    remind=True,
+                    time=time.time(),
+                )
+                session.add(item)
+                await session.commit()
+                return True
 
     async def remove_item(
         self, key: Literal["qq", "email", "token"], value: Any
