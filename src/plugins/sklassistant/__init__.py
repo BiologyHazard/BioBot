@@ -113,6 +113,10 @@ help_str: str = f"""
 # - {default_command_start}解绑森空岛token <token>    # 解绑一个森空岛 token
 # - {default_command_start}解绑所有森空岛token    # 解绑所有森空岛 token
 
+DISABLE_REMINDER_MESSAGE = (
+    "\n\n——\n如需关闭邮件提醒，请使用 QQ 向 bot 发送 “关闭邮件提醒”。"
+)
+
 __plugin_meta__ = PluginMetadata(
     name="森空岛小助手",
     description="明日方舟森空岛工具，提供自动签到、干员查询、仓库查询等各种实用功能。",
@@ -180,13 +184,8 @@ bind_skl_token_command = matcher_group.on_command("绑定森空岛token")
 bind_skl_token_regex = matcher_group.on_regex(
     r"""{"code":0,"data":{"content":"(.+)"},"msg":".+"}"""
 )
-delete_skl_token = matcher_group.on_command(
+unbind_skl_token = matcher_group.on_command(
     "删除森空岛token", aliases={"解绑森空岛token"}, permission=SUPERUSER
-)
-delete_all_skl_token = matcher_group.on_command(
-    "解绑所有森空岛token",
-    aliases={"解绑全部森空岛token", "删除全部森空岛token", "删除所有森空岛token"},
-    permission=SUPERUSER,
 )
 unbind_all_skl_token = matcher_group.on_command(
     "解除绑定全部森空岛token",
@@ -240,7 +239,9 @@ async def skl_sign_in_all() -> list[dict[str, Any] | BaseException]:
     logger.info("开始森空岛自动签到")
     enabled_tokens = await tokens.filter(enabled=True)
     tasks = [
-        attendance_and_send_email(item.token, item.remind, item.email)
+        attendance_and_send_email(
+            item.token, item.remind, item.email, DISABLE_REMINDER_MESSAGE
+        )
         for item in enabled_tokens
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -330,13 +331,11 @@ async def bind_skl_token_func(
 
         await tokens.add_item(event.user_id, get_qq_mail_address(event.user_id), token)
         await matcher.send(
-            "成功绑定森空岛 token。立即进行一次签到。\n"
-            "已为您开启自动签到和邮件提醒（发送到您的 QQ 邮箱），以后将于每日 00:00 签到。\n"
-            "如暂时不需要开启，请发送“关闭森空岛自动签到”。"
+            "成功绑定森空岛 token。\n立即进行一次签到。以后将于每日 00:00 签到。\n已默认开启邮件提醒，签到结果将发送到你的 QQ 邮箱。如不需要邮件提醒，请发送 “关闭邮件提醒”。"
         )
 
         result: dict[str, Any] = await attendance_and_send_email(
-            token, True, get_qq_mail_address(event.user_id)
+            token, True, get_qq_mail_address(event.user_id), DISABLE_REMINDER_MESSAGE
         )
         await matcher.finish(result["msg"])
 
@@ -350,37 +349,27 @@ async def bind_skl_token_func(
         raise e
 
 
-@delete_skl_token.handle()
-async def delete_skl_token_func(
+@unbind_skl_token.handle()
+async def unbind_skl_token_func(
     matcher: Matcher, event: MessageEvent, message: Message = CommandArg()
 ) -> None:
     token: str = message.extract_plain_text().strip()
     if not token:
-        await delete_skl_token.finish(
+        await unbind_skl_token.finish(
             f"请在命令后面跟上要解绑的 token。如果要解绑所有 token，请发送“{default_command_start}解绑所有森空岛token”。"
         )
 
     if len(token) != TOKEN_LENGTH or not is_base64(token):
-        await delete_skl_token.finish(
+        await unbind_skl_token.finish(
             "token 格式错误，请确认 token 不带引号。如需帮助，请发送“绑定森空岛token”。"
         )
 
     if not await tokens.filter(qq=event.user_id, token=token):
-        await delete_skl_token.finish("未找到该 token。")
+        await unbind_skl_token.finish("未找到该 token。")
 
     await tokens.remove_item("token", token)
 
-    await delete_skl_token.finish("成功删除森空岛token。")
-
-
-@delete_all_skl_token.handle()
-async def delete_all_skl_token_func(matcher: Matcher, event: MessageEvent) -> None:
-    if not await tokens.filter(qq=event.user_id):
-        await delete_all_skl_token.finish("还没有绑定过森空岛 token。")
-
-    await tokens.remove_item("qq", event.user_id)
-
-    await delete_all_skl_token.finish("成功解绑所有森空岛token。")
+    await unbind_skl_token.finish("成功删除森空岛token。")
 
 
 @unbind_all_skl_token.handle()
@@ -412,10 +401,12 @@ async def skl_auto_attendance_func(
 
     if enable:
         await skl_auto_attendance.send(
-            "已开启森空岛自动签到。立即进行一次签到。以后将于每日00:00签到。"
+            "已开启森空岛自动签到。\n立即进行一次签到。以后将于每日 00:00 签到。"
         )
         tasks = (
-            attendance_and_send_email(item.token, True, item.email)
+            attendance_and_send_email(
+                item.token, True, item.email, DISABLE_REMINDER_MESSAGE
+            )
             for item in token_list
         )
         results: list[dict[str, Any] | BaseException] = await asyncio.gather(

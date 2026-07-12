@@ -520,7 +520,10 @@ class SKLand:
 
 
 async def attendance_and_send_email(
-    token: str, send_email: bool = True, recipients: str | Sequence[str] | None = None
+    token: str,
+    send_email: bool = True,
+    recipients: str | Sequence[str] | None = None,
+    disable_reminder_message: str = "",
 ) -> dict[str, Any]:
     skland = SKLand()
     result = await skland.attendance_multi_characters(token)
@@ -530,5 +533,6 @@ async def attendance_and_send_email(
             subject: str = "森空岛签到成功"
         else:
             subject = "森空岛签到失败"
-        await _send_email(recipients, subject, result["msg"])
+        content = result["msg"] + disable_reminder_message
+        await _send_email(recipients, subject, content)
     return result
