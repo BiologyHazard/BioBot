@@ -14,7 +14,7 @@ require("nonebot_plugin_orm")
 import asyncio
 from datetime import datetime
 from itertools import accumulate
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 from arknights_game_model.game_data import game_data
@@ -59,7 +59,6 @@ from .assistant import (
 from .config import plugin_config
 from .image import image_to_bytesio, text_to_image
 from .manager import tokens
-from .migrate_data import migrate_skl_tokens
 from .skland import (
     TOKEN_LENGTH,
     SKLand,
@@ -291,7 +290,10 @@ async def get_character(  # noqa: RET503
 
 @bind_skl_token_command.handle()
 async def bind_skl_token_command_func(
-    matcher: Matcher, bot: Bot, event: MessageEvent, message: Message = CommandArg()
+    matcher: Matcher,
+    bot: Bot,
+    event: MessageEvent,
+    message: Annotated[Message, CommandArg()],
 ) -> None:
     token = message.extract_plain_text().strip()
     return await bind_skl_token_func(matcher, bot, event, token)
@@ -351,7 +353,7 @@ async def bind_skl_token_func(
 
 @unbind_skl_token.handle()
 async def unbind_skl_token_func(
-    matcher: Matcher, event: MessageEvent, message: Message = CommandArg()
+    matcher: Matcher, event: MessageEvent, message: Annotated[Message, CommandArg()]
 ) -> None:
     token: str = message.extract_plain_text().strip()
     if not token:
@@ -454,7 +456,9 @@ async def skl_attendance_all_func() -> None:
 
 @skl_assistant.handle()
 async def skl_assistant_succeed_func(
-    matcher: Matcher, event: MessageEvent, args: Namespace = ShellCommandArgs()
+    matcher: Matcher,
+    event: MessageEvent,
+    args: Annotated[Namespace, ShellCommandArgs()],
 ) -> None:
     try:
         # 检查是否绑定了森空岛 token
@@ -538,13 +542,15 @@ async def skl_assistant_succeed_func(
 
 
 @skl_assistant.handle()
-async def skl_assistant_fail_func(args: ParserExit = ShellCommandArgs()) -> None:
+async def skl_assistant_fail_func(
+    args: Annotated[ParserExit, ShellCommandArgs()],
+) -> None:
     await skl_assistant.finish(skl_assistant_parser.format_help())
 
 
 @skl_query.handle()
 async def skl_query_func(
-    matcher: Matcher, event: MessageEvent, message: Message = CommandArg()
+    matcher: Matcher, event: MessageEvent, message: Annotated[Message, CommandArg()]
 ) -> None:
     uid: str | None = message.extract_plain_text().strip()
     if not uid.isdigit():
@@ -585,7 +591,7 @@ async def skl_query_func(
 @skl_consumed_items.handle()
 @skl_missing_items.handle()
 async def _(
-    matcher: Matcher, event: MessageEvent, message: Message = CommandArg()
+    matcher: Matcher, event: MessageEvent, message: Annotated[Message, CommandArg()]
 ) -> None:
     try:
         if isinstance(matcher, skl_missing_characters):
@@ -611,7 +617,9 @@ async def _(
 
 @skl_character_list.handle()
 async def skl_character_list_succeed_func(
-    matcher: Matcher, event: MessageEvent, args: Namespace = ShellCommandArgs()
+    matcher: Matcher,
+    event: MessageEvent,
+    args: Annotated[Namespace, ShellCommandArgs()],
 ) -> None:
     try:
         # 检查是否绑定了森空岛 token
@@ -779,12 +787,14 @@ async def skl_character_list_succeed_func(
 
 
 @skl_character_list.handle()
-async def skl_character_list_fail_func(args: ParserExit = ShellCommandArgs()) -> None:
+async def skl_character_list_fail_func(
+    args: Annotated[ParserExit, ShellCommandArgs()],
+) -> None:
     await skl_character_list.finish(skl_character_list_parser.format_help())
 
 
 async def skl_missing_characters_func(
-    matcher: Matcher, event: MessageEvent, message: Message = CommandArg()
+    matcher: Matcher, event: MessageEvent, message: Annotated[Message, CommandArg()]
 ) -> None:
     skland = SKLand()
     binding_character = await get_character(
@@ -827,7 +837,7 @@ async def skl_missing_characters_func(
 
 
 async def skl_my_depot_func(
-    matcher: Matcher, event: MessageEvent, message: Message = CommandArg()
+    matcher: Matcher, event: MessageEvent, message: Annotated[Message, CommandArg()]
 ) -> None:
     skland = SKLand()
     binding_character = await get_character(
@@ -921,7 +931,7 @@ def get_missing_item_info_list(cultivate_player: CultivatePlayer) -> ItemInfoLis
 
 
 async def skl_consumed_or_missing_items_func(
-    matcher: Matcher, event: MessageEvent, message: Message = CommandArg()
+    matcher: Matcher, event: MessageEvent, message: Annotated[Message, CommandArg()]
 ) -> None:
     skland = SKLand()
     binding_character = await get_character(
@@ -971,7 +981,9 @@ async def skl_consumed_or_missing_items_func(
 
 @skl_binding.handle()
 async def skl_binding_succeed_func(
-    matcher: Matcher, event: MessageEvent, args: Namespace = ShellCommandArgs()
+    matcher: Matcher,
+    event: MessageEvent,
+    args: Annotated[Namespace, ShellCommandArgs()],
 ) -> None:
     try:
         # 检查是否绑定了森空岛 token
@@ -1049,5 +1061,7 @@ async def skl_binding_succeed_func(
 
 
 @skl_binding.handle()
-async def skl_binding_fail_func(args: ParserExit = ShellCommandArgs()) -> None:
+async def skl_binding_fail_func(
+    args: Annotated[ParserExit, ShellCommandArgs()],
+) -> None:
     await skl_binding.finish(skl_binding_parser.format_help())
