@@ -42,7 +42,7 @@ async def home(request: Request) -> Response:
     logger.debug(f"有请求：{request!r}")
     return Response(
         status_code=302,
-        headers={"Location": "https://riic.biohazard.top/sklassistant"},
+        headers={"Location": plugin_config.skl_link},
     )
 
 

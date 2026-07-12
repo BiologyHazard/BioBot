@@ -12,7 +12,7 @@ class Config(BaseModel):
     skl_email_smtp_port: int = 465
     skland_did: str
     skl_origin: list[str]
-    skl_link: str = "https://biobot.biohazard.top/BioBot/plugins/sklassistant"
+    skl_link: str
     skl_save_response: bool = False
 
 
