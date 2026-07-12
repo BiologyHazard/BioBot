@@ -1,6 +1,5 @@
 import asyncio
 import json
-from pathlib import Path
 from typing import Any
 
 from nonebot import get_app, get_driver, logger
@@ -38,24 +37,12 @@ class ValidationError(Exception):
 
 background_tasks = set()
 
-home_html_content: str | None = None
-
-
-def get_home_html_content() -> str:
-    global home_html_content
-    if home_html_content is None:
-        home_html_content = (Path(__file__).parent / "html/index.html").read_text(
-            "utf-8"
-        )
-    return home_html_content
-
 
 async def home(request: Request) -> Response:
     logger.debug(f"有请求：{request!r}")
     return Response(
-        status_code=200,
-        headers={"Content-Type": "text/html; charset=utf-8"},
-        content=get_home_html_content(),
+        status_code=302,
+        headers={"Location": "https://riic.biohazard.top/sklassistant"},
     )
 
 
