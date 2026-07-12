@@ -1,11 +1,8 @@
-from argparse import Namespace
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-import httpx
 from arknights_game_model.game_data import game_data
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_info import (
-    BaseRoom,
     Control,
     Dormitory,
     Hire,
@@ -13,16 +10,12 @@ from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_info 
     Meeting,
     Power,
     Trading,
-    Training,
 )
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_info import (
     HttpsZonaiSklandComApiV1GamePlayerInfo as PlayerInfo,
 )
-from arknights_game_model.skland.https_zonai_skland_com_api_v1_search_user import (
-    HttpsZonaiSklandComApiV1SearchUser as SearchUser,
-)
 
-from .skland import SKLand, SKLandError, api_v1_search_user_url, login_headers
+from .skland import SKLand, SKLandError
 
 
 async def 森空岛获取信息(token: str, uid: str | None = None) -> dict[str, Any]:
