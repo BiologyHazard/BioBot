@@ -295,7 +295,7 @@ async def bind_skl_token_command_func(
     event: MessageEvent,
     message: Annotated[Message, CommandArg()],
 ) -> None:
-    token = message.extract_plain_text().strip()
+    token = message.extract_plain_text().strip().lstrip("<").rstrip(">")
     return await bind_skl_token_func(matcher, bot, event, token)
 
 
