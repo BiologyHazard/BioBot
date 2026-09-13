@@ -5,6 +5,7 @@ nonebot-adapter-onebot
 pillow
 pil_utils
 aiohttp
+githubkit
 
 # autoreply
 aiofiles
