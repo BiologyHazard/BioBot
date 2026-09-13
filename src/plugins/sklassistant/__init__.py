@@ -237,15 +237,18 @@ skl_binding = matcher_group.on_shell_command(
 async def skl_sign_in_all() -> list[dict[str, Any] | BaseException]:
     logger.info("开始森空岛自动签到")
     enabled_tokens = await tokens.filter(enabled=True)
-    tasks = [
-        attendance_and_send_email(
-            item.token, item.remind, item.email, DISABLE_REMINDER_MESSAGE
-        )
-        for item in enabled_tokens
-    ]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    for result in results:
+
+    results = []
+    for item in enabled_tokens:
+        try:
+            result = await attendance_and_send_email(
+                item.token, item.remind, item.email, DISABLE_REMINDER_MESSAGE
+            )
+        except Exception as e:
+            result = e
+        results.append(result)
         logger.info(repr(result))
+
     return results
 
 

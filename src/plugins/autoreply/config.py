@@ -10,7 +10,7 @@ class Config(BaseModel):
     image_folder: DirectoryPath = Path("data/autoreply/image")
     '''加载插件时会建目录，因此该目录原则上存在'''
     font_path: DirectoryPath = Path('data/fonts')
-    text_font_path: FilePath = font_path / 'SourceHanSans.otf'
+    text_font_path: FilePath = font_path / 'SourceHanSansSC-Regular.otf'
 
 
 plugin_config: Config = get_plugin_config(Config)

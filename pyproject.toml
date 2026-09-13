@@ -15,7 +15,6 @@ dependencies = [
     "nonebot-plugin-apscheduler>=0.5.0",
     "nonebot-plugin-orm[sqlite]>=0.8.3",
     "nonebot2[fastapi]>=2.5.0",
-    "pil-utils>=0.2.2",
     "pillow>=11.3.0",
     "pydantic[email]>=2.13.2",
 ]
@@ -26,4 +25,4 @@ dev = [
 ]
 
 [tool.uv.sources]
-arknights-game-model = { git = "https://github.com/BiologyHazard/arknights-game-model", rev = "main" }
+arknights-game-model = { git = "https://github.com/BiologyHazard/arknights-game-model.git", rev = "main" }

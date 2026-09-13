@@ -62,7 +62,7 @@ async def send_email(
                 name_email.email, recipients, email_message.as_string()
             )
     except Exception as e:
-        logger.exception(f"邮件 {subject} 发送给 {recipients} 发送失败！")
+        logger.error(f"邮件 {subject} 发送给 {recipients} 发送失败！{e!r}")
         raise e
     else:
         logger.success(f"邮件 {subject} 发送给 {recipients} 发送成功！")
