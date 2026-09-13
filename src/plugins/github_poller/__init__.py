@@ -9,16 +9,14 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
+from datetime import UTC, datetime
+from typing import Annotated, Any
 
 from githubkit import GitHub
 from nonebot import get_bots, get_driver, logger, on_command, require
-from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent
+from nonebot.adapters.onebot.v11 import GroupMessageEvent, Message, MessageEvent
 from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
-from nonebot.adapters.onebot.v11 import Message
 
 from .config import plugin_config
 
@@ -39,11 +37,19 @@ poll_lock = asyncio.Lock()
 api_usage: dict[str, int] = {"requests": 0, "last_remaining": -1}
 
 EVENTS = {"commit", "issue", "pull_request", "release", "issue_comment"}
-EVENT_ALIASES = {"commits": "commit", "issues": "issue", "pr": "pull_request", "prs": "pull_request", "pulls": "pull_request", "release": "release", "comment": "issue_comment"}
+EVENT_ALIASES = {
+    "commits": "commit",
+    "issues": "issue",
+    "pr": "pull_request",
+    "prs": "pull_request",
+    "pulls": "pull_request",
+    "release": "release",
+    "comment": "issue_comment",
+}
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _load() -> dict[str, Any]:
@@ -76,7 +82,10 @@ def _repo_config(data: dict[str, Any], repo: str) -> dict[str, Any]:
 
 
 def _targets(config: dict[str, Any]) -> tuple[list[int], list[int]]:
-    return ([int(x) for x in config.get("group", [])], [int(x) for x in config.get("private", [])])
+    return (
+        [int(x) for x in config.get("group", [])],
+        [int(x) for x in config.get("private", [])],
+    )
 
 
 async def _send(text: str, config: dict[str, Any]) -> None:
@@ -124,7 +133,11 @@ def _format_event(repo: str, kind: str, item: dict[str, Any]) -> str:
     repository_url = item.get("html_url", f"https://github.com/{repo}")
     if kind == "commit":
         commit = item.get("commit", {})
-        author = (commit.get("author") or {}).get("name") or (item.get("author") or {}).get("login") or "未知"
+        author = (
+            (commit.get("author") or {}).get("name")
+            or (item.get("author") or {}).get("login")
+            or "未知"
+        )
         message = (commit.get("message") or "无提交信息").splitlines()[0]
         return f"GitHub Commit\n仓库：{repo}\n作者：{author}\n信息：{message}\n地址：{repository_url}"
     if kind == "release":
@@ -146,11 +159,56 @@ async def _poll_repo(repo: str, config: dict[str, Any]) -> list[str]:
     page = plugin_config.github_poller_per_page
 
     endpoints = {
-        "commit": (github.rest.repos.async_list_commits, "sha", "commit.author.date", {"owner": owner, "repo": name, "per_page": page}),
-        "issue": (github.rest.issues.async_list_for_repo, "id", "updated_at", {"owner": owner, "repo": name, "per_page": page, "sort": "updated", "direction": "desc", "state": "all"}),
-        "pull_request": (github.rest.pulls.async_list, "id", "updated_at", {"owner": owner, "repo": name, "per_page": page, "sort": "updated", "direction": "desc", "state": "all"}),
-        "release": (github.rest.repos.async_list_releases, "id", "published_at", {"owner": owner, "repo": name, "per_page": page}),
-        "issue_comment": (github.rest.issues.async_list_comments_for_repo, "id", "updated_at", {"owner": owner, "repo": name, "per_page": page, "sort": "updated", "direction": "desc"}),
+        "commit": (
+            github.rest.repos.async_list_commits,
+            "sha",
+            "commit.author.date",
+            {"owner": owner, "repo": name, "per_page": page},
+        ),
+        "issue": (
+            github.rest.issues.async_list_for_repo,
+            "id",
+            "updated_at",
+            {
+                "owner": owner,
+                "repo": name,
+                "per_page": page,
+                "sort": "updated",
+                "direction": "desc",
+                "state": "all",
+            },
+        ),
+        "pull_request": (
+            github.rest.pulls.async_list,
+            "id",
+            "updated_at",
+            {
+                "owner": owner,
+                "repo": name,
+                "per_page": page,
+                "sort": "updated",
+                "direction": "desc",
+                "state": "all",
+            },
+        ),
+        "release": (
+            github.rest.repos.async_list_releases,
+            "id",
+            "published_at",
+            {"owner": owner, "repo": name, "per_page": page},
+        ),
+        "issue_comment": (
+            github.rest.issues.async_list_comments_for_repo,
+            "id",
+            "updated_at",
+            {
+                "owner": owner,
+                "repo": name,
+                "per_page": page,
+                "sort": "updated",
+                "direction": "desc",
+            },
+        ),
     }
     for kind in events:
         endpoint, id_key, time_key, params = endpoints[kind]
@@ -173,10 +231,20 @@ async def _poll_repo(repo: str, config: dict[str, Any]) -> list[str]:
             if state.get("initialized"):
                 new_items.append(item)
         if state.get("initialized"):
-            found.extend((kind, item, _format_event(repo, kind, item)) for item in new_items)
+            found.extend(
+                (kind, item, _format_event(repo, kind, item)) for item in new_items
+            )
     state["initialized"] = True
     state["last_poll"] = _now()
-    return [message for _, _, message in sorted(found, key=lambda value: value[1].get("updated_at", value[1].get("published_at", "")))]
+    return [
+        message
+        for _, _, message in sorted(
+            found,
+            key=lambda value: value[1].get(
+                "updated_at", value[1].get("published_at", "")
+            ),
+        )
+    ]
 
 
 async def poll_all() -> None:
@@ -201,56 +269,97 @@ def _arg_text(arg: Message | None) -> str:
 async def _is_admin(event: MessageEvent) -> bool:
     if not isinstance(event, GroupMessageEvent):
         return True
-    return event.sender.role in {"admin", "owner"} or str(event.get_user_id()) in {str(x) for x in driver.config.superusers}
+    return event.sender.role in {"admin", "owner"} or str(event.get_user_id()) in {
+        str(x) for x in driver.config.superusers
+    }
 
 
 repo_add = on_command("repo.add", aliases={"add_group_repo"}, priority=5, block=True)
+
+
 @repo_add.handle()
-async def _(event: MessageEvent, arg: Message = CommandArg()):
+async def _(event: MessageEvent, arg: Annotated[Message, CommandArg()]):
     if not await _is_admin(event):
         await repo_add.finish("只有群管理员或超级用户可以配置仓库。")
     parts = _arg_text(arg).split()
     if not parts or parts[0].count("/") != 1:
         await repo_add.finish("用法：/repo.add owner/repo [group_id]")
     repo = parts[0]
-    target = parts[1] if len(parts) > 1 else (str(event.group_id) if isinstance(event, GroupMessageEvent) else "")
+    target = (
+        parts[1]
+        if len(parts) > 1
+        else (str(event.group_id) if isinstance(event, GroupMessageEvent) else "")
+    )
     if not target:
         await repo_add.finish("私聊添加时请指定群号：/repo.add owner/repo group_id")
-    data = _load(); config = _repo_config(data, repo)
-    field = "group" if isinstance(event, GroupMessageEvent) or target.isdigit() else "private"
-    if target not in config[field]: config[field].append(target)
+    data = _load()
+    config = _repo_config(data, repo)
+    field = (
+        "group"
+        if isinstance(event, GroupMessageEvent) or target.isdigit()
+        else "private"
+    )
+    if target not in config[field]:
+        config[field].append(target)
     _save(data)
-    await repo_add.finish(f"已添加 {repo} 的 {field} 通知目标。首次同步不会推送历史动态。")
+    await repo_add.finish(
+        f"已添加 {repo} 的 {field} 通知目标。首次同步不会推送历史动态。"
+    )
 
 
-repo_delete = on_command("repo.delete", aliases={"repo.del", "del_group_repo"}, priority=5, block=True)
+repo_delete = on_command(
+    "repo.delete", aliases={"repo.del", "del_group_repo"}, priority=5, block=True
+)
+
+
 @repo_delete.handle()
-async def _(event: MessageEvent, arg: Message = CommandArg()):
-    if not await _is_admin(event): await repo_delete.finish("只有群管理员或超级用户可以配置仓库。")
+async def _(event: MessageEvent, arg: Annotated[Message, CommandArg()]):
+    if not await _is_admin(event):
+        await repo_delete.finish("只有群管理员或超级用户可以配置仓库。")
     repo = _arg_text(arg).split()[0] if _arg_text(arg) else ""
     data = _load()
-    if repo not in data: await repo_delete.finish("未找到该仓库。")
-    data.pop(repo); _save(data); await repo_delete.finish(f"已删除 {repo}。")
+    if repo not in data:
+        await repo_delete.finish("未找到该仓库。")
+    data.pop(repo)
+    _save(data)
+    await repo_delete.finish(f"已删除 {repo}。")
 
 
 repo_show = on_command("repo.show", aliases={"show_group_repo"}, priority=5, block=True)
+
+
 @repo_show.handle()
-async def _(arg: Message = CommandArg()):
+async def _():
     data = _load()
-    if not data: await repo_show.finish("尚未配置 GitHub 仓库。")
-    await repo_show.finish("\n".join(f"{repo} -> 群：{', '.join(map(str, cfg.get('group', [])))}；私聊：{', '.join(map(str, cfg.get('private', [])))}" for repo, cfg in data.items()))
+    if not data:
+        await repo_show.finish("尚未配置 GitHub 仓库。")
+    await repo_show.finish(
+        "\n".join(
+            f"{repo} -> 群：{', '.join(map(str, cfg.get('group', [])))}；私聊：{', '.join(map(str, cfg.get('private', [])))}"
+            for repo, cfg in data.items()
+        )
+    )
 
 
-repo_refresh = on_command("repo.refresh", aliases={"refresh_group_repo"}, priority=5, block=True)
+repo_refresh = on_command(
+    "repo.refresh", aliases={"refresh_group_repo"}, priority=5, block=True
+)
+
+
 @repo_refresh.handle()
 async def _():
-    await poll_all(); await repo_refresh.finish("GitHub 状态刷新完成。")
+    await poll_all()
+    await repo_refresh.finish("GitHub 状态刷新完成。")
 
 
 api_usage_cmd = on_command("check_api_usage", priority=5, block=True)
+
+
 @api_usage_cmd.handle()
 async def _():
-    await api_usage_cmd.finish(f"本进程已请求 GitHub API {api_usage['requests']} 次；剩余额度：{api_usage['last_remaining']}")
+    await api_usage_cmd.finish(
+        f"本进程已请求 GitHub API {api_usage['requests']} 次；剩余额度：{api_usage['last_remaining']}"
+    )
 
 
 @driver.on_startup
@@ -258,6 +367,8 @@ async def _startup() -> None:
     await poll_all()
 
 
-@scheduler.scheduled_job("interval", seconds=plugin_config.github_poll_interval, id="github_poller")
+@scheduler.scheduled_job(
+    "interval", seconds=plugin_config.github_poll_interval, id="github_poller"
+)
 async def _scheduled_poll() -> None:
     await poll_all()
