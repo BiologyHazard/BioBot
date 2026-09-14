@@ -1,19 +1,17 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from arknights_game_model.game_data import game_data
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_info import (
     Control,
     Dormitory,
     Hire,
+    HttpsZonaiSklandComApiV1GamePlayerInfo as PlayerInfo,
     Manufacture,
     Meeting,
     Power,
     Trading,
 )
-from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_player_info import (
-    HttpsZonaiSklandComApiV1GamePlayerInfo as PlayerInfo,
-)
+from src.plugins.arknights_game_data import game_data
 
 from .skland import SKLand, SKLandError
 

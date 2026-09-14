@@ -10,6 +10,7 @@ from nonebot import require
 
 require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_orm")
+require("src.plugins.arknights_game_data")
 
 import asyncio
 from datetime import datetime
@@ -17,7 +18,6 @@ from itertools import accumulate
 from typing import Annotated, Any
 
 import httpx
-from arknights_game_model.game_data import game_data
 from arknights_game_model.item_info_model import ItemInfo, ItemInfoList
 from arknights_game_model.skland.https_zonai_skland_com_api_v1_game_cultivate_player import (
     HttpsZonaiSklandComApiV1GameCultivatePlayer as CultivatePlayer,
@@ -47,6 +47,7 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import ArgumentParser, Namespace
 from nonebot_plugin_apscheduler import scheduler
+from src.plugins.arknights_game_data import game_data
 
 from .app import on_startup
 from .assistant import (

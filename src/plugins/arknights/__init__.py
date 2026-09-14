@@ -1,14 +1,14 @@
 from collections import defaultdict
 
 import nonebot
-from arknights_game_model.game_data import game_data
 from arknights_game_model.utils import escape_description, find_dollar_tags
 from nonebot import MatcherGroup
 from nonebot.adapters import Message
 from nonebot.params import CommandArg, RegexGroup
 from nonebot.plugin import PluginMetadata
 
-from .config import plugin_config
+nonebot.require("src.plugins.arknights_game_data")
+from src.plugins.arknights_game_data import game_data  # noqa: E402
 
 driver = nonebot.get_driver()
 default_command_start: str = tuple(driver.config.command_start)[0]
@@ -25,11 +25,6 @@ __plugin_meta__ = PluginMetadata(
     description="明日方舟数据查询，提供基建技能、术语释义、满练消耗查询等各种实用功能。",
     usage=help_str,
 )
-
-
-@driver.on_startup
-def on_startup_func() -> None:
-    game_data.load_data(**plugin_config.model_dump())
 
 
 ELITE_LEVEL_DICT = {

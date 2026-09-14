@@ -1,4 +1,3 @@
-from arknights_game_model.config import Config
-from nonebot import get_driver
+from src.plugins.arknights_game_data.config import Config, plugin_config
 
-plugin_config = Config(_env_file=(".env", f".env.{get_driver().env}"))  # type: ignore
+__all__ = ("Config", "plugin_config")
