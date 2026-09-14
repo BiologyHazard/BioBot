@@ -23,18 +23,18 @@ revoke_config: Config = get_plugin_config(Config)
 
 
 __plugin_meta__ = PluginMetadata(
-    name='撤回',
-    description='自助撤回机器人发出的消息',
-    usage=('1. @机器人 撤回 [<num1>][-<num2>]，num 为机器人发的倒数第几条消息，从 0 开始，默认为 0\n'
-           '2. 回复需要撤回的消息，回复“撤回”'),
+    name="撤回",
+    description="自助撤回机器人发出的消息",
+    usage=(
+        "1. @机器人 撤回 [<num1>][-<num2>]，num 为机器人发的倒数第几条消息，从 0 开始，默认为 0\n"
+        "2. 回复需要撤回的消息，回复“撤回”"
+    ),
     config=Config,
     extra={
-        'unique_name': 'revoke',
-        'example': ('@机器人 撤回\n'
-                    '@机器人 撤回 1\n'
-                    '@机器人 撤回 0-3'),
-        'author': 'meetwq <meetwq@gmail.com>',
-        'version': '0.3.0',
+        "unique_name": "revoke",
+        "example": ("@机器人 撤回\n@机器人 撤回 1\n@机器人 撤回 0-3"),
+        "author": "meetwq <meetwq@gmail.com>",
+        "version": "0.3.0",
     },
 )
 
@@ -43,10 +43,10 @@ msg_ids: dict[str, list[str]] = {}
 max_size: int = revoke_config.revoke_max_size
 
 
-def get_key(bot: BaseBot, msg_type: str, id: str, sub_id: str = ''):
-    key: str = f'{bot.self_id}_{msg_type}_{id}'
+def get_key(bot: BaseBot, msg_type: str, id: str, sub_id: str = ""):
+    key: str = f"{bot.self_id}_{msg_type}_{id}"
     if sub_id:
-        key += f'_{sub_id}'
+        key += f"_{sub_id}"
     return key
 
 
@@ -54,19 +54,19 @@ async def save_msg_id_v11(
     bot: BaseBot, e: Exception | None, api: str, data: dict[str, Any], result: Any
 ) -> None:
     try:
-        if api in ['send_msg', 'send_forward_msg']:
-            msg_type = data['message_type']
-            id = data['group_id'] if msg_type == 'group' else data['user_id']
-        elif api in ['send_private_msg', 'send_private_forward_msg']:
-            msg_type = 'private'
-            id = data['user_id']
-        elif api in ['send_group_msg', 'send_group_forward_msg']:
-            msg_type = 'group'
-            id = data['group_id']
+        if api in ["send_msg", "send_forward_msg"]:
+            msg_type = data["message_type"]
+            id = data["group_id"] if msg_type == "group" else data["user_id"]
+        elif api in ["send_private_msg", "send_private_forward_msg"]:
+            msg_type = "private"
+            id = data["user_id"]
+        elif api in ["send_group_msg", "send_group_forward_msg"]:
+            msg_type = "group"
+            id = data["group_id"]
         else:
             return
         key = get_key(bot, msg_type, id)
-        msg_id = str(result['message_id'])
+        msg_id = str(result["message_id"])
 
         if key not in msg_ids:
             msg_ids[key] = []
@@ -84,20 +84,20 @@ async def save_msg_id_v12(
     bot: BaseBot, e: Exception | None, api: str, data: dict[str, Any], result: Any
 ) -> None:
     try:
-        if api in ['send_message']:
-            msg_type = data['detail_type']
-            sub_id = ''
-            if msg_type == 'group':
-                id = data['group_id']
-            elif msg_type == 'channel':
-                id = data['guild_id']
-                sub_id = data['channel_id']
+        if api in ["send_message"]:
+            msg_type = data["detail_type"]
+            sub_id = ""
+            if msg_type == "group":
+                id = data["group_id"]
+            elif msg_type == "channel":
+                id = data["guild_id"]
+                sub_id = data["channel_id"]
             else:
-                id = data.get('user_id', '')
+                id = data.get("user_id", "")
         else:
             return
         key = get_key(bot, msg_type, id, sub_id)
-        msg_id = result['message_id']
+        msg_id = result["message_id"]
 
         if key not in msg_ids:
             msg_ids[key] = []
@@ -117,11 +117,13 @@ def remove_msg_id(key: str, msg_id: str) -> None:
 
 
 # 命令前缀为空则需要to_me，否则不需要
-def smart_to_me(command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]) -> bool:
+def smart_to_me(
+    command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]
+) -> bool:
     return bool(command_start) or to_me
 
 
-revoke = on_command('revoke', aliases={'撤回'}, block=True, rule=smart_to_me)
+revoke = on_command("revoke", aliases={"撤回"}, block=True, rule=smart_to_me)
 
 
 @revoke.handle()
@@ -130,7 +132,7 @@ async def _(
     event: V11MEvent | V12MEvent,
     msg: Annotated[V11Msg | V12Msg, CommandArg()],
 ):
-    sub_id = ''
+    sub_id = ""
     if isinstance(event, V11MEvent):
         msg_type = event.message_type
         id = str(event.group_id if isinstance(event, V11GMEvent) else event.user_id)
@@ -159,7 +161,7 @@ async def _(
             remove_msg_id(key, msg_id)
             return
         except:
-            await revoke.finish('撤回失败，可能已超时')
+            await revoke.finish("撤回失败，可能已超时")
 
     def extract_num(text: str) -> tuple[int, int]:
         if not text:
@@ -168,7 +170,7 @@ async def _(
         if text.isdigit() and 0 <= int(text) < len(msg_ids[key]):
             return int(text), int(text) + 1
 
-        nums = text.split('-')[:2]
+        nums = text.split("-")[:2]
         nums = [n.strip() for n in nums]
         if len(nums) == 2 and nums[0].isdigit() and nums[1].isdigit():
             start_num = int(nums[0])
@@ -180,7 +182,7 @@ async def _(
     text = msg.extract_plain_text().strip()
     start_num, end_num = extract_num(text)
 
-    res = ''
+    res = ""
     message_ids = [msg_ids[key][-num - 1] for num in range(start_num, end_num)]
     for message_id in message_ids:
         try:
@@ -188,9 +190,9 @@ async def _(
             msg_ids[key].remove(message_id)
         except:
             if not res:
-                res = '撤回失败，可能已超时'
+                res = "撤回失败，可能已超时"
                 if end_num - start_num > 1:
-                    res = '部分消息' + res
+                    res = "部分消息" + res
             continue
     if res:
         await revoke.finish(res)
@@ -205,7 +207,7 @@ def _(bot: V11Bot, event: GroupRecallNoticeEvent):
         return
     msg_id = str(event.message_id)
     id = str(event.group_id)
-    key = get_key(bot, 'group', id)
+    key = get_key(bot, "group", id)
     remove_msg_id(key, msg_id)
 
 
@@ -213,11 +215,11 @@ def _(bot: V11Bot, event: GroupRecallNoticeEvent):
 def _(bot: V12Bot, event: GroupMessageDeleteEvent | ChannelMessageDeleteEvent):
     msg_id = event.message_id
     if isinstance(event, GroupMessageDeleteEvent):
-        msg_type = 'group'
+        msg_type = "group"
         id = event.group_id
-        sub_id = ''
+        sub_id = ""
     else:
-        msg_type = 'channel'
+        msg_type = "channel"
         id = event.guild_id
         sub_id = event.channel_id
     key = get_key(bot, msg_type, id, sub_id)

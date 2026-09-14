@@ -147,7 +147,7 @@ async def terminology_func(message: Annotated[Message, CommandArg()]):
             term_name_to_ids[term.term_name].append(term.term_id)
 
     lines: list[str] = []
-    lines.append(f"术语释义")
+    lines.append("术语释义")
     lines.append("________________")
     for term_name in query_term_name_list:
         if not term_name_to_ids.get(term_name, []):

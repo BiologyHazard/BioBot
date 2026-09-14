@@ -15,5 +15,7 @@ class Config(BaseModel):
     def check_default_values(cls, values):
         for name, field in cls.model_fields.items():
             if name not in values:
-                logger.opt(colors=True).warning(f'<b>[复读姬]</> 未发现配置项 <magenta>{name!r}</>, 采用默认值: {field.default!r}')
+                logger.opt(colors=True).warning(
+                    f"<b>[复读姬]</> 未发现配置项 <magenta>{name!r}</>, 采用默认值: {field.default!r}"
+                )
         return values

@@ -1,5 +1,5 @@
-""" 词云
-"""
+"""词云"""
+
 import re
 from base64 import b64decode
 from datetime import datetime, timedelta
@@ -466,7 +466,9 @@ async def _(
             channel_id=channel_id,
         )
         if schedule_time:
-            await schedule_cmd.finish(f"词云每日定时发送已开启，发送时间为：{schedule_time}")
+            await schedule_cmd.finish(
+                f"词云每日定时发送已开启，发送时间为：{schedule_time}"
+            )
         else:
             await schedule_cmd.finish("词云每日定时发送未开启")
     elif command == "开启词云每日定时发送":
@@ -485,7 +487,9 @@ async def _(
             channel_id=channel_id,
         )
         if schedule_time:
-            await schedule_cmd.finish(f"已开启词云每日定时发送，发送时间为：{schedule_time}")
+            await schedule_cmd.finish(
+                f"已开启词云每日定时发送，发送时间为：{schedule_time}"
+            )
         else:
             await schedule_cmd.finish(
                 f"已开启词云每日定时发送，发送时间为：{plugin_config.wordcloud_default_schedule_time}"

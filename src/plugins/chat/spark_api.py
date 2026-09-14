@@ -12,17 +12,17 @@ from nonebot import logger
 from .typing import Result, Text
 
 VERSION_TO_DOMAIN = {
-    'v1.5': 'general',
-    'v2.0': 'generalv2',
-    'v3.0': 'generalv3',
-    'v3.5': 'generalv3.5',
+    "v1.5": "general",
+    "v2.0": "generalv2",
+    "v3.0": "generalv3",
+    "v3.5": "generalv3.5",
 }
 
 VERSION_TO_URL = {
-    'v1.5': 'ws://spark-api.xf-yun.com/v1.1/chat',
-    'v2.0': 'ws://spark-api.xf-yun.com/v2.1/chat',
-    'v3.0': 'ws://spark-api.xf-yun.com/v3.1/chat',
-    'v3.5': 'ws://spark-api.xf-yun.com/v3.5/chat',
+    "v1.5": "ws://spark-api.xf-yun.com/v1.1/chat",
+    "v2.0": "ws://spark-api.xf-yun.com/v2.1/chat",
+    "v3.0": "ws://spark-api.xf-yun.com/v3.1/chat",
+    "v3.5": "ws://spark-api.xf-yun.com/v3.5/chat",
 }
 
 
@@ -34,31 +34,27 @@ def create_url(APPID: str, APIKey: str, APISecret: str, Spark_url: str):
     date = format_date_time(None)
 
     # 拼接字符串
-    signature_origin = (f"host: {host}\n"
-                        f"date: {date}\n"
-                        f"GET {path} HTTP/1.1")
+    signature_origin = f"host: {host}\ndate: {date}\nGET {path} HTTP/1.1"
 
     # 进行hmac-sha256进行加密
     signature_sha = hmac.new(
-        APISecret.encode('utf-8'),
-        signature_origin.encode('utf-8'),
+        APISecret.encode("utf-8"),
+        signature_origin.encode("utf-8"),
         digestmod=hashlib.sha256,
     ).digest()
 
-    signature_sha_base64 = base64.b64encode(signature_sha).decode('utf-8')
+    signature_sha_base64 = base64.b64encode(signature_sha).decode("utf-8")
 
     authorization_origin = f'api_key="{APIKey}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha_base64}"'
 
-    authorization = base64.b64encode(authorization_origin.encode('utf-8')).decode('utf-8')
+    authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(
+        "utf-8"
+    )
 
     # 将请求的鉴权参数组合为字典
-    v = {
-        "authorization": authorization,
-        "date": date,
-        "host": host
-    }
+    v = {"authorization": authorization, "date": date, "host": host}
     # 拼接鉴权参数，生成url
-    url = f'{Spark_url}?{urlencode(v)}'
+    url = f"{Spark_url}?{urlencode(v)}"
     # 此处打印出建立连接时候的url,参考本demo的时候可取消上方打印的注释，比对相同参数时生成的url与自己代码生成的url是否一致
     return url
 
@@ -80,23 +76,21 @@ def gen_params(appid, domain, question, **kwargs):
                 **kwargs,
             }
         },
-        "payload": {
-            "message": {
-                "text": question
-            }
-        }
+        "payload": {"message": {"text": question}},
     }
     return data
 
 
-async def get_reply(appid: str, api_key: str, api_secret: str, version: str, text: Text) -> Result:
+async def get_reply(
+    appid: str, api_key: str, api_secret: str, version: str, text: Text
+) -> Result:
     try:
         version = version.lower()
-        if not version.startswith('v'):
-            version = f'v{version}'
+        if not version.startswith("v"):
+            version = f"v{version}"
         if version not in VERSION_TO_DOMAIN:
-            logger.error(f'不支持的星火版本：{version}，插件将使用默认版本v3.5')
-            version = 'v3.5'
+            logger.error(f"不支持的星火版本：{version}，插件将使用默认版本v3.5")
+            version = "v3.5"
         Spark_url = VERSION_TO_URL[version]
         domain = VERSION_TO_DOMAIN[version]
         answer_segments: list[str] = []
@@ -106,15 +100,15 @@ async def get_reply(appid: str, api_key: str, api_secret: str, version: str, tex
             while True:
                 try:
                     message = await websocket.recv()
-                except websockets.exceptions.ConnectionClosed as e:
+                except websockets.exceptions.ConnectionClosed:
                     break
                 data = json.loads(message)
-                code = data['header']['code']
+                code = data["header"]["code"]
                 if code != 0:
                     return {
-                        'code': code,
-                        'message': data['header']['message'],
-                        'data': {},
+                        "code": code,
+                        "message": data["header"]["message"],
+                        "data": {},
                     }
                 else:
                     choices = data["payload"]["choices"]
@@ -124,15 +118,15 @@ async def get_reply(appid: str, api_key: str, api_secret: str, version: str, tex
                     if status == 2:
                         await websocket.close()
                         break
-        logger.debug(repr(text) + ' -> ' + ''.join(answer_segments))
+        logger.debug(repr(text) + " -> " + "".join(answer_segments))
         return {
-            'code': 0,
-            'message': 'Success',
-            'data': {'content': ''.join(answer_segments)},
+            "code": 0,
+            "message": "Success",
+            "data": {"content": "".join(answer_segments)},
         }
     except Exception as e:
         return {
-            'code': -1,
-            'message': repr(e),
-            'data': {},
+            "code": -1,
+            "message": repr(e),
+            "data": {},
         }

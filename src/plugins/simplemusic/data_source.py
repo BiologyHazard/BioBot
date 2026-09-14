@@ -66,8 +66,7 @@ async def search_kuwo(keyword: str) -> Optional[MessageSegment]:
         songs: List[Dict[str, Any]] = result["abslist"]
         if songs:
             songs.sort(
-                key=lambda x: SequenceMatcher(
-                    None, keyword, x["SONGNAME"]).ratio(),
+                key=lambda x: SequenceMatcher(None, keyword, x["SONGNAME"]).ratio(),
                 reverse=True,
             )
 
@@ -114,8 +113,7 @@ async def search_kugou(keyword: str) -> Optional[MessageSegment]:
         songs: List[Dict[str, Any]] = result["data"]["info"]
         if songs:
             songs.sort(
-                key=lambda x: SequenceMatcher(
-                    None, keyword, x["songname"]).ratio(),
+                key=lambda x: SequenceMatcher(None, keyword, x["songname"]).ratio(),
                 reverse=True,
             )
 
@@ -170,8 +168,7 @@ async def search_migu(keyword: str) -> Optional[MessageSegment]:
 
 async def search_bili(keyword: str) -> Optional[MessageSegment]:
     search_url = "https://api.bilibili.com/audio/music-service-c/s"
-    params = {"page": 1, "pagesize": 1,
-              "search_type": "music", "keyword": keyword}
+    params = {"page": 1, "pagesize": 1, "search_type": "music", "keyword": keyword}
     async with httpx.AsyncClient() as client:
         resp = await client.get(search_url, params=params)
         result = resp.json()
@@ -191,8 +188,7 @@ async def search_bili(keyword: str) -> Optional[MessageSegment]:
 
 
 class Func(Protocol):
-    async def __call__(self, keyword: str) -> Optional[MessageSegment]:
-        ...
+    async def __call__(self, keyword: str) -> Optional[MessageSegment]: ...
 
 
 @dataclass
@@ -208,5 +204,7 @@ sources = [
     Source("酷我音乐", ("kuwo点歌", "酷我点歌"), search_kuwo),
     Source("酷狗音乐", ("kugou点歌", "酷狗点歌"), search_kugou),
     Source("咪咕音乐", ("migu点歌", "咪咕点歌"), search_migu),
-    Source("B站音频区", ("bili点歌", "bilibili点歌", "b站点歌", "B站点歌"), search_bili),
+    Source(
+        "B站音频区", ("bili点歌", "bilibili点歌", "b站点歌", "B站点歌"), search_bili
+    ),
 ]

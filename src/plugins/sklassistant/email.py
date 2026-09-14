@@ -30,7 +30,7 @@ async def read_emails():
     await imap_client.wait_hello_from_server()
     await imap_client.login(name_email.email, email_password)
     await imap_client.select("INBOX")
-    criteria = f'(SUBJECT "token") (UNFLAGGED)'
+    criteria = '(SUBJECT "token") (UNFLAGGED)'
     status, data = await imap_client.search(criteria)
     mail_ids = data[0].decode().split()
     for mail_id in mail_ids:

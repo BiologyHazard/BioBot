@@ -2,8 +2,10 @@ import json
 
 from .config import plugin_config
 
-if (plugin_config.data_path / 'privacy.json').is_file():
-    disabled_users: list[int] = json.loads((plugin_config.data_path / 'privacy.json').read_text('utf-8'))
+if (plugin_config.data_path / "privacy.json").is_file():
+    disabled_users: list[int] = json.loads(
+        (plugin_config.data_path / "privacy.json").read_text("utf-8")
+    )
 else:
     disabled_users = []
 
@@ -19,9 +21,11 @@ def set_privacy(user_id: int, enable: bool) -> None:
             disabled_users.append(user_id)
             save = True
     if save:
-        (plugin_config.data_path / 'privacy.json').write_text(json.dumps(disabled_users), 'utf-8')
+        (plugin_config.data_path / "privacy.json").write_text(
+            json.dumps(disabled_users), "utf-8"
+        )
 
 
 def query_privacy(user_id: int) -> bool:
-    '''`True`表示允许，`False`表示不允许'''
-    return not user_id in disabled_users
+    """`True`表示允许，`False`表示不允许"""
+    return user_id not in disabled_users

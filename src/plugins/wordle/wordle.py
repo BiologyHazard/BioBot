@@ -37,7 +37,7 @@ class Wordle:
         self.word: str = word  # 单词
         self.meaning: dict[str, str] = meaning  # 单词释义
         self.result: str = f"【单词】{self.word}\n【中释】{self.meaning['中释']}"
-        if '英释' in self.meaning:
+        if "英释" in self.meaning:
             self.result += f"\n【英释】{self.meaning['英释']}"
         self.word_lower: str = self.word.lower()
         self.length: int = len(word)  # 单词长度
@@ -67,7 +67,10 @@ class Wordle:
             letter = letter.upper()
             draw = ImageDraw.Draw(block)
             letter_bbox = self.font.getbbox(letter)
-            letter_size = (letter_bbox[2] - letter_bbox[0], letter_bbox[3] - letter_bbox[1])
+            letter_size = (
+                letter_bbox[2] - letter_bbox[0],
+                letter_bbox[3] - letter_bbox[1],
+            )
             x = (self.block_size[0] - letter_size[0]) / 2
             y = (self.block_size[1] - letter_size[1]) / 2
             draw.text((x, y), letter, font=self.font, fill=self.font_color)

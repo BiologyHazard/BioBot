@@ -1,19 +1,17 @@
-import io
 from pathlib import Path
 
 import aiohttp
-from nonebot import logger, on_fullmatch, on_keyword, on_message
-from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message, MessageEvent, MessageSegment
-from nonebot.params import EventMessage
+from nonebot import logger, on_fullmatch
+from nonebot.adapters.onebot.v11 import (
+    Bot,
+    Message,
+    MessageEvent,
+    MessageSegment,
+)
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
-from PIL import Image
 
-__plugin_meta__ = PluginMetadata(
-    name='偷表情',
-    description='偷表情',
-    usage='偷表情'
-)
+__plugin_meta__ = PluginMetadata(name="偷表情", description="偷表情", usage="偷表情")
 
 
 async def upload_file(bot: Bot, type: str, to: int | str, *args, **kwargs):
@@ -81,19 +79,28 @@ async def steal_func(bot: Bot, event: MessageEvent) -> None:
                         logger.debug(f"Successfully downloaded image: {response}")
 
                         file = await response.read()
-                        with open(f"data/steal/images/{message_segment.data["file"]}", "wb") as f:
+                        with open(
+                            f"data/steal/images/{message_segment.data['file']}", "wb"
+                        ) as f:
                             f.write(file)
-                        file = Path(f"data/steal/images/{message_segment.data["file"]}").resolve().as_posix()
+                        file = (
+                            Path(f"data/steal/images/{message_segment.data['file']}")
+                            .resolve()
+                            .as_posix()
+                        )
 
                         # output = io.BytesIO()
                         # Image.open(io.BytesIO(file)).convert("RGBA").save(output, format="PNG")
                         # file = output.getvalue()
 
                         try:
-                            await upload_file(bot,
-                                              event.message_type, getattr(event, "group_id", event.user_id),
-                                              file=file,
-                                              name=message_segment.data["file"])
+                            await upload_file(
+                                bot,
+                                event.message_type,
+                                getattr(event, "group_id", event.user_id),
+                                file=file,
+                                name=message_segment.data["file"],
+                            )
                         except Exception as e:
                             logger.warning(f"Failed to upload image: {e!r}")
 
@@ -101,7 +108,9 @@ async def steal_func(bot: Bot, event: MessageEvent) -> None:
                     logger.warning(f"Failed to download image: {e!r}")
                     file = url
             else:
-                logger.warning(f"No URL found in image message segment ({message_segment}).")
+                logger.warning(
+                    f"No URL found in image message segment ({message_segment})."
+                )
                 file = message_segment.data["file"]
 
             message.append(MessageSegment(type="image", data={"file": file}))

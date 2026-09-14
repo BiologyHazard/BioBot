@@ -7,14 +7,16 @@ from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
 
 __plugin_meta__ = PluginMetadata(
-    name='文本转语音',
-    description='用的qq的api',
-    usage='· (文本转语音|tts|text2sound|t2s) <文字>'
+    name="文本转语音",
+    description="用的qq的api",
+    usage="· (文本转语音|tts|text2sound|t2s) <文字>",
 )
 
-text2sound: type[Matcher] = on_command('文本转语音', aliases={'tts', 'text2sound', 't2s'}, priority=5)
+text2sound: type[Matcher] = on_command(
+    "文本转语音", aliases={"tts", "text2sound", "t2s"}, priority=5
+)
 
 
 @text2sound.handle()
 async def text2sound_func(message: Annotated[Message, CommandArg()]) -> None:
-    await text2sound.finish(MessageSegment('tts', {'text': str(message)}))
+    await text2sound.finish(MessageSegment("tts", {"text": str(message)}))

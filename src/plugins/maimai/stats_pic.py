@@ -1,10 +1,7 @@
 from bisect import bisect_right
-from typing import Any
 from itertools import accumulate
 
-from PIL import Image
 
-from .config import plugin_config
 from .consts import DIFFICULTY_NAME, COMBO_RANK, SCORE_RANK
 from .music import Chart, ChartStats, LevelStats, Mai, Music
 from .image import text_to_image
@@ -125,17 +122,17 @@ from .image import text_to_image
 
 
 def get_std_dev_text(std_dev: float) -> str:
-    '''
+    """
     极高 4.80..
     高 4.20..4.80
     较高 3.60..4.20
     正常 0.00..3.60
-    '''
-    return ['正常', '较高', '高', '极高'][bisect_right([3.60, 4.20, 4.80], std_dev)]
+    """
+    return ["正常", "较高", "高", "极高"][bisect_right([3.60, 4.20, 4.80], std_dev)]
 
 
 def chart_stats_text(music: Music, diff_index: int):
-    '''
+    """
     834. PANDORA PARADOXXX | Re:MASTER 15.0
     斜杠后为合计值，小括号内为同等级平均值，中括号内为二者之差
     【基础信息】
@@ -160,38 +157,43 @@ def chart_stats_text(music: Music, diff_index: int):
     【全连分布】
     · AP+ 0.05% / 0.05% (0.05% / 0.05%) [+0.00% / +0.00%]
     ...
-    '''
+    """
 
     chart: Chart = music.charts[diff_index]
     stats: ChartStats = chart.stats
     level_stats: LevelStats = Mai.diff_data[music.level[diff_index]]
     score_rank_data: list[tuple[str, float, float, float, float]] = []
-    '''`[('SSS+', 0.59%, 0.59%, 0.59%, 0.59%), ...]`'''
+    """`[('SSS+', 0.59%, 0.59%, 0.59%, 0.59%), ...]`"""
     combo_rank_data: list[tuple[str, float, float, float, float]] = []
-    '''`[('AP+', 0.05%, 0.05%, 0.05%, 0.05%), ...]`'''
+    """`[('AP+', 0.05%, 0.05%, 0.05%, 0.05%), ...]`"""
     for i, score_rank in enumerate(SCORE_RANK):
-        score_rank_data.append((
-            score_rank,
-            stats.dist[i] / stats.count,
-            sum(stats.dist[i:]) / stats.count,
-            level_stats.dist[i],
-            sum(level_stats.dist[i:]),
-            # stats.dist[i] / stats.count - level_stats.dist[i],
-            # sum(stats.dist[i:]) / stats.count - sum(level_stats.dist[i:]),
-        ))
+        score_rank_data.append(
+            (
+                score_rank,
+                stats.dist[i] / stats.count,
+                sum(stats.dist[i:]) / stats.count,
+                level_stats.dist[i],
+                sum(level_stats.dist[i:]),
+                # stats.dist[i] / stats.count - level_stats.dist[i],
+                # sum(stats.dist[i:]) / stats.count - sum(level_stats.dist[i:]),
+            )
+        )
     for i, combo_rank in enumerate(COMBO_RANK):
-        combo_rank_data.append((
-            combo_rank,
-            stats.fc_dist[i] / stats.count,
-            sum(stats.fc_dist[i:]) / stats.count,
-            level_stats.fc_dist[i],
-            sum(level_stats.fc_dist[i:]),
-            # stats.fc_dist[i] / stats.count - level_stats.fc_dist[i],
-            # sum(stats.fc_dist[i:]) / stats.count - sum(level_stats.fc_dist[i:]),
-        ))
+        combo_rank_data.append(
+            (
+                combo_rank,
+                stats.fc_dist[i] / stats.count,
+                sum(stats.fc_dist[i:]) / stats.count,
+                level_stats.fc_dist[i],
+                sum(level_stats.fc_dist[i:]),
+                # stats.fc_dist[i] / stats.count - level_stats.fc_dist[i],
+                # sum(stats.fc_dist[i:]) / stats.count - sum(level_stats.fc_dist[i:]),
+            )
+        )
 
-    return text_to_image((
-        f'''{music.id}. {music.title} | {DIFFICULTY_NAME[diff_index]} {music.ds[diff_index]}
+    return text_to_image(
+        (
+            f"""{music.id}. {music.title} | {DIFFICULTY_NAME[diff_index]} {music.ds[diff_index]}
 # 斜杠后为合计值，小括号内为同等级平均值，中括号内为二者之差
 【基础信息】
 · 游玩次数：\t\t{stats.count} ({level_stats.avg_count:.2f}) [{stats.count - level_stats.avg_count:+.2f}] [{stats.count / level_stats.avg_count - 1:+.2%}]
@@ -207,13 +209,19 @@ def chart_stats_text(music: Music, diff_index: int):
 · AP占比：\t\t{combo_rank_data[3][2]:.2%} ({combo_rank_data[3][4]:.2%}) [{combo_rank_data[3][2] - combo_rank_data[3][4]:+.2%}]
 
 【达成率分布】
-'''
-        + '\n'.join(f'· {r}\t{a:.2%} /\0\t{b:.2%}\0\t({c:.2%} /\0\t{d:.2%})\0\t[{a-c:+.2%} /\0\t{b-d:+.2%}]\0' for r, a, b, c, d in reversed(score_rank_data))
-        + '''
+"""
+            + "\n".join(
+                f"· {r}\t{a:.2%} /\0\t{b:.2%}\0\t({c:.2%} /\0\t{d:.2%})\0\t[{a - c:+.2%} /\0\t{b - d:+.2%}]\0"
+                for r, a, b, c, d in reversed(score_rank_data)
+            )
+            + """
 
 【全连分布】
-'''
-        + '\n'.join(f'· {r}\t{a:.2%} /\0\t{b:.2%}\0\t({c:.2%} /\0\t{d:.2%})\0\t[{a-c:+.2%} /\0\t{b-d:+.2%}]\0' for r, a, b, c, d in reversed(combo_rank_data))
-    ),
+"""
+            + "\n".join(
+                f"· {r}\t{a:.2%} /\0\t{b:.2%}\0\t({c:.2%} /\0\t{d:.2%})\0\t[{a - c:+.2%} /\0\t{b - d:+.2%}]\0"
+                for r, a, b, c, d in reversed(combo_rank_data)
+            )
+        ),
         tabs=list(accumulate([9, 4, 5, 4.5, 5, 4.5])),
     )

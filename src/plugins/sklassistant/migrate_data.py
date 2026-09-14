@@ -6,7 +6,6 @@ from nonebot import get_driver, logger
 from nonebot_plugin_orm import get_session
 from sqlalchemy import select
 
-from .config import plugin_config
 from .models import SKLToken
 
 driver = get_driver()

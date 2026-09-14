@@ -551,7 +551,11 @@ def homo(num):
             return Nums[nm]
 
         div = getMinDiv(nm)
-        return re.sub(r"\*\(1\)|\+\(0\)$", "", f"{div}*({demolish(math.floor(nm / div))})+" + f"({demolish(nm % div)})")
+        return re.sub(
+            r"\*\(1\)|\+\(0\)$",
+            "",
+            f"{div}*({demolish(math.floor(nm / div))})+" + f"({demolish(nm % div)})",
+        )
 
     def rep(x: re.Match):
         x = x.group()
@@ -584,5 +588,5 @@ def generate_homo(num):
 
 
 # print(generate_homo("1594565"))
-if __name__ == '__main__':
+if __name__ == "__main__":
     print(homo(1.5))

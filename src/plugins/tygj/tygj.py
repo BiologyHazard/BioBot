@@ -7,22 +7,32 @@ from .config import data_path
 
 
 def strftime(event_time: int) -> str:
-    return datetime.datetime.fromtimestamp(event_time).strftime('%H:%M:%S')
+    return datetime.datetime.fromtimestamp(event_time).strftime("%H:%M:%S")
 
 
 def strftimedelta(time0: int, time1: int) -> str:
-    delta = datetime.datetime.fromtimestamp(time1) - datetime.datetime.fromtimestamp(time0)
+    delta = datetime.datetime.fromtimestamp(time1) - datetime.datetime.fromtimestamp(
+        time0
+    )
     seconds: int = delta.seconds
     hour, minute, second = seconds // 3600, seconds % 3600 // 60, seconds % 60
     if hour > 0:
-        return f'{hour}小时{minute}分钟'
+        return f"{hour}小时{minute}分钟"
     if minute > 0:
-        return f'{minute}分钟'
-    return f'{second}秒'
+        return f"{minute}分钟"
+    return f"{second}秒"
 
 
 class Tygj:
-    def __init__(self, num: int, qqid: int | None, nickname: str | None, card: str | None, role: str | None, time: int) -> None:
+    def __init__(
+        self,
+        num: int,
+        qqid: int | None,
+        nickname: str | None,
+        card: str | None,
+        role: str | None,
+        time: int,
+    ) -> None:
         self.num: int = num
         self.qqid: int | None = qqid
         self.nickname: str | None = nickname

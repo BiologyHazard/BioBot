@@ -7,7 +7,7 @@ from .utils import words_dir
 
 
 def entropy_to_expected_score(ent: float) -> float:
-    return 2 - 2**(-ent) + 1.5 / 11.5 * ent
+    return 2 - 2 ** (-ent) + 1.5 / 11.5 * ent
 
 
 def calc_hint(ans: str, guess: str) -> list[int]:
@@ -39,8 +39,12 @@ def hint_to_num(hint: list[int]) -> int:
 
 class WordleAI:
     def __init__(self, dic_name: str, length: int) -> None:
-        self.psb_answers: set[str] = set(filter(lambda s: len(s) == length,
-                                                json.loads((words_dir / f'{dic_name}.json').read_text("utf-8")).keys()))
+        self.psb_answers: set[str] = set(
+            filter(
+                lambda s: len(s) == length,
+                json.loads((words_dir / f"{dic_name}.json").read_text("utf-8")).keys(),
+            )
+        )
         self.supported_guesses: set[str] = self.psb_answers.copy()
         self.length: int = length
 
@@ -52,22 +56,32 @@ class WordleAI:
         guesses_exp: dict[str, float] = {}
         left_entropy: float = math.log2(len(self.psb_answers))
         for guess in guesses:
-            prob: float = 1 / len(self.psb_answers) if guess in self.psb_answers else 0.0
+            prob: float = (
+                1 / len(self.psb_answers) if guess in self.psb_answers else 0.0
+            )
             hint_count = np.zeros(3**self.length, dtype=np.int8)
             for ans in self.psb_answers:
                 hint_count[hint_to_num(calc_hint(ans, guess))] += 1
             ent = 0
             for count in hint_count:
                 if count > 0:
-                    ent += (count / len(self.psb_answers) *
-                            (-math.log2(count / len(self.psb_answers))))
-            guesses_exp[guess] = prob + (1 - prob) * (1 + entropy_to_expected_score(left_entropy - ent))
+                    ent += (
+                        count
+                        / len(self.psb_answers)
+                        * (-math.log2(count / len(self.psb_answers)))
+                    )
+            guesses_exp[guess] = prob + (1 - prob) * (
+                1 + entropy_to_expected_score(left_entropy - ent)
+            )
         return min(guesses_exp, key=lambda x: guesses_exp[x])
 
     def store_result(self, guess: str, hint: list[int]) -> set[str]:
         if all(x == 2 for x in hint):
             self.psb_answers &= {guess}
         else:
-            self.psb_answers = {psb_ans for psb_ans in self.psb_answers
-                                if calc_hint(psb_ans, guess) == hint}
+            self.psb_answers = {
+                psb_ans
+                for psb_ans in self.psb_answers
+                if calc_hint(psb_ans, guess) == hint
+            }
         return self.psb_answers

@@ -10,16 +10,16 @@ from nonebot.plugin import PluginMetadata
 from .slscq import Slscq
 
 __plugin_meta__ = PluginMetadata(
-    name='申论生成器',
-    description='生成申论文章',
-    usage=(
-        "· (申论生成器|slscq|生成申论|scsl) <申论主题> <字数下限>"
-    ),
-    type='application',
+    name="申论生成器",
+    description="生成申论文章",
+    usage=("· (申论生成器|slscq|生成申论|scsl) <申论主题> <字数下限>"),
+    type="application",
 )
 
-sl = on_command('申论生成器', aliases={'生成申论', 'slscq', 'scsl'}, priority=5, block=False)
-slscq = Slscq(Path(__file__).parent / 'data.json')
+sl = on_command(
+    "申论生成器", aliases={"生成申论", "slscq", "scsl"}, priority=5, block=False
+)
+slscq = Slscq(Path(__file__).parent / "data.json")
 
 
 @sl.handle()
@@ -34,10 +34,12 @@ async def sl_func(message: Annotated[Message, CommandArg()]):
         else:
             raise ValueError
     except Exception:
-        await sl.finish(f'使用方法：(申论生成器|slscq|生成申论|scsl) <申论主题> <字数下限>')
+        await sl.finish(
+            "使用方法：(申论生成器|slscq|生成申论|scsl) <申论主题> <字数下限>"
+        )
 
     if length > 1000:
-        await sl.finish('字数下限不能超过1000')
+        await sl.finish("字数下限不能超过1000")
 
     text = slscq.gen_text(topic, length)
     await sl.finish(text)

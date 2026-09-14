@@ -7,7 +7,9 @@ from .expression import Expression, number_T
 
 
 class XXIVSolver:
-    def __init__(self, target: number_T = 24, nums: (Sequence[number_T] | None) = None) -> None:
+    def __init__(
+        self, target: number_T = 24, nums: (Sequence[number_T] | None) = None
+    ) -> None:
         self.target: Fraction = Fraction(target)
         self.nums = nums
 
@@ -54,32 +56,47 @@ class XXIVSolver:
         for i, j in combinations(range(n), 2):
             x: Expression = nums[i]
             y: Expression = nums[j]
-            new_nums: list[Expression] = [num for k, num in enumerate(nums) if k != i and k != j]
-            if (result := self._dfs(new_nums + [x+y], divide)) is not None:
+            new_nums: list[Expression] = [
+                num for k, num in enumerate(nums) if k != i and k != j
+            ]
+            if (result := self._dfs(new_nums + [x + y], divide)) is not None:
                 return result
-            if x.value >= y.value and (result := self._dfs(new_nums + [x-y], divide)) is not None:
+            if (
+                x.value >= y.value
+                and (result := self._dfs(new_nums + [x - y], divide)) is not None
+            ):
                 return result
-            if x.value < y.value and (result := self._dfs(new_nums + [y-x], divide)) is not None:
+            if (
+                x.value < y.value
+                and (result := self._dfs(new_nums + [y - x], divide)) is not None
+            ):
                 return result
-            if (result := self._dfs(new_nums + [x*y], divide)) is not None:
+            if (result := self._dfs(new_nums + [x * y], divide)) is not None:
                 return result
             if divide:
-                if y.value != 0 and (result := self._dfs(new_nums + [x/y], divide)) is not None:
+                if (
+                    y.value != 0
+                    and (result := self._dfs(new_nums + [x / y], divide)) is not None
+                ):
                     return result
-                if x.value != 0 and (result := self._dfs(new_nums + [y/x], divide)) is not None:
+                if (
+                    x.value != 0
+                    and (result := self._dfs(new_nums + [y / x], divide)) is not None
+                ):
                     return result
 
         return None
 
     @classmethod
-    def generate(cls,
-                 n: int = 4,
-                 target: int = 4,
-                 max_num: int = 13,
-                 min_num: int = 1,
-                 solvable_probability: float | None = None,
-                 max_trials: int | None = 16
-                 ) -> tuple[list[int] | None, Expression | None]:
+    def generate(
+        cls,
+        n: int = 4,
+        target: int = 4,
+        max_num: int = 13,
+        min_num: int = 1,
+        solvable_probability: float | None = None,
+        max_trials: int | None = 16,
+    ) -> tuple[list[int] | None, Expression | None]:
         if solvable_probability is None:
             nums: list[int] = [random.randint(min_num, max_num) for _ in range(n)]
             solution: Expression | None = cls(target, nums).solve()
@@ -90,13 +107,15 @@ class XXIVSolver:
             trial += 1
             nums: list[int] = [random.randint(min_num, max_num) for _ in range(n)]
             solution = cls(target, nums).solve()
-            if (solvable and solution is not None) or (not solvable and solution is None):
+            if (solvable and solution is not None) or (
+                not solvable and solution is None
+            ):
                 return nums, solution
             if (max_trials is not None) and (trial >= max_trials):
                 return None, None
 
 
-if __name__ == '__main__':
-    print(*XXIVSolver.generate(4, 100, 6), sep='\n')
+if __name__ == "__main__":
+    print(*XXIVSolver.generate(4, 100, 6), sep="\n")
     # print(str(XXIVSolver(24, [1, 1, 4, 5, 1, 4]).solve()))
     # print(repr(Expression(Expression(Fraction(10)))))

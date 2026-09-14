@@ -1,14 +1,19 @@
 from datetime import datetime, timedelta
 
 from nonebot import logger, on_notice, on_command
-from nonebot.adapters.onebot.v11 import Bot, MessageSegment, PokeNotifyEvent, MessageEvent, GroupMessageEvent, PrivateMessageEvent
+from nonebot.adapters.onebot.v11 import (
+    Bot,
+    PokeNotifyEvent,
+    MessageEvent,
+    GroupMessageEvent,
+)
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 
 __plugin_meta__ = PluginMetadata(
-    name='戳一戳',
-    description='戳bot一下，bot戳你一下；戳别人一下，bot跟着戳一下',
-    usage='戳bot一下，bot戳你一下；戳别人一下，bot跟着戳一下'
+    name="戳一戳",
+    description="戳bot一下，bot戳你一下；戳别人一下，bot跟着戳一下",
+    usage="戳bot一下，bot戳你一下；戳别人一下，bot跟着戳一下",
 )
 
 # 冷却时间（秒）
@@ -34,7 +39,9 @@ async def not_poked_by_self_and_cooled_down(event: PokeNotifyEvent) -> bool:
     if result:
         last_poke_time = now
     else:
-        logger.opt(colors=True).info(f"收到戳一戳消息，但是<yellow><bold>冷却时间未到</></>，当前时间：{now}，上次戳的时间：{last_poke_time}，冷却时间：{COOLDOWN_TIME}，冷却时间还剩：{COOLDOWN_TIME - (now - last_poke_time)}")
+        logger.opt(colors=True).info(
+            f"收到戳一戳消息，但是<yellow><bold>冷却时间未到</></>，当前时间：{now}，上次戳的时间：{last_poke_time}，冷却时间：{COOLDOWN_TIME}，冷却时间还剩：{COOLDOWN_TIME - (now - last_poke_time)}"
+        )
 
     return result
 

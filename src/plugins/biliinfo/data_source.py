@@ -1,31 +1,29 @@
-import math
 import re
 import time
 from typing import Any
 
 import aiohttp
-from nonebot import logger
 from nonebot.adapters.onebot.v11 import Message, MessageSegment
 
 from .config import plugin_config
 
-url: str = 'https://api.bilibili.com/x/web-interface/view'
+url: str = "https://api.bilibili.com/x/web-interface/view"
 headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0',
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
     "Accept-Encoding": "gzip, deflate, br, zstd",
     "Accept-Language": "zh-CN,zh;q=0.9",
     "Priority": "u=0, i",
-    "Sec-Ch-Ua": '"Chromium";v="134", "Not:A-Brand";v="24", "Microsoft Edge";v="134"'
+    "Sec-Ch-Ua": '"Chromium";v="134", "Not:A-Brand";v="24", "Microsoft Edge";v="134"',
 }
 
 T_group = tuple[str, str, str]
-'''(BV, b23, av)'''
+"""(BV, b23, av)"""
 
 
 async def b23_to_bv(b23: str) -> str:
-    async with aiohttp.request('GET', f'https://{b23}', headers=headers) as response:
-        return re.findall(r'BV1\w{9}', str(response.url), flags=re.IGNORECASE)[0]
+    async with aiohttp.request("GET", f"https://{b23}", headers=headers) as response:
+        return re.findall(r"BV1\w{9}", str(response.url), flags=re.IGNORECASE)[0]
 
 
 # def bv_to_av(bv: str) -> int:
@@ -68,61 +66,67 @@ async def b23_to_bv(b23: str) -> str:
 
 async def get_top_comments(av: int) -> str:
     try:
-        async with aiohttp.request('GET', 'https://api.bilibili.com/x/v2/reply/main', params={'next': '0', 'type': '1', 'oid': str(av)}, headers=headers) as response:
+        async with aiohttp.request(
+            "GET",
+            "https://api.bilibili.com/x/v2/reply/main",
+            params={"next": "0", "type": "1", "oid": str(av)},
+            headers=headers,
+        ) as response:
             obj: dict[str, Any] = await response.json()
     except Exception:
-        return ''
-    hot_comments: list[dict[str, Any]] = obj['data']['replies'][:3]
-    msg: str = '\n-----------------\n--前三热评如下--\n-----------------\n'
+        return ""
+    hot_comments: list[dict[str, Any]] = obj["data"]["replies"][:3]
+    msg: str = "\n-----------------\n--前三热评如下--\n-----------------\n"
     for c in hot_comments:
-        name: str = c['member']['uname']
-        txt: str = c['content']['message']
-        msg += f'{name}: {txt}\n\n'
+        name: str = c["member"]["uname"]
+        txt: str = c["content"]["message"]
+        msg += f"{name}: {txt}\n\n"
     return msg
 
 
 async def get_video_info(group: T_group) -> Message:
     bv, str_av, b23 = group
     if bv:
-        params: dict[str, str] = {'bvid': bv}
+        params: dict[str, str] = {"bvid": bv}
     elif b23:
         bv: str = await b23_to_bv(b23)
-        params: dict[str, str] = {'bvid': bv}
+        params: dict[str, str] = {"bvid": bv}
     elif str_av:
-        params: dict[str, str] = {'aid': str_av[2:]}
+        params: dict[str, str] = {"aid": str_av[2:]}
     else:
         raise ValueError
 
-    async with aiohttp.request('GET', url, params=params, headers=headers) as response:
+    async with aiohttp.request("GET", url, params=params, headers=headers) as response:
         assert response.status == 200
         # logger.info(response.status)
         obj: dict[str, Any] = await response.json()
         # logger.info(obj)
 
-    assert obj['code'] == 0
-    bv: str = obj['data']['bvid']
-    aid: int = obj['data']['aid']
-    title: str = obj['data']['title']
-    pic_url: str = obj['data']['pic']
-    stat: dict[str, Any] = obj['data']['stat']
-    view: int = stat['view']
-    danmaku: int = stat['danmaku']
-    reply: int = stat['reply']
-    fav: int = stat['favorite']
-    coin: int = stat['coin']
-    share: int = stat['share']
-    like: int = stat['like']
-    link: str = f'https://b23.tv/av{aid}'
-    desc: str = obj['data']['desc']
-    name: str = obj['data']['owner']['name']
-    mid: int = obj['data']['owner']['mid']
-    up_link: str = f'https://space.bilibili.com/{mid}'
-    pub_date: int = obj['data']['pubdate']
-    date_str: str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(pub_date))
+    assert obj["code"] == 0
+    bv: str = obj["data"]["bvid"]
+    aid: int = obj["data"]["aid"]
+    title: str = obj["data"]["title"]
+    pic_url: str = obj["data"]["pic"]
+    stat: dict[str, Any] = obj["data"]["stat"]
+    view: int = stat["view"]
+    danmaku: int = stat["danmaku"]
+    reply: int = stat["reply"]
+    fav: int = stat["favorite"]
+    coin: int = stat["coin"]
+    share: int = stat["share"]
+    like: int = stat["like"]
+    link: str = f"https://b23.tv/av{aid}"
+    desc: str = obj["data"]["desc"]
+    name: str = obj["data"]["owner"]["name"]
+    mid: int = obj["data"]["owner"]["mid"]
+    up_link: str = f"https://space.bilibili.com/{mid}"
+    pub_date: int = obj["data"]["pubdate"]
+    date_str: str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(pub_date))
 
     message: Message = (
         MessageSegment.image(pic_url)
-        + f'av{aid} / {bv}\n{title}\nUP主：{name}({up_link})\n投稿时间：{date_str}\n播放：{view} | 弹幕：{danmaku} | 评论：{reply}\n点赞：{like} | 硬币：{coin} | 收藏：{fav} | 分享：{share}\n点击链接进入：\n{link}\n简介：{desc}')
+        + f"av{aid} / {bv}\n{title}\nUP主：{name}({up_link})\n投稿时间：{date_str}\n播放：{view} | 弹幕：{danmaku} | 评论：{reply}\n点赞：{like} | 硬币：{coin} | 收藏：{fav} | 分享：{share}\n点击链接进入：\n{link}\n简介：{desc}"
+    )
 
     if plugin_config.biliinfo_show_comments:
         message += await get_top_comments(aid)

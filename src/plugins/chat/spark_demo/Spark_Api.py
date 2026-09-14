@@ -12,6 +12,7 @@ from urllib.parse import urlencode
 from wsgiref.handlers import format_date_time
 
 import websocket  # 使用websocket_client
+
 answer = ""
 
 
@@ -37,23 +38,24 @@ class Ws_Param(object):
         signature_origin += "GET " + self.path + " HTTP/1.1"
 
         # 进行hmac-sha256进行加密
-        signature_sha = hmac.new(self.APISecret.encode('utf-8'), signature_origin.encode('utf-8'),
-                                 digestmod=hashlib.sha256).digest()
+        signature_sha = hmac.new(
+            self.APISecret.encode("utf-8"),
+            signature_origin.encode("utf-8"),
+            digestmod=hashlib.sha256,
+        ).digest()
 
-        signature_sha_base64 = base64.b64encode(signature_sha).decode(encoding='utf-8')
+        signature_sha_base64 = base64.b64encode(signature_sha).decode(encoding="utf-8")
 
         authorization_origin = f'api_key="{self.APIKey}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha_base64}"'
 
-        authorization = base64.b64encode(authorization_origin.encode('utf-8')).decode(encoding='utf-8')
+        authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(
+            encoding="utf-8"
+        )
 
         # 将请求的鉴权参数组合为字典
-        v = {
-            "authorization": authorization,
-            "date": date,
-            "host": self.host
-        }
+        v = {"authorization": authorization, "date": date, "host": self.host}
         # 拼接鉴权参数，生成url
-        url = self.Spark_url + '?' + urlencode(v)
+        url = self.Spark_url + "?" + urlencode(v)
         # 此处打印出建立连接时候的url,参考本demo的时候可取消上方打印的注释，比对相同参数时生成的url与自己代码生成的url是否一致
         return url
 
@@ -74,7 +76,9 @@ def on_open(ws):
 
 
 def run(ws, *args):
-    data = json.dumps(gen_params(appid=ws.appid, domain=ws.domain, question=ws.question))
+    data = json.dumps(
+        gen_params(appid=ws.appid, domain=ws.domain, question=ws.question)
+    )
     ws.send(data)
 
 
@@ -82,9 +86,9 @@ def run(ws, *args):
 def on_message(ws, message):
     # print(message)
     data = json.loads(message)
-    code = data['header']['code']
+    code = data["header"]["code"]
     if code != 0:
-        print(f'请求错误: {code}, {data}')
+        print(f"请求错误: {code}, {data}")
         ws.close()
     else:
         choices = data["payload"]["choices"]
@@ -103,22 +107,11 @@ def gen_params(appid, domain, question):
     通过appid和用户的提问来生成请参数
     """
     data = {
-        "header": {
-            "app_id": appid,
-            "uid": "1234"
-        },
+        "header": {"app_id": appid, "uid": "1234"},
         "parameter": {
-            "chat": {
-                "domain": domain,
-                "temperature": 0.5,
-                "max_tokens": 2048
-            }
+            "chat": {"domain": domain, "temperature": 0.5, "max_tokens": 2048}
         },
-        "payload": {
-            "message": {
-                "text": question
-            }
-        }
+        "payload": {"message": {"text": question}},
     }
     return data
 
@@ -128,7 +121,13 @@ def main(appid, api_key, api_secret, Spark_url, domain, question):
     wsParam = Ws_Param(appid, api_key, api_secret, Spark_url)
     websocket.enableTrace(False)
     wsUrl = wsParam.create_url()
-    ws = websocket.WebSocketApp(wsUrl, on_message=on_message, on_error=on_error, on_close=on_close, on_open=on_open)
+    ws = websocket.WebSocketApp(
+        wsUrl,
+        on_message=on_message,
+        on_error=on_error,
+        on_close=on_close,
+        on_open=on_open,
+    )
     ws.appid = appid
     ws.question = question
     ws.domain = domain

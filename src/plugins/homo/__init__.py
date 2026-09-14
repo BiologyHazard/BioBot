@@ -10,20 +10,25 @@ from nonebot.plugin import PluginMetadata
 from .homo import generate_homo
 
 __plugin_meta__ = PluginMetadata(
-    name='恶臭论证',
-    description='用114514表示任何数字',
-    usage='· (恶臭论证|恶臭|homo|114514) <数字>'
+    name="恶臭论证",
+    description="用114514表示任何数字",
+    usage="· (恶臭论证|恶臭|homo|114514) <数字>",
 )
 
 
 @Rule
-async def with_command_start_or_to_me(command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]) -> bool:
+async def with_command_start_or_to_me(
+    command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]
+) -> bool:
     return bool(command_start) or to_me
 
-generate: type[Matcher] = on_command('恶臭',
-                                     aliases={'恶臭论证', 'homo', '114514'},
-                                     #  rule=with_command_start_or_to_me,
-                                     priority=5)
+
+generate: type[Matcher] = on_command(
+    "恶臭",
+    aliases={"恶臭论证", "homo", "114514"},
+    #  rule=with_command_start_or_to_me,
+    priority=5,
+)
 
 
 @generate.handle()

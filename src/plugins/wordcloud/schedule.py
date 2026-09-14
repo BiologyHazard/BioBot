@@ -77,7 +77,9 @@ class Scheduler:
                         second=scheduler_time.second,
                         args=(schedule_time,),
                     )
-                    logger.debug(f"已添加每日词云定时发送任务，发送时间：{time_str} UTC")
+                    logger.debug(
+                        f"已添加每日词云定时发送任务，发送时间：{time_str} UTC"
+                    )
 
     async def run_task(self, time: Optional[time] = None):
         """执行定时任务

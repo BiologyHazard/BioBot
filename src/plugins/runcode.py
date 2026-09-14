@@ -5,7 +5,7 @@ from typing import Annotated
 
 from nonebot.params import CommandArg
 
-run_code = on_command('runcode', permission=SUPERUSER, priority=1, block=False)
+run_code = on_command("runcode", permission=SUPERUSER, priority=1, block=False)
 
 
 @run_code.handle()

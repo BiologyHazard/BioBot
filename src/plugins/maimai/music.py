@@ -16,12 +16,22 @@ import aiohttp
 from nonebot import logger
 
 from .config import plugin_config
-from .consts import (LEVELS, PLATE_TO_VERSION, VERSION_TO_PLATE, BaseRaSpp,
-                     achievementList)
+from .consts import (
+    LEVELS,
+    PLATE_TO_VERSION,
+    VERSION_TO_PLATE,
+    BaseRaSpp,
+    achievementList,
+)
 
 
 def calc_rating(ds: float, achievement: float) -> int:
-    return math.floor(ds * min(achievement, 100.5000) * BaseRaSpp[bisect_right(achievementList, achievement)] / 100)
+    return math.floor(
+        ds
+        * min(achievement, 100.5000)
+        * BaseRaSpp[bisect_right(achievementList, achievement)]
+        / 100
+    )
 
 
 @dataclass
@@ -38,14 +48,14 @@ class ChartStats:
     @classmethod
     def from_json(cls, obj: dict[str, Any]) -> Self:
         return cls(
-            count=int(obj['cnt']),
-            diff=obj['diff'],
-            fit_diff=obj['fit_diff'],
-            avg_achievement=obj['avg'],
-            avg_dx_score=obj['avg_dx'],
-            std_dev=obj['std_dev'],
-            dist=[int(x) for x in obj['dist']],
-            fc_dist=[int(x) for x in obj['fc_dist']],
+            count=int(obj["cnt"]),
+            diff=obj["diff"],
+            fit_diff=obj["fit_diff"],
+            avg_achievement=obj["avg"],
+            avg_dx_score=obj["avg_dx"],
+            std_dev=obj["std_dev"],
+            dist=[int(x) for x in obj["dist"]],
+            fc_dist=[int(x) for x in obj["fc_dist"]],
         )
 
     # @classmethod
@@ -78,15 +88,15 @@ class Chart:
     @classmethod
     def from_json(cls, obj: dict[str, Any]) -> Self:
         return cls(
-            is_dx=len(obj['notes']) == 5,
-            tap=obj['notes'][0],
-            hold=obj['notes'][1],
-            slide=obj['notes'][2],
-            touch=obj['notes'][3] if len(obj['notes']) == 5 else 0,
-            break_=obj['notes'][-1],
-            notes=sum(obj['notes']),
-            max_dx_score=sum(obj['notes']) * 3,
-            charter=obj['charter'],
+            is_dx=len(obj["notes"]) == 5,
+            tap=obj["notes"][0],
+            hold=obj["notes"][1],
+            slide=obj["notes"][2],
+            touch=obj["notes"][3] if len(obj["notes"]) == 5 else 0,
+            break_=obj["notes"][-1],
+            notes=sum(obj["notes"]),
+            max_dx_score=sum(obj["notes"]) * 3,
+            charter=obj["charter"],
         )
 
 
@@ -102,12 +112,12 @@ class AliasInfo:
     @classmethod
     def from_json(cls, obj: dict[str, Any]) -> Self:
         return cls(
-            group=obj['group'],
-            qqid=obj['qqid'],
-            nickname=obj['nickname'],
-            card=obj['card'],
-            role=obj['role'],
-            time=obj['time'],
+            group=obj["group"],
+            qqid=obj["qqid"],
+            nickname=obj["nickname"],
+            card=obj["card"],
+            role=obj["role"],
+            time=obj["time"],
         )
 
 
@@ -117,30 +127,32 @@ def get_cover_filename(music_id: str) -> str:
     #     num -= 10000
     if num == 1027:  # Halycon SD
         num = 11027
-    return f'{num:05d}.png'
+    return f"{num:05d}.png"
 
 
 async def get_music_cover(music_id: str) -> BytesIO:
-    '''获取封面'''
+    """获取封面"""
     filename = get_cover_filename(music_id)
     cover_path: Path = plugin_config.cover_path / filename
     try:
         # 从本地图片读取
         if cover_path.is_file():
-            async with aiofiles.open(cover_path, 'rb') as fp:
+            async with aiofiles.open(cover_path, "rb") as fp:
                 return BytesIO(await fp.read())
 
         # 从水鱼网下载
-        async with aiohttp.request('GET', f'https://www.diving-fish.com/covers/{filename}') as response:
+        async with aiohttp.request(
+            "GET", f"https://www.diving-fish.com/covers/{filename}"
+        ) as response:
             response.raise_for_status()
             cover_bytes: bytes = await response.read()
-            async with aiofiles.open(cover_path, 'wb') as fp:
+            async with aiofiles.open(cover_path, "wb") as fp:
                 await fp.write(cover_bytes)
             return BytesIO(cover_bytes)
 
     except Exception:
         # 返回'00000.png'
-        async with aiofiles.open(plugin_config.cover_path / '00000.png', 'rb') as fp:
+        async with aiofiles.open(plugin_config.cover_path / "00000.png", "rb") as fp:
             return BytesIO(await fp.read())
 
 
@@ -148,8 +160,8 @@ async def get_music_track(music_id: str) -> BytesIO:
     if music_id in Mai.track_path:
         path = plugin_config.chart_path / Mai.track_path[music_id]
     else:
-        path = plugin_config.chart_path / 'audio_resources_not_found.mp3'
-    async with aiofiles.open(path, 'rb') as fp:
+        path = plugin_config.chart_path / "audio_resources_not_found.mp3"
+    async with aiofiles.open(path, "rb") as fp:
         return BytesIO(await fp.read())
 
 
@@ -175,17 +187,17 @@ class Music:
     @classmethod
     def from_json(cls, obj: dict[str, Any]) -> Self:
         return cls(
-            id=obj['id'],
-            title=obj['title'],
-            type=obj['type'],
-            ds=obj['ds'],
-            level=obj['level'],
-            artist=obj['basic_info']['artist'],
-            genre=obj['basic_info']['genre'],
-            bpm=obj['basic_info']['bpm'],
-            release_date=obj['basic_info']['release_date'],
-            version=obj['basic_info']['from'],
-            charts=[Chart.from_json(chart) for chart in obj['charts']],
+            id=obj["id"],
+            title=obj["title"],
+            type=obj["type"],
+            ds=obj["ds"],
+            level=obj["level"],
+            artist=obj["basic_info"]["artist"],
+            genre=obj["basic_info"]["genre"],
+            bpm=obj["basic_info"]["bpm"],
+            release_date=obj["basic_info"]["release_date"],
+            version=obj["basic_info"]["from"],
+            charts=[Chart.from_json(chart) for chart in obj["charts"]],
         )
 
     def __post_init__(self) -> None:
@@ -201,7 +213,9 @@ class Music:
         return await get_music_track(self.id)
 
 
-def _cross(checker: list[Any], elem: Any | tuple[Any, Any] | list[Any] | None, diff: list[int]) -> tuple[bool, list[int]]:
+def _cross(
+    checker: list[Any], elem: Any | tuple[Any, Any] | list[Any] | None, diff: list[int]
+) -> tuple[bool, list[int]]:
     ret = False
     diff_ret: list[int] = []
     if elem is None:
@@ -243,7 +257,9 @@ def _in_or_equal(checker: Any, elem: Any | tuple[Any, Any] | list[Any] | None) -
         return checker == elem
 
 
-def _search_charts(checker: list[Chart], elem: str | None, diff: list[int]) -> tuple[bool, list[int]]:
+def _search_charts(
+    checker: list[Chart], elem: str | None, diff: list[int]
+) -> tuple[bool, list[int]]:
     ret = False
     diff_ret: list[int] = []
     if elem is None:
@@ -277,43 +293,67 @@ class MusicList(list[Music]):
                 if music.id == name:
                     return music
         if strict:
-            raise ValueError(f'Music of id{name} not found.')
+            raise ValueError(f"Music of id{name} not found.")
         return None
 
     def by_title(self, name: str) -> Self:
-        name = name.strip().replace(' ', '').lower()
+        name = name.strip().replace(" ", "").lower()
         if not name:
             return self.__class__()
-        return self.__class__(music for music in self
-                              if name.replace(' ', '').lower() in music.title.replace(' ', '').lower())
+        return self.__class__(
+            music
+            for music in self
+            if name.replace(" ", "").lower() in music.title.replace(" ", "").lower()
+        )
 
     def by_type(self, name: str) -> Self:
-        return self.__class__(music for music in self
-                              if name == music.type)
+        return self.__class__(music for music in self if name == music.type)
 
-    def by_ds(self, name: float | Sequence[float] | tuple[float, float]) -> list[tuple[Music, int]]:
-        '''这里浮点数不会出事'''
+    def by_ds(
+        self, name: float | Sequence[float] | tuple[float, float]
+    ) -> list[tuple[Music, int]]:
+        """这里浮点数不会出事"""
         if isinstance(name, float):
-            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
-                    if math.isclose(name, music.ds[diff_index])]
+            return [
+                (music, diff_index)
+                for music in self
+                for diff_index in range(music.diff_num)
+                if math.isclose(name, music.ds[diff_index])
+            ]
         elif isinstance(name, tuple) and len(name) == 2:
             x, y = name
             if x > y:
                 return []
-            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
-                    if x <= music.ds[diff_index] <= y]
+            return [
+                (music, diff_index)
+                for music in self
+                for diff_index in range(music.diff_num)
+                if x <= music.ds[diff_index] <= y
+            ]
         elif isinstance(name, Sequence):
-            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
-                    if any(math.isclose(ds, music.ds[diff_index]) for ds in name)]
+            return [
+                (music, diff_index)
+                for music in self
+                for diff_index in range(music.diff_num)
+                if any(math.isclose(ds, music.ds[diff_index]) for ds in name)
+            ]
         else:
-            raise TypeError("type of param 'name' must be float | Sequence[float] | tuple[float, float]")
+            raise TypeError(
+                "type of param 'name' must be float | Sequence[float] | tuple[float, float]"
+            )
 
-    def by_level(self, name: str | Sequence[str] | tuple[str, str]) -> list[tuple[Music, int]]:
+    def by_level(
+        self, name: str | Sequence[str] | tuple[str, str]
+    ) -> list[tuple[Music, int]]:
         if isinstance(name, str):
             if name not in LEVELS:
                 return []
-            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
-                    if name == music.level[diff_index]]
+            return [
+                (music, diff_index)
+                for music in self
+                for diff_index in range(music.diff_num)
+                if name == music.level[diff_index]
+            ]
         elif isinstance(name, tuple) and len(name) == 2:
             x, y = name
             if x not in LEVELS or y not in LEVELS:
@@ -322,22 +362,38 @@ class MusicList(list[Music]):
             y_index: int = LEVELS.index(y)
             if x > y:
                 return []
-            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
-                    if x_index <= LEVELS.index(music.level[diff_index]) <= y_index]
+            return [
+                (music, diff_index)
+                for music in self
+                for diff_index in range(music.diff_num)
+                if x_index <= LEVELS.index(music.level[diff_index]) <= y_index
+            ]
         elif isinstance(name, Sequence):
-            return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
-                    if any(level == music.level[diff_index] for level in name)]
+            return [
+                (music, diff_index)
+                for music in self
+                for diff_index in range(music.diff_num)
+                if any(level == music.level[diff_index] for level in name)
+            ]
         else:
-            raise TypeError("type of param 'name' must be str | Sequence[str] | tuple[str, str]")
+            raise TypeError(
+                "type of param 'name' must be str | Sequence[str] | tuple[str, str]"
+            )
 
     def by_alias(self, name: str) -> Self:
-        '''标题的字串也可以，对大小写和空格不敏感'''
-        name = name.strip().replace(' ', '').lower()
+        """标题的字串也可以，对大小写和空格不敏感"""
+        name = name.strip().replace(" ", "").lower()
         if not name:
             return self.__class__()
-        return self.__class__(music for music in self
-                              if name in music.title.replace(' ', '').lower()
-                              or any(alias.strip().replace(' ', '').lower() == name for alias in music.aliases))
+        return self.__class__(
+            music
+            for music in self
+            if name in music.title.replace(" ", "").lower()
+            or any(
+                alias.strip().replace(" ", "").lower() == name
+                for alias in music.aliases
+            )
+        )
 
     def by_name(self, name: str) -> Self:
         if name.isdigit() and (music := Mai.music_list.by_id(name)) is not None:
@@ -346,39 +402,48 @@ class MusicList(list[Music]):
             return self.by_alias(name)
 
     def by_artist(self, name: str) -> Self:
-        name = name.strip().replace(' ', '').lower()
+        name = name.strip().replace(" ", "").lower()
         if not name:
             return self.__class__()
-        return self.__class__(music for music in self
-                              if name in music.artist.replace(' ', '').lower())
+        return self.__class__(
+            music for music in self if name in music.artist.replace(" ", "").lower()
+        )
 
     def by_charter(self, name: str) -> list[tuple[Music, int]]:
-        name = name.strip().replace(' ', '').lower()
+        name = name.strip().replace(" ", "").lower()
         if not name:
             return []
-        return [(music, diff_index) for music in self for diff_index in range(music.diff_num)
-                if name in music.charts[diff_index].charter.replace(' ', '').lower()]
+        return [
+            (music, diff_index)
+            for music in self
+            for diff_index in range(music.diff_num)
+            if name in music.charts[diff_index].charter.replace(" ", "").lower()
+        ]
 
     def by_genre(self, name: str) -> Self:
-        return self.__class__(music for music in self
-                              if name == music.genre)
+        return self.__class__(music for music in self if name == music.genre)
 
     def by_bpm(self, name: float | Sequence[float] | tuple[float, float]) -> Self:
-        '''bpm都是整数，浮点数不会出事（大概）'''
+        """bpm都是整数，浮点数不会出事（大概）"""
         if isinstance(name, float):
-            return self.__class__(music for music in self
-                                  if math.isclose(name, music.bpm))
+            return self.__class__(
+                music for music in self if math.isclose(name, music.bpm)
+            )
         elif isinstance(name, tuple) and len(name) == 2:
             x, y = name
             if x > y:
                 return self.__class__()
-            return self.__class__(music for music in self
-                                  if x <= music.bpm <= y)
+            return self.__class__(music for music in self if x <= music.bpm <= y)
         elif isinstance(name, Sequence):
-            return self.__class__(music for music in self
-                                  if any(math.isclose(bpm, music.bpm) for bpm in name))
+            return self.__class__(
+                music
+                for music in self
+                if any(math.isclose(bpm, music.bpm) for bpm in name)
+            )
         else:
-            raise TypeError("type of param 'name' must be float | Sequence[float] | tuple[float, float]")
+            raise TypeError(
+                "type of param 'name' must be float | Sequence[float] | tuple[float, float]"
+            )
 
     def by_version(self, name: str | Sequence[str]) -> Self:
         if isinstance(name, str):
@@ -394,26 +459,32 @@ class MusicList(list[Music]):
                     versions.append(version)
                 elif version in PLATE_TO_VERSION:
                     versions.extend(PLATE_TO_VERSION[version])
-            return self.__class__(music for music in self
-                                  if any(version == music.version for version in versions))
+            return self.__class__(
+                music
+                for music in self
+                if any(version == music.version for version in versions)
+            )
 
     def random(self) -> Music:
         return random.choice(self)
 
-    def filter(self,
-               *,
-               level: str | Sequence[str] | None = None,
-               ds: float | Sequence[float] | tuple[float, float] | None = None,
-               title_search: str | None = None,
-               artist_search: str | None = None,
-               charter_search: str | None = None,
-               genre: str | Sequence[str] | None = None,
-               bpm: float | Sequence[float] | tuple[float, float] | None = None,
-               type_: str | Sequence[str] | None = None,
-               version: str | Sequence[str] | None = None,
-               diff: list[int] | None = None,
-               ) -> Self:
-        logger.warning('MusicList.filter() method is deprecated. Use MusicList.by_*() instead.')
+    def filter(
+        self,
+        *,
+        level: str | Sequence[str] | None = None,
+        ds: float | Sequence[float] | tuple[float, float] | None = None,
+        title_search: str | None = None,
+        artist_search: str | None = None,
+        charter_search: str | None = None,
+        genre: str | Sequence[str] | None = None,
+        bpm: float | Sequence[float] | tuple[float, float] | None = None,
+        type_: str | Sequence[str] | None = None,
+        version: str | Sequence[str] | None = None,
+        diff: list[int] | None = None,
+    ) -> Self:
+        logger.warning(
+            "MusicList.filter() method is deprecated. Use MusicList.by_*() instead."
+        )
         new_list = self.__class__()
         for music in self:
             diff2: list[int] = diff if diff is not None else list(range(music.diff_num))
@@ -434,9 +505,15 @@ class MusicList(list[Music]):
                 continue
             if not _in_or_equal(music.bpm, bpm):
                 continue
-            if title_search is not None and title_search.lower() not in music.title.lower():
+            if (
+                title_search is not None
+                and title_search.lower() not in music.title.lower()
+            ):
                 continue
-            if artist_search is not None and artist_search.lower() not in music.artist.lower():
+            if (
+                artist_search is not None
+                and artist_search.lower() not in music.artist.lower()
+            ):
                 continue
             music: Music = copy.deepcopy(music)
             music.diff = diff2
@@ -453,9 +530,13 @@ class MusicList(list[Music]):
 
     def get_other_type(self, music: Music) -> Music | None:
         possible_musics: list[Music] = [
-            x for x in self
-            if music.title == x.title and music.artist == x.artist and music.genre == x.genre
-            and music.id != x.id and music.type != x.type
+            x
+            for x in self
+            if music.title == x.title
+            and music.artist == x.artist
+            and music.genre == x.genre
+            and music.id != x.id
+            and music.type != x.type
         ]
         if len(possible_musics) == 1:
             return possible_musics[0]
@@ -480,36 +561,58 @@ class Mai:
     @classmethod
     async def get_music(cls) -> None:
         async def get_music_data() -> Any:
-            logger.info('正在获取乐曲信息...')
+            logger.info("正在获取乐曲信息...")
             try:
-                async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/music_data') as response:
+                async with aiohttp.request(
+                    "GET", "https://www.diving-fish.com/api/maimaidxprober/music_data"
+                ) as response:
                     response.raise_for_status()
                     obj: Any = await response.json()
                     json_text: str = json.dumps(obj, ensure_ascii=False, indent=4)
-                    async with aiofiles.open(plugin_config.data_path / 'music_data.json', 'w', encoding='utf-8') as fp:
+                    async with aiofiles.open(
+                        plugin_config.data_path / "music_data.json",
+                        "w",
+                        encoding="utf-8",
+                    ) as fp:
                         await fp.write(json_text)
             except Exception:
-                logger.warning('乐曲信息获取失败，请检查网络环境。已切换至本地暂存文件。')
-                async with aiofiles.open(plugin_config.data_path / 'music_data.json', 'r', encoding='utf-8') as fp:
+                logger.warning(
+                    "乐曲信息获取失败，请检查网络环境。已切换至本地暂存文件。"
+                )
+                async with aiofiles.open(
+                    plugin_config.data_path / "music_data.json", "r", encoding="utf-8"
+                ) as fp:
                     obj = json.loads(await fp.read())
             return obj
 
         async def get_chart_stats() -> Any:
-            logger.info('正在获取谱面统计...')
+            logger.info("正在获取谱面统计...")
             try:
-                async with aiohttp.request('GET', 'https://www.diving-fish.com/api/maimaidxprober/chart_stats') as response:
+                async with aiohttp.request(
+                    "GET", "https://www.diving-fish.com/api/maimaidxprober/chart_stats"
+                ) as response:
                     response.raise_for_status()
                     obj: Any = await response.json()
                     json_text: str = json.dumps(obj, ensure_ascii=False, indent=4)
-                    async with aiofiles.open(plugin_config.data_path / 'chart_stats.json', 'w', encoding='utf-8') as fp:
+                    async with aiofiles.open(
+                        plugin_config.data_path / "chart_stats.json",
+                        "w",
+                        encoding="utf-8",
+                    ) as fp:
                         await fp.write(json_text)
             except Exception:
-                logger.warning('谱面统计获取失败，请检查网络环境。已切换至本地暂存文件。')
-                async with aiofiles.open(plugin_config.data_path / 'chart_stats.json', 'r', encoding='utf-8') as fp:
+                logger.warning(
+                    "谱面统计获取失败，请检查网络环境。已切换至本地暂存文件。"
+                )
+                async with aiofiles.open(
+                    plugin_config.data_path / "chart_stats.json", "r", encoding="utf-8"
+                ) as fp:
                     obj = json.loads(await fp.read())
             return obj
 
-        music_data, chart_stats = await asyncio.gather(get_music_data(), get_chart_stats())
+        music_data, chart_stats = await asyncio.gather(
+            get_music_data(), get_chart_stats()
+        )
         # import requests
         # with requests.get('https://www.diving-fish.com/api/maimaidxprober/music_data') as obj:
         #     music_data = obj.json()
@@ -517,8 +620,8 @@ class Mai:
         #     chart_stats = obj.json()
         cls.music_list = MusicList.from_json(music_data)
         for music in cls.music_list:
-            if music.id in chart_stats['charts']:
-                for i, stats_dict in enumerate(chart_stats['charts'][music.id]):
+            if music.id in chart_stats["charts"]:
+                for i, stats_dict in enumerate(chart_stats["charts"][music.id]):
                     if stats_dict:
                         music.charts[i].stats = ChartStats.from_json(stats_dict)
 
@@ -533,10 +636,14 @@ class Mai:
             #         music.charts[i].stats = None
 
         cls.hot_music_list = MusicList(
-            sorted(cls.music_list,
-                   key=lambda music: sum(chart.stats.count if hasattr(chart, 'stats') else 0
-                                         for chart in music.charts[2:]),
-                   reverse=True)[:128]
+            sorted(
+                cls.music_list,
+                key=lambda music: sum(
+                    chart.stats.count if hasattr(chart, "stats") else 0
+                    for chart in music.charts[2:]
+                ),
+                reverse=True,
+            )[:128]
         )
 
         count: defaultdict[str, int] = defaultdict(int)
@@ -547,7 +654,7 @@ class Mai:
             for i in range(music.diff_num):
                 level: str = music.level[i]
                 chart: Chart = music.charts[i]
-                if not hasattr(chart, 'stats'):
+                if not hasattr(chart, "stats"):
                     continue
                 count[level] += 1
                 stats: ChartStats = chart.stats
@@ -557,50 +664,73 @@ class Mai:
 
         cls.diff_data = {}
         for level in LEVELS:
-            level_diff_data: dict[str, Any] = chart_stats['diff_data'][level]
+            level_diff_data: dict[str, Any] = chart_stats["diff_data"][level]
             cls.diff_data[level] = LevelStats(
                 avg_count=count_sum[level] / count[level],
-                avg_achievement=level_diff_data['achievements'],
+                avg_achievement=level_diff_data["achievements"],
                 avg_std_dev=std_dev_sum[level] / count[level],
                 avg_dx_score_ratio=dx_score_ratio_sum[level] / count[level],
-                dist=level_diff_data['dist'],
-                fc_dist=level_diff_data['fc_dist'],
+                dist=level_diff_data["dist"],
+                fc_dist=level_diff_data["fc_dist"],
             )
 
-        if (plugin_config.data_path / 'track_path.json').is_file():
-            async with aiofiles.open(plugin_config.data_path / 'track_path.json', 'r', encoding='utf-8') as fp:
+        if (plugin_config.data_path / "track_path.json").is_file():
+            async with aiofiles.open(
+                plugin_config.data_path / "track_path.json", "r", encoding="utf-8"
+            ) as fp:
                 cls.track_path: dict[str, str] = json.loads(await fp.read())
         else:
             cls.track_path = {}
 
     @classmethod
     async def get_aliases(cls) -> None:
-        logger.info('正在获取别名信息...')
-        if (plugin_config.data_path / 'aliases.json').is_file():
-            async with aiofiles.open(plugin_config.data_path / 'aliases.json', 'r', encoding='utf-8') as fp:
+        logger.info("正在获取别名信息...")
+        if (plugin_config.data_path / "aliases.json").is_file():
+            async with aiofiles.open(
+                plugin_config.data_path / "aliases.json", "r", encoding="utf-8"
+            ) as fp:
                 obj: dict = json.loads(await fp.read())
             for music in cls.music_list:
                 if music.id in obj:
-                    music.aliases = {alias: AliasInfo.from_json(alias_info)
-                                     for alias, alias_info in obj[music.id]['aliases'].items()}
+                    music.aliases = {
+                        alias: AliasInfo.from_json(alias_info)
+                        for alias, alias_info in obj[music.id]["aliases"].items()
+                    }
                 else:
                     music.aliases = {}
 
         try:
-            async with aiohttp.request('GET', 'https://api.yuzuai.xyz/maimaidx/MaimaiDXAlias') as response:
+            async with aiohttp.request(
+                "GET", "https://api.yuzuai.xyz/maimaidx/MaimaiDXAlias"
+            ) as response:
                 response.raise_for_status()
                 obj = await response.json()
                 json_text: str = json.dumps(obj, ensure_ascii=False, indent=4)
-                async with aiofiles.open(plugin_config.data_path / 'aliases_from_yuzuai_api.json', 'w', encoding='utf-8') as fp:
+                async with aiofiles.open(
+                    plugin_config.data_path / "aliases_from_yuzuai_api.json",
+                    "w",
+                    encoding="utf-8",
+                ) as fp:
                     await fp.write(json_text)
         except Exception:
-            logger.warning('别名信息获取失败，请检查网络环境。已切换至本地暂存文件。')
-            async with aiofiles.open(plugin_config.data_path / 'aliases_from_yuzuai_api.json', 'r', encoding='utf-8') as fp:
+            logger.warning("别名信息获取失败，请检查网络环境。已切换至本地暂存文件。")
+            async with aiofiles.open(
+                plugin_config.data_path / "aliases_from_yuzuai_api.json",
+                "r",
+                encoding="utf-8",
+            ) as fp:
                 obj = json.loads(await fp.read())
 
         for music_id, aliases_dict in obj.items():
             music: Music = cls.music_list.by_id(music_id, strict=True)
-            for alias in aliases_dict['Alias']:
+            for alias in aliases_dict["Alias"]:
                 if alias.strip().lower() == music.title.strip().lower():
                     continue
-                music.aliases[alias] = AliasInfo(group=0, qqid=0, nickname='Yuzuai API', card='Yuzuai API', role='owner', time=int(time.time()))
+                music.aliases[alias] = AliasInfo(
+                    group=0,
+                    qqid=0,
+                    nickname="Yuzuai API",
+                    card="Yuzuai API",
+                    role="owner",
+                    time=int(time.time()),
+                )

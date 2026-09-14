@@ -62,7 +62,9 @@ __plugin_meta__ = PluginMetadata(
 parser = ArgumentParser("handle", description="猜成语")
 parser.add_argument("--hint", action="store_true", help="提示")
 parser.add_argument("--stop", action="store_true", help="结束游戏")
-parser.add_argument("--nonstrict", action="store_true", help="严格模式，即判断是否是成语")
+parser.add_argument(
+    "--nonstrict", action="store_true", help="严格模式，即判断是否是成语"
+)
 parser.add_argument("idiom", nargs="?", type=str, default="", help="成语")
 
 
@@ -125,7 +127,9 @@ def get_idiom_input(state: T_State, msg: Annotated[str, EventPlainText()]) -> bo
 
 
 # 命令前缀为空则需要to_me，否则不需要
-def smart_to_me(command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]) -> bool:
+def smart_to_me(
+    command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]
+) -> bool:
     return bool(command_start) or to_me
 
 
@@ -254,7 +258,11 @@ async def handle_handle(
     if result in [GuessResult.WIN, GuessResult.LOSS]:
         games.pop(cid)
         await send(
-            ("恭喜你猜出了成语！" if result == GuessResult.WIN else "很遗憾，没有人猜出来呢")
+            (
+                "恭喜你猜出了成语！"
+                if result == GuessResult.WIN
+                else "很遗憾，没有人猜出来呢"
+            )
             + f"\n{game.result}",
             game.draw(),
         )

@@ -67,11 +67,11 @@ forget_success_text: str = f"{bot_nickname}忘记啦！"
 forget_failed_text: str = f"{bot_nickname}没学过呢！"
 forget_empty_message_text: str = f"{bot_nickname}不知道要忘记什么呢！"
 forget_missing_para_text: str = f"{bot_nickname}一次只能忘记一条回复哦！"
-forget_no_permission_text: str = f"管理员添加的自动回复只能由管理员删除！"
+forget_no_permission_text: str = "管理员添加的自动回复只能由管理员删除！"
 
 forget_all_no_permission_text: str = "只有管理员才能删除全部回复语！"
 
-query_no_permission_text: str = f"只有管理员可以查询回复语！"
+query_no_permission_text: str = "只有管理员可以查询回复语！"
 query_failed_text = f"{bot_nickname}没学过呢！"
 
 

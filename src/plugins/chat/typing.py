@@ -2,7 +2,7 @@ from typing import Any, Literal, TypedDict
 
 
 class TextPart(TypedDict):
-    role: Literal['system', 'user', 'assistant']
+    role: Literal["system", "user", "assistant"]
     content: str
 
 

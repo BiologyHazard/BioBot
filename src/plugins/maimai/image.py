@@ -11,7 +11,9 @@ from .config import plugin_config
 #     return image.resize((round(image.width * size), round(image.height * size)))
 
 
-def image_resize_to(image: Image.Image, size: tuple[float, None] | tuple[None, float], *args, **kwargs) -> Image.Image:
+def image_resize_to(
+    image: Image.Image, size: tuple[float, None] | tuple[None, float], *args, **kwargs
+) -> Image.Image:
     w, h = image.size
     if size[1] is None:
         return image.resize((round(size[0]), round(size[0] * h / w)), *args, **kwargs)
@@ -35,60 +37,70 @@ def image_resize_to(image: Image.Image, size: tuple[float, None] | tuple[None, f
 #     draw.text((x + offset_x, 360), text, font=font, fill=(255, 255, 255, 255))
 
 
-def text_to_image(text: str,
-                  font_path=plugin_config.text_font_path,
-                  font_size: float = 24.0,
-                  tabs: list[float] | None = None,
-                  border: float = 1.625,
-                  row_spacing: float = 0.2,
-                  *args,
-                  **kwargs,
-                  ) -> Image.Image:
+def text_to_image(
+    text: str,
+    font_path=plugin_config.text_font_path,
+    font_size: float = 24.0,
+    tabs: list[float] | None = None,
+    border: float = 1.625,
+    row_spacing: float = 0.2,
+    *args,
+    **kwargs,
+) -> Image.Image:
     font: ImageFont.FreeTypeFont = ImageFont.truetype(str(font_path), round(font_size))
     lines: list[str] = text.splitlines()
     if tabs is None:
         tabs = [0]
     else:
         tabs.insert(0, 0)
-    one_space_pixel: float = font.getlength('　')
+    one_space_pixel: float = font.getlength("　")
 
     max_width: float = 0
     max_line_height: float = 0
     for line in lines:
-        segments: list[str] = line.split('\t')
+        segments: list[str] = line.split("\t")
         max_line_height = max(max_line_height, font.getbbox(line)[3])
         for i, segment in enumerate(segments):
-            if not segment.endswith('\0'):
+            if not segment.endswith("\0"):
                 w: float = font.getlength(segment)
             else:
                 w = 0
             if i >= len(tabs):
-                raise ValueError('Not Enough Tabs')
+                raise ValueError("Not Enough Tabs")
             max_width = max(max_width, tabs[i] * one_space_pixel + w)
     image_width: float = max_width + border * font_size * 2
-    image_height: float = (max_line_height * len(lines)
-                           + row_spacing * font_size * (len(lines) - 1)
-                           + border * font_size * 2)
+    image_height: float = (
+        max_line_height * len(lines)
+        + row_spacing * font_size * (len(lines) - 1)
+        + border * font_size * 2
+    )
     # image: PILImage = Image.new('RGB', (round(image_width), round(image_height)), color='white')
     image: Image.Image = background_image(image_width, image_height, font_size * 4, 0.5)
     draw: ImageDraw.ImageDraw = ImageDraw.Draw(image)
 
     y: float = border * font_size
     for line in lines:
-        segments: list[str] = line.split('\t')
+        segments: list[str] = line.split("\t")
         for i, segment in enumerate(segments):
-            if not segment.endswith('\0'):
-                anchor: str = 'la'
+            if not segment.endswith("\0"):
+                anchor: str = "la"
             else:
-                anchor = 'ra'
+                anchor = "ra"
                 segment: str = segment[:-1]
-            draw.text((border * font_size + tabs[i] * one_space_pixel, y), segment,
-                      'black', font, anchor, *args, **kwargs)
+            draw.text(
+                (border * font_size + tabs[i] * one_space_pixel, y),
+                segment,
+                "black",
+                font,
+                anchor,
+                *args,
+                **kwargs,
+            )
         y += max_line_height + row_spacing * font_size
     return image
 
 
-def image_to_bytesio(img: Image.Image, format='PNG') -> BytesIO:
+def image_to_bytesio(img: Image.Image, format="PNG") -> BytesIO:
     bytesio = BytesIO()
     img.save(bytesio, format)
     bytesio.seek(0)
@@ -96,39 +108,50 @@ def image_to_bytesio(img: Image.Image, format='PNG') -> BytesIO:
 
 
 async def get_user_avatar(qq: int) -> Image.Image:
-    async with aiohttp.request('GET', f'http://q1.qlogo.cn/g?b=qq&nk={qq}&s=640') as response:
+    async with aiohttp.request(
+        "GET", f"http://q1.qlogo.cn/g?b=qq&nk={qq}&s=640"
+    ) as response:
         response.raise_for_status()
         return Image.open(BytesIO(await response.read()))
 
 
-def background_image(width: float, height: float, side_pixels: float, alpha: float = 1) -> Image.Image:
-    image: Image.Image = (
-        Image.open(plugin_config.pic_path / 'BioBot/background.png')
-        .resize((round(width), round(height)))
+def background_image(
+    width: float, height: float, side_pixels: float, alpha: float = 1
+) -> Image.Image:
+    image: Image.Image = Image.open(
+        plugin_config.pic_path / "BioBot/background.png"
+    ).resize((round(width), round(height)))
+    top_image: Image.Image = image_resize_to(
+        Image.open(plugin_config.pic_path / "BioBot/top.png"), (2.52 * width, None)
     )
-    top_image: Image.Image = image_resize_to(Image.open(plugin_config.pic_path / 'BioBot/top.png'),
-                                             (2.52 * width, None))
-    bottom_image: Image.Image = image_resize_to(Image.open(plugin_config.pic_path / 'BioBot/bottom.png'),
-                                                (2.06 * width, None))
-    left_image: Image.Image = image_resize_to(Image.open(plugin_config.pic_path / 'BioBot/left.png'),
-                                              (None, side_pixels))
-    right_image: Image.Image = image_resize_to(Image.open(plugin_config.pic_path / 'BioBot/right.png'),
-                                               (None, side_pixels))
-    bubbles_image: Image.Image = image_resize_to(Image.open(plugin_config.pic_path / 'BioBot/bubbles.png'),
-                                                 (1.35 * width, None))
+    bottom_image: Image.Image = image_resize_to(
+        Image.open(plugin_config.pic_path / "BioBot/bottom.png"), (2.06 * width, None)
+    )
+    left_image: Image.Image = image_resize_to(
+        Image.open(plugin_config.pic_path / "BioBot/left.png"), (None, side_pixels)
+    )
+    right_image: Image.Image = image_resize_to(
+        Image.open(plugin_config.pic_path / "BioBot/right.png"), (None, side_pixels)
+    )
+    bubbles_image: Image.Image = image_resize_to(
+        Image.open(plugin_config.pic_path / "BioBot/bubbles.png"), (1.35 * width, None)
+    )
     for i in range(math.ceil(image.height / bubbles_image.height)):
         # 反正最大容许偏移量就是这么多，我也解释不明白
-        image.alpha_composite(bubbles_image,
-                              (round(-0.35 * random.random() * width),
-                               i * bubbles_image.height))
+        image.alpha_composite(
+            bubbles_image,
+            (round(-0.35 * random.random() * width), i * bubbles_image.height),
+        )
     for i in range(math.ceil(image.height / left_image.height)):
         image.alpha_composite(left_image, (0, i * left_image.height))
     for i in range(math.ceil(image.height / right_image.height)):
-        image.alpha_composite(right_image, (image.width - right_image.width,
-                                            i * right_image.height))
+        image.alpha_composite(
+            right_image, (image.width - right_image.width, i * right_image.height)
+        )
     image.alpha_composite(top_image, (round(-0.15 * width), 0))
-    image.alpha_composite(bottom_image, (round(-0.15 * width),
-                                         image.height - bottom_image.height))
+    image.alpha_composite(
+        bottom_image, (round(-0.15 * width), image.height - bottom_image.height)
+    )
 
-    mask: Image.Image = Image.new('RGBA', image.size, 'white')
+    mask: Image.Image = Image.new("RGBA", image.size, "white")
     return Image.blend(mask, image, alpha)
