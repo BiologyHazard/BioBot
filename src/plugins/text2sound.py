@@ -1,8 +1,8 @@
+from typing import Annotated
+
 from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Message, MessageSegment
 from nonebot.internal.matcher import Matcher
-from typing import Annotated
-
 from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
 

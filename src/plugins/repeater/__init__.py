@@ -1,7 +1,7 @@
-from nonebot import get_plugin_config, logger, on_message
-from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
 from typing import Annotated
 
+from nonebot import get_plugin_config, logger, on_message
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
 from nonebot.params import EventMessage
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule

@@ -58,7 +58,7 @@ class Scheduler:
             statement = (
                 select(Schedule.time)
                 .group_by(Schedule.time)
-                .where(Schedule.time != None)
+                .where(Schedule.time is not None)
             )
             schedule_times = await session.scalars(statement)
             for schedule_time in schedule_times:

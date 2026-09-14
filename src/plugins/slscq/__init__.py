@@ -1,9 +1,8 @@
 from pathlib import Path
-
-from nonebot import on_command, logger
-from nonebot.adapters import Message
 from typing import Annotated
 
+from nonebot import logger, on_command
+from nonebot.adapters import Message
 from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
 

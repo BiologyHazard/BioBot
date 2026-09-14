@@ -324,12 +324,7 @@ def parse_image(key: str):
 
 mask_cmd = wordcloud.command(
     "mask",
-    aliases={
-        "设置词云形状",
-        "设置词云默认形状",
-        "删除词云形状",
-        "删除词云默认形状",
-    },
+    aliases={"设置词云形状", "设置词云默认形状", "删除词云形状", "删除词云默认形状"},
     permission=SUPERUSER | GROUP_OWNER | GROUP_ADMIN,
 )
 

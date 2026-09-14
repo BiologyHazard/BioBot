@@ -1,8 +1,7 @@
 import random
-
-from nonebot import on_regex
 from typing import Annotated
 
+from nonebot import on_regex
 from nonebot.params import RegexGroup
 from nonebot.plugin import PluginMetadata
 

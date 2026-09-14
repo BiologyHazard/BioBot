@@ -1,11 +1,9 @@
 from bisect import bisect_right
 from itertools import accumulate
 
-
-from .consts import DIFFICULTY_NAME, COMBO_RANK, SCORE_RANK
-from .music import Chart, ChartStats, LevelStats, Mai, Music
+from .consts import COMBO_RANK, DIFFICULTY_NAME, SCORE_RANK
 from .image import text_to_image
-
+from .music import Chart, ChartStats, LevelStats, Mai, Music
 
 # import pyecharts.options as opts
 # from pyecharts.charts import Pie

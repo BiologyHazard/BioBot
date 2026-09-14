@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 from pathlib import Path
 from typing import Annotated, Any, Tuple, Union
 
@@ -14,8 +12,7 @@ from nonebot.adapters.onebot.v11 import (
     PrivateMessageEvent,
 )
 from nonebot.log import logger
-from nonebot.matcher import Matcher
-from nonebot.params import Arg, CommandArg, RegexGroup
+from nonebot.params import CommandArg, RegexGroup
 from nonebot.rule import Rule
 
 from .data_source import Q, cmd, ncm_config, nncm, setting

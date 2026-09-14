@@ -1,5 +1,6 @@
-from nonebot import get_driver, logger
 from pathlib import Path
+
+from nonebot import get_driver, logger
 
 config: dict = get_driver().config.dict()
 DEFAULT_DATA_PATH: str = "data/tygj/tygj.json"

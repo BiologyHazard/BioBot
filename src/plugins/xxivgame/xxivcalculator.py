@@ -1,7 +1,7 @@
 import random
+from collections.abc import Sequence
 from fractions import Fraction
 from itertools import combinations
-from typing import Sequence
 
 from .expression import Expression, number_T
 

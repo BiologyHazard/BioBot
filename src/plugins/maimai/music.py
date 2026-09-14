@@ -6,10 +6,10 @@ import random
 import time
 from bisect import bisect_right
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from io import BytesIO
-from pathlib import Path
-from typing import Any, Literal, Self, Sequence, overload
+from typing import TYPE_CHECKING, Any, Literal, Self, overload
 
 import aiofiles
 import aiohttp
@@ -23,6 +23,9 @@ from .consts import (
     BaseRaSpp,
     achievementList,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def calc_rating(ds: float, achievement: float) -> int:

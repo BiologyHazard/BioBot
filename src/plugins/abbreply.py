@@ -1,9 +1,9 @@
-import aiohttp
-from nonebot.plugin import PluginMetadata, on_command
 from typing import Annotated
 
-from nonebot.params import CommandArg
+import aiohttp
 from nonebot.adapters import Message
+from nonebot.params import CommandArg
+from nonebot.plugin import PluginMetadata, on_command
 
 __plugin_meta__ = PluginMetadata(
     name="缩写查询器",

@@ -1,10 +1,9 @@
+from typing import Annotated
+
 import nonebot
 import nonebot.plugin
 from nonebot import on_command
-from nonebot.adapters import Event, Message
-from nonebot.matcher import Matcher
-from typing import Annotated
-
+from nonebot.adapters import Message
 from nonebot.params import CommandArg
 from nonebot.plugin import Plugin, PluginMetadata
 

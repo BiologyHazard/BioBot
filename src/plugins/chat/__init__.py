@@ -1,7 +1,7 @@
-from nonebot import MatcherGroup, logger
-from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
 from typing import Annotated
 
+from nonebot import MatcherGroup
+from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
 from nonebot.params import Command, CommandArg, CommandStart, EventToMe
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule

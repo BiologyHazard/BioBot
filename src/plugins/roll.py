@@ -1,11 +1,10 @@
 import random
 import re
 from re import Match
+from typing import Annotated
 
 from nonebot import on_command, on_regex
 from nonebot.adapters.onebot.v11 import Message
-from typing import Annotated
-
 from nonebot.params import CommandArg, EventMessage
 from nonebot.plugin import PluginMetadata
 

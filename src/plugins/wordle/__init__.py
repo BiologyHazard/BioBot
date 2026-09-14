@@ -31,8 +31,8 @@ from nonebot.plugin import PluginMetadata
 from nonebot.rule import ArgumentParser, Rule
 from nonebot.typing import T_State
 
-from .wordle import GuessResult, Wordle
 from .utils import dict_list, random_word
+from .wordle import GuessResult, Wordle
 from .wordleai import WordleAI, calc_hint
 
 __plugin_meta__ = PluginMetadata(

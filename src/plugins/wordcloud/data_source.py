@@ -10,6 +10,7 @@ import jieba.analyse
 import numpy as np
 from emoji import replace_emoji
 from PIL import Image
+
 from wordcloud import WordCloud
 
 from .config import global_config, plugin_config

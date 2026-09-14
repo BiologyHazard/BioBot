@@ -1,13 +1,14 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import math
 import re
 from bisect import bisect_right
-from random import Random
-from typing import Annotated, Any, Sequence
+from typing import TYPE_CHECKING, Annotated, Any
 
 import aiofiles
-from nonebot import MatcherGroup, get_driver, logger, require
+from nonebot import MatcherGroup, get_driver, require
 from nonebot.adapters.onebot.v11 import (
     Bot,
     GroupMessageEvent,
@@ -45,8 +46,13 @@ from .privacy import set_privacy as privacy_set_privacy
 from .stats_pic import chart_stats_text
 from .utils import get_random_inst, strftime
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from random import Random
+
 require("nonebot_plugin_apscheduler")
-from nonebot_plugin_apscheduler import scheduler  # NOQA: E402
+
+from nonebot_plugin_apscheduler import scheduler  # noqa: E402
 
 driver: Driver = get_driver()
 default_command_start: str = tuple(driver.config.command_start)[0]

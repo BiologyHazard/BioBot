@@ -1,11 +1,10 @@
 import datetime
+from typing import Annotated
 
 from nonebot import get_driver, on_fullmatch, on_regex
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
-from typing import Annotated
-
 from nonebot.params import RegexGroup
 from nonebot.plugin import PluginMetadata
 

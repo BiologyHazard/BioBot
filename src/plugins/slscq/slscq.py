@@ -1,6 +1,6 @@
+import argparse
 import json
 import random
-import argparse
 import time
 
 random.seed(time.time())

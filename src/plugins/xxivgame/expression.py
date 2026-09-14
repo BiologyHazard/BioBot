@@ -1,7 +1,8 @@
+from collections.abc import Callable, Sequence
 from enum import Enum
 from fractions import Fraction
 from operator import add, mul, sub, truediv
-from typing import Callable, Final, TypeAlias, Sequence
+from typing import Final, TypeAlias
 
 number_T: TypeAlias = int | Fraction
 

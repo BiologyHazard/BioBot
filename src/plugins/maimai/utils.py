@@ -1,8 +1,8 @@
 import datetime
+import random
 import time
 from io import BytesIO
 from random import Random
-import random
 
 from pydub import AudioSegment
 

@@ -8,9 +8,11 @@ from nonebot.adapters.onebot.v11 import GroupRecallNoticeEvent
 from nonebot.adapters.onebot.v11 import Message as V11Msg
 from nonebot.adapters.onebot.v11 import MessageEvent as V11MEvent
 from nonebot.adapters.onebot.v12 import Bot as V12Bot
-from nonebot.adapters.onebot.v12 import ChannelMessageDeleteEvent
+from nonebot.adapters.onebot.v12 import (
+    ChannelMessageDeleteEvent,
+    GroupMessageDeleteEvent,
+)
 from nonebot.adapters.onebot.v12 import ChannelMessageEvent as V12CMEvent
-from nonebot.adapters.onebot.v12 import GroupMessageDeleteEvent
 from nonebot.adapters.onebot.v12 import GroupMessageEvent as V12GMEvent
 from nonebot.adapters.onebot.v12 import Message as V12Msg
 from nonebot.adapters.onebot.v12 import MessageEvent as V12MEvent

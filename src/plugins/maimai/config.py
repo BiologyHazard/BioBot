@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from nonebot import get_plugin_config
-from pydantic import BaseModel, DirectoryPath, PositiveInt, FilePath
+from pydantic import BaseModel, DirectoryPath, FilePath, PositiveInt
 
 
 class Config(BaseModel):

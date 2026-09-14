@@ -1,8 +1,8 @@
 import email
+from collections.abc import Sequence
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
-from typing import Sequence
 
 import aioimaplib
 import aiosmtplib
@@ -31,10 +31,10 @@ async def read_emails():
     await imap_client.login(name_email.email, email_password)
     await imap_client.select("INBOX")
     criteria = '(SUBJECT "token") (UNFLAGGED)'
-    status, data = await imap_client.search(criteria)
+    _status, data = await imap_client.search(criteria)
     mail_ids = data[0].decode().split()
     for mail_id in mail_ids:
-        status, data = await imap_client.fetch(mail_id, "(RFC822)")
+        _status, data = await imap_client.fetch(mail_id, "(RFC822)")
         email_msg = email.message_from_bytes(data[1])
         print(email_msg["Subject"])
         print(email_msg["From"])

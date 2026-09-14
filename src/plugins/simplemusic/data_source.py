@@ -1,8 +1,8 @@
-import httpx
 from dataclasses import dataclass
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Protocol, Optional, Tuple
+from typing import Any, Dict, List, Optional, Protocol, Tuple
 
+import httpx
 from nonebot.adapters.onebot.v11 import MessageSegment
 
 

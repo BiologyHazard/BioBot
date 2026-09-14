@@ -1,9 +1,9 @@
-from nonebot import on_command
-from nonebot.permission import SUPERUSER
-from nonebot.adapters.onebot.v11 import Message
 from typing import Annotated
 
+from nonebot import on_command
+from nonebot.adapters.onebot.v11 import Message
 from nonebot.params import CommandArg
+from nonebot.permission import SUPERUSER
 
 run_code = on_command("runcode", permission=SUPERUSER, priority=1, block=False)
 

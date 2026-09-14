@@ -1,15 +1,14 @@
 import asyncio
 import traceback
-
-from nonebot import on_command
-from nonebot.log import logger
-from nonebot.matcher import Matcher
-from nonebot.typing import T_Handler
 from typing import Annotated
 
+from nonebot import on_command
+from nonebot.adapters.onebot.v11 import Message
+from nonebot.log import logger
+from nonebot.matcher import Matcher
 from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
-from nonebot.adapters.onebot.v11 import Message
+from nonebot.typing import T_Handler
 
 from .data_source import Func, Source, sources
 

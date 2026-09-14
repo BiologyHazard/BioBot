@@ -4,12 +4,12 @@ from nonebot.adapters.onebot.v11 import MessageSegment
 
 from .api_data import get_player_data
 from .consts import (
-    DIFFICULTY_NAME,
-    combo_rank,
     COMBO_RANK,
-    sync_rank,
-    SYNC_RANK,
+    DIFFICULTY_NAME,
     PLATE_TO_VERSION,
+    SYNC_RANK,
+    combo_rank,
+    sync_rank,
 )
 from .image import image_to_bytesio, text_to_image
 from .music import Mai, Music

@@ -1,6 +1,7 @@
 import random
+from collections.abc import Iterable
 from io import BytesIO
-from typing import Iterable, Literal
+from typing import Literal
 
 from nonebot.adapters.onebot.v11 import Message, MessageSegment
 from PIL import Image

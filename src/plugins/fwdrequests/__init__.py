@@ -1,28 +1,21 @@
 import asyncio
-from textwrap import dedent
 from typing import Annotated, Any
 
 from nonebot import logger, on_command, on_fullmatch, on_request
 from nonebot.adapters.onebot.v11 import (
     Bot,
     FriendRequestEvent,
-    GroupMessageEvent,
     GroupRequestEvent,
     Message,
     MessageEvent,
-    PrivateMessageEvent,
-    RequestEvent,
 )
 from nonebot.params import CommandArg, Fullmatch, RawCommand
 from nonebot.plugin import PluginMetadata
-from nonebot.typing import T_State
 
 from .config import forward_to_expanded
 
 __plugin_meta__: PluginMetadata = PluginMetadata(
-    name="转发加好友加群请求",
-    description="",
-    usage="""仅管理员使用，无触发命令""",
+    name="转发加好友加群请求", description="", usage="""仅管理员使用，无触发命令"""
 )
 
 

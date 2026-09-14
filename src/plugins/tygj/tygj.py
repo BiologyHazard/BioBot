@@ -1,7 +1,7 @@
 import datetime
 import json
-from typing import Self
 from pathlib import Path
+from typing import Self
 
 from .config import data_path
 
