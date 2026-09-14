@@ -1,14 +1,25 @@
+# ruff: noqa: E402
+
+from __future__ import annotations
+
+from nonebot import require
+
+# 先加载共享数据插件，确保所有查询引用同一个可热更新的 game_data 单例。
+require("src.plugins.arknights_game_data")
+
 from collections import defaultdict
+from typing import TYPE_CHECKING, Annotated
 
 import nonebot
 from arknights_game_model.utils import escape_description, find_dollar_tags
 from nonebot import MatcherGroup
-from nonebot.adapters import Message
 from nonebot.params import CommandArg, RegexGroup
 from nonebot.plugin import PluginMetadata
 
-nonebot.require("src.plugins.arknights_game_data")
-from src.plugins.arknights_game_data import game_data  # noqa: E402
+from src.plugins.arknights_game_data import game_data
+
+if TYPE_CHECKING:
+    from nonebot.adapters import Message
 
 driver = nonebot.get_driver()
 default_command_start: str = tuple(driver.config.command_start)[0]
@@ -27,15 +38,11 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-ELITE_LEVEL_DICT = {
-    0: "精零",
-    1: "精一",
-    2: "精二",
-}
+ELITE_LEVEL_DICT = {0: "精零", 1: "精一", 2: "精二"}
 
 
 def get_term_ids(initial_queue: list[str]) -> list[str]:
-    """根据字符串广度优先搜索术语 ID 列表"""
+    """广度优先解析术语描述中递归引用的所有术语 ID。"""
     term_ids = []
     queue = initial_queue.copy()
     visited = set()
@@ -69,8 +76,9 @@ evolve_cost = arknights_matcher_group.on_regex(r"^(.+)(?:满练|拉满)消耗$")
 
 @base_skill.handle()
 async def base_skill_func(
-    regex_group: tuple[str, None] | tuple[None, str] = RegexGroup(),
+    regex_group: Annotated[tuple[str, None] | tuple[None, str], RegexGroup()],
 ):
+    """按干员名称查询基建技能，并附上技能引用的术语释义。"""
     character_str = regex_group[0] if regex_group[0] is not None else regex_group[1]
 
     try:
@@ -127,7 +135,8 @@ async def base_skill_func(
 
 
 @terminology.handle()
-async def terminology_func(message: Message = CommandArg()):
+async def terminology_func(message: Annotated[Message, CommandArg()]):
+    """查询一个或多个术语及其递归引用的释义。"""
     query_term_name_list = message.extract_plain_text().strip().split()
     if not query_term_name_list:
         await terminology.finish(help_str)
@@ -156,7 +165,9 @@ async def terminology_func(message: Message = CommandArg()):
                 lines.append("")
                 lines.append(escape_description(term.description))
 
-    initial_queue = sum(term_name_to_ids.values(), [])
+    initial_queue = [
+        term_id for term_ids in term_name_to_ids.values() for term_id in term_ids
+    ]
     term_id_list = get_term_ids(initial_queue)
     for term_id in term_id_list:
         if term_id in initial_queue:
@@ -176,7 +187,8 @@ async def terminology_func(message: Message = CommandArg()):
 
 
 @evolve_cost.handle()
-async def evolve_cost_func(regex_group: tuple[str] = RegexGroup()):
+async def evolve_cost_func(regex_group: Annotated[tuple[str], RegexGroup()]):
+    """计算单个干员或全部干员的满练材料与理智价值。"""
     character_str = regex_group[0]
 
     lines: list[str] = []

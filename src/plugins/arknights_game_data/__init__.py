@@ -1,22 +1,20 @@
-"""Shared, hot-reloadable game data for the Arknights plugins."""
+# ruff: noqa: E402
 
 from __future__ import annotations
 
-import asyncio
-
-from nonebot import get_driver, logger, require
-from nonebot.plugin import PluginMetadata
+from nonebot import require
 
 require("nonebot_plugin_apscheduler")
-from nonebot_plugin_apscheduler import scheduler  # noqa: E402
 
-from arknights_game_model.game_data import game_data  # noqa: E402
+import asyncio
 
-from .config import Config, plugin_config  # noqa: E402
-from .reloader import (  # noqa: E402
-    DataChangedDuringReloadError,
-    GameDataReloader,
-)
+from arknights_game_model.game_data import game_data
+from nonebot import get_driver, logger
+from nonebot.plugin import PluginMetadata
+from nonebot_plugin_apscheduler import scheduler
+
+from .config import Config, plugin_config
+from .reloader import DataChangedDuringReloadError, GameDataReloader
 
 __plugin_meta__ = PluginMetadata(
     name="明日方舟游戏数据",
@@ -26,33 +24,19 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-reloader = GameDataReloader(plugin_config)
-
-
-async def refresh_game_data(*, force: bool = False) -> bool:
-    """Refresh the shared snapshot and retain the old one if loading fails."""
-    try:
-        changed = await reloader.reload_if_changed(force=force)
-    except Exception:
-        logger.exception("明日方舟游戏数据热更新失败，将继续使用上一份有效数据")
-        return False
-
-    if changed:
-        logger.info(
-            "明日方舟游戏数据已更新：{} 名干员，{} 种物品",
-            len(game_data.characters),
-            len(game_data.items),
-        )
-    return changed
+game_data_reloader = GameDataReloader(plugin_config)
 
 
 @get_driver().on_startup
 async def load_initial_game_data() -> None:
-    # There is no valid previous snapshot during startup, so a failure must stop
-    # startup instead of leaving the singleton half-initialized.
+    """在处理消息前加载首份数据快照。
+
+    若恰逢解包仓库写入，则短暂重试；其他读取或校验错误会直接阻止启动，避免
+    业务插件在没有有效数据的状态下运行。
+    """
     for attempt in range(3):
         try:
-            await reloader.reload_if_changed(force=True)
+            await game_data_reloader.reload_if_changed(force=True)
             break
         except DataChangedDuringReloadError:
             if attempt == 2:
@@ -72,5 +56,25 @@ async def load_initial_game_data() -> None:
     max_instances=1,
     coalesce=True,
 )
-async def poll_game_data_updates() -> None:
-    await refresh_game_data()
+async def refresh_game_data(*, force: bool = False) -> bool:
+    """检查并刷新共享快照，失败时保留上一份有效数据。
+
+    Args:
+        force: 是否忽略文件指纹并强制重载。
+
+    Returns:
+        成功发布新快照时为 ``True``；无变化或刷新失败时为 ``False``。
+    """
+    try:
+        changed = await game_data_reloader.reload_if_changed(force=force)
+    except Exception:
+        logger.exception("明日方舟游戏数据热更新失败，将继续使用上一份有效数据")
+        return False
+
+    if changed:
+        logger.info(
+            "明日方舟游戏数据已更新：{} 名干员，{} 种物品",
+            len(game_data.characters),
+            len(game_data.items),
+        )
+    return changed

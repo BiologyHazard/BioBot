@@ -47,6 +47,7 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import ArgumentParser, Namespace
 from nonebot_plugin_apscheduler import scheduler
+
 from src.plugins.arknights_game_data import game_data
 
 from .app import on_startup
@@ -305,7 +306,10 @@ async def bind_skl_token_command_func(
 
 @bind_skl_token_regex.handle()
 async def bind_skl_token_regex_func(
-    matcher: Matcher, bot: Bot, event: MessageEvent, group: tuple[str] = RegexGroup()
+    matcher: Matcher,
+    bot: Bot,
+    event: MessageEvent,
+    group: Annotated[tuple[str], RegexGroup()],
 ) -> None:
     token = group[0].strip()
     return await bind_skl_token_func(matcher, bot, event, token)
@@ -390,7 +394,7 @@ async def unbind_all_skl_token_func(matcher: Matcher, event: MessageEvent) -> No
 
 @skl_auto_attendance.handle()
 async def skl_auto_attendance_func(
-    event: MessageEvent, message: str = EventPlainText()
+    event: MessageEvent, message: Annotated[str, EventPlainText()]
 ) -> None:
     if "关闭" in message:
         enable: bool = False
@@ -430,7 +434,7 @@ async def skl_auto_attendance_func(
 
 @skl_email_remind.handle()
 async def skl_email_remind_func(
-    event: MessageEvent, message: str = EventPlainText()
+    event: MessageEvent, message: Annotated[str, EventPlainText()]
 ) -> None:
     if "关闭" in message:
         remind: bool = False
@@ -524,10 +528,7 @@ async def skl_assistant_succeed_func(
 
         if len(result) > 512:
             image = text_to_image(
-                result,
-                tabs=list(accumulate([])),
-                font_size=14,
-                row_spacing=0,
+                result, tabs=list(accumulate([])), font_size=14, row_spacing=0
             )
             await matcher.send(
                 MessageSegment.image(image_to_bytesio(image.convert("L"), format="PNG"))
