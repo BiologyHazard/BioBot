@@ -441,10 +441,20 @@ class PollingService:
         session: AsyncSession,
         repository: GitHubRepository,
         cursor: GitHubPollCursor,
-        _subscriptions: Any,
+        subscriptions: dict[int, tuple[set[str], set[str], GitHubSubscription]],
     ) -> list[DetectedEvent]:
         """检查 Issue/PR 状态，并为变化的 PR 补查评审。"""
         owner, repo = repository.full_name.split("/", 1)
+        pr_subscribed = any(
+            pattern.startswith("pr.")
+            for filters, _branches, _subscription in subscriptions.values()
+            for pattern in filters
+        )
+        review_subscribed = any(
+            pattern.startswith("pr.review.")
+            for filters, _branches, _subscription in subscriptions.values()
+            for pattern in filters
+        )
         previous_poll = aware(cursor.watermark_time)
         since = previous_poll
         if since:
@@ -453,6 +463,8 @@ class PollingService:
         events: list[DetectedEvent] = []
         for item in items:
             is_pr = "pull_request" in item
+            if is_pr and not pr_subscribed:
+                continue
             detail = (
                 await self.api.pull(owner, repo, int(item["number"])) if is_pr else item
             )
@@ -472,7 +484,7 @@ class PollingService:
                         repository, detail, kind, previous, state, previous_poll
                     )
                 )
-            if is_pr:
+            if is_pr and review_subscribed:
                 events.extend(
                     await self._poll_reviews_for_pull(
                         session, repository, detail, cursor.initialized
@@ -597,10 +609,15 @@ class PollingService:
         session: AsyncSession,
         repository: GitHubRepository,
         cursor: GitHubPollCursor,
-        _subscriptions: Any,
+        subscriptions: dict[int, tuple[set[str], set[str], GitHubSubscription]],
     ) -> list[DetectedEvent]:
         """把 GitHub Issue Events 映射为 Issue 或 PR 的标准动作。"""
         owner, repo = repository.full_name.split("/", 1)
+        pr_subscribed = any(
+            pattern.startswith("pr.")
+            for filters, _branches, _subscription in subscriptions.values()
+            for pattern in filters
+        )
         items = await self.api.issue_events(owner, repo)
         mapping = {
             "closed": "closed",
@@ -640,6 +657,8 @@ class PollingService:
                 continue
             issue = item.get("issue") or {}
             kind = "pr" if "pull_request" in issue else "issue"
+            if kind == "pr" and not pr_subscribed:
+                continue
             action = mapping[item["event"]]
             if action in {
                 "merged",
