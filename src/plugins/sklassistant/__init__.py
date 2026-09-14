@@ -246,6 +246,7 @@ async def skl_sign_in_all() -> list[dict[str, Any] | BaseException]:
             result = await attendance_and_send_email(
                 item.token, item.remind, item.email, DISABLE_REMINDER_MESSAGE
             )
+            await asyncio.sleep(1)  # 避免同时请求过多
         except Exception as e:
             result = e
         results.append(result)
