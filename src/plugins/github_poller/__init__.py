@@ -2,23 +2,23 @@
 
 """通过 GitHub REST API 轮询仓库变化并推送到 QQ。"""
 
-from __future__ import annotations
-
-from nonebot import require
+from nonebot import get_driver, require
 
 require("nonebot_plugin_orm")
 require("nonebot_plugin_apscheduler")
 
 from argparse import ArgumentTypeError
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from nonebot import logger, on_shell_command
-from nonebot.exception import FinishedException
+from nonebot.adapters.onebot.v11 import MessageEvent
+from nonebot.exception import FinishedException, ParserExit
 from nonebot.params import ShellCommandArgs
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from nonebot.rule import ArgumentParser
+from nonebot.rule import ArgumentParser, Namespace
 from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_orm import AsyncSession
 
 from .commands import (
     HELP,
@@ -36,10 +36,6 @@ from .commands import (
 from .config import Config, plugin_config
 from .service import service
 
-if TYPE_CHECKING:
-    from nonebot.adapters.onebot.v11 import MessageEvent
-    from nonebot_plugin_orm import AsyncSession
-
 __plugin_meta__ = PluginMetadata(
     name="GitHub 轮询通知",
     description="通过 GitHub REST API 轮询仓库动态并推送到 QQ",
@@ -56,28 +52,67 @@ def _target_id(value: str) -> str:
     return value
 
 
-# 由 NoneBot 的 shell parser 负责引号、重复选项和参数边界。
-ghp_parser = ArgumentParser(prog="ghp", description="GitHub 仓库轮询通知")
-ghp_parser.add_argument("positional", nargs="*", help="子命令及其参数")
-ghp_parser.add_argument(
-    "--group",
-    dest="groups",
-    action="append",
-    default=[],
-    type=_target_id,
-    help="群号（可重复）",
-)
-ghp_parser.add_argument(
-    "--private",
-    dest="privates",
-    action="append",
-    default=[],
-    type=_target_id,
-    help="QQ 号（可重复）",
-)
-ghp_parser.add_argument(
-    "--branch", dest="branches", action="append", default=[], help="分支模式（可重复）"
-)
+def _targets(parser: ArgumentParser, *, branches: bool = False) -> None:
+    """向子命令添加统一的目标选项；subscribe 额外支持分支模式。"""
+    parser.add_argument(
+        "--group", dest="groups", action="append", default=[], type=_target_id
+    )
+    parser.add_argument(
+        "--private", dest="privates", action="append", default=[], type=_target_id
+    )
+    if branches:
+        parser.add_argument("--branch", dest="branches", action="append", default=[])
+
+
+ghp_parser = ArgumentParser(prog="ghp", description="GitHub 订阅通知", color=False)
+subparsers = ghp_parser.add_subparsers(title="commands", dest="command", required=True)
+
+subscribe_parser = subparsers.add_parser("subscribe")
+subscribe_parser.add_argument("repository")
+subscribe_parser.add_argument("events", nargs="*")
+_targets(subscribe_parser, branches=True)
+
+unsubscribe_parser = subparsers.add_parser("unsubscribe")
+unsubscribe_parser.add_argument("repository")
+_targets(unsubscribe_parser)
+
+list_parser = subparsers.add_parser("list")
+_targets(list_parser)
+
+show_parser = subparsers.add_parser("show")
+show_parser.add_argument("repository")
+_targets(show_parser)
+
+event_parser = subparsers.add_parser("event")
+event_commands = event_parser.add_subparsers(dest="operation", required=True)
+event_list_parser = event_commands.add_parser("list")
+event_list_parser.add_argument("category", nargs="?")
+for operation in ("add", "remove", "set"):
+    operation_parser = event_commands.add_parser(operation)
+    operation_parser.add_argument("repository")
+    operation_parser.add_argument("events", nargs="+")
+    _targets(operation_parser)
+
+branch_parser = subparsers.add_parser("branch")
+branch_commands = branch_parser.add_subparsers(dest="operation", required=True)
+for operation in ("add", "remove"):
+    operation_parser = branch_commands.add_parser(operation)
+    operation_parser.add_argument("repository")
+    operation_parser.add_argument("patterns", nargs="+")
+    _targets(operation_parser)
+reset_parser = branch_commands.add_parser("reset")
+reset_parser.add_argument("repository")
+_targets(reset_parser)
+
+for operation in ("pause", "resume"):
+    operation_parser = subparsers.add_parser(operation)
+    operation_parser.add_argument("repository")
+    _targets(operation_parser)
+
+poll_parser = subparsers.add_parser("poll")
+poll_parser.add_argument("repository", nargs="?")
+subparsers.add_parser("status")
+subparsers.add_parser("help")
 
 ghp = on_shell_command(
     "ghp", parser=ghp_parser, permission=SUPERUSER, block=False, priority=5
@@ -85,62 +120,82 @@ ghp = on_shell_command(
 
 
 @ghp.handle()
+async def handle_parser_exit(
+    parser_exit: Annotated[ParserExit, ShellCommandArgs()],
+) -> None:
+    """按 NoneBot 推荐方式处理 shell parser 的帮助和错误结果。"""
+    await ghp.finish(ghp_parser.format_help())
+
+
+@ghp.handle()
 async def handle_ghp(
     event: MessageEvent,
     session: AsyncSession,
-    args: Annotated[object, ShellCommandArgs()],
+    args: Annotated[Namespace, ShellCommandArgs()],
 ) -> None:
     # 所有子命令统一从这里分发，确保权限和错误提示行为一致。
     try:
-        # 业务函数仍使用原先的简单参数结构，避免把 argparse Namespace 传入数据层。
-        positional = list(getattr(args, "positional", []))
-        groups = list(getattr(args, "groups", []))
-        privates = list(getattr(args, "privates", []))
-        branches = list(getattr(args, "branches", []))
-        if not positional:
-            await ghp.finish(HELP)
-        command, *tokens = positional
-        command = command.lower()
+        command = args.command
 
         if command == "help":
             result = HELP
         elif command == "subscribe":
-            result = await subscribe(session, event, tokens, groups, privates, branches)
+            result = await subscribe(
+                session,
+                event,
+                [args.repository, *args.events],
+                args.groups,
+                args.privates,
+                args.branches,
+            )
         elif command == "unsubscribe":
-            result = await unsubscribe(session, event, tokens, groups, privates)
+            result = await unsubscribe(
+                session, event, [args.repository], args.groups, args.privates
+            )
         elif command == "list":
-            result = await list_subscriptions(session, event, groups, privates)
+            result = await list_subscriptions(
+                session, event, args.groups, args.privates
+            )
         elif command == "show":
-            result = await show(session, event, tokens, groups, privates)
+            result = await show(
+                session, event, [args.repository], args.groups, args.privates
+            )
         elif command == "event":
-            if not tokens:
-                raise ValueError("用法：/ghp event list|add|remove|set ...")
-            operation, *arguments = tokens
+            operation = args.operation
             if operation == "list":
-                result = await event_list(arguments)
-            elif operation in {"add", "remove", "set"}:
-                result = await edit_events(
-                    session, event, operation, arguments, groups, privates
+                result = await event_list(
+                    [args.category] if args.category is not None else []
                 )
             else:
-                raise ValueError(f"未知 event 操作：{operation}")
+                result = await edit_events(
+                    session,
+                    event,
+                    operation,
+                    [args.repository, *args.events],
+                    args.groups,
+                    args.privates,
+                )
         elif command == "branch":
-            if not tokens:
-                raise ValueError("用法：/ghp branch add|remove|reset ...")
-            operation, *arguments = tokens
-            if operation not in {"add", "remove", "reset"}:
-                raise ValueError(f"未知 branch 操作：{operation}")
+            operation = args.operation
+            arguments = [args.repository]
+            if operation in {"add", "remove"}:
+                arguments.extend(args.patterns)
             result = await edit_branches(
-                session, event, operation, arguments, groups, privates
+                session, event, operation, arguments, args.groups, args.privates
             )
         elif command in {"pause", "resume"}:
             result = await set_enabled(
-                session, event, command == "resume", tokens, groups, privates
+                session,
+                event,
+                command == "resume",
+                [args.repository],
+                args.groups,
+                args.privates,
             )
         elif command == "poll":
             repository_id = None
-            if tokens:
-                repository_id = (await find_repository(session, tokens[0])).id
+            if args.repository:
+                repository_id = (await find_repository(session, args.repository)).id
                 await session.rollback()
             await service.poll_all(repository_id)
             result = "轮询完成"
@@ -166,6 +221,7 @@ async def handle_ghp(
     max_instances=1,
     coalesce=True,
 )
+@get_driver().on_startup
 async def scheduled_poll() -> None:
     # APScheduler 负责周期触发，PollingService 还会用锁防止手动轮询重叠。
     await service.poll_all()
