@@ -5,9 +5,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from fnmatch import fnmatchcase
-from shlex import split as shlex_split
 
 EVENTS: dict[str, tuple[str, ...]] = {
     # 键是可用于命令的类别；值是该类别允许的原子动作。
@@ -130,42 +129,6 @@ def branch_matches(patterns: set[str], branch: str, default_branch: str) -> bool
 class Target:
     type: str
     id: str
-
-
-@dataclass(slots=True)
-class ParsedArgs:
-    positional: list[str] = field(default_factory=list)
-    groups: list[str] = field(default_factory=list)
-    privates: list[str] = field(default_factory=list)
-    branches: list[str] = field(default_factory=list)
-
-
-def parse_args(text: str) -> ParsedArgs:
-    """解析 ghp 子命令参数，保留重复目标和分支选项。"""
-    result = ParsedArgs()
-    tokens = shlex_split(text)
-    index = 0
-    options = {
-        "--group": result.groups,
-        "--private": result.privates,
-        "--branch": result.branches,
-    }
-    while index < len(tokens):
-        token = tokens[index]
-        if token in options:
-            index += 1
-            if index >= len(tokens) or tokens[index].startswith("--"):
-                raise ValueError(f"{token} 缺少参数")
-            value = tokens[index]
-            if token != "--branch" and not value.isdigit():
-                raise ValueError(f"{token} 必须是数字 ID")
-            options[token].append(value)
-        elif token.startswith("--"):
-            raise ValueError(f"未知选项：{token}")
-        else:
-            result.positional.append(token)
-        index += 1
-    return result
 
 
 def normalize_repository(value: str) -> tuple[str, str]:

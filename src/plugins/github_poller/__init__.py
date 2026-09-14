@@ -1,14 +1,24 @@
+# ruff: noqa: E402
+
 """通过 GitHub REST API 轮询仓库变化并推送到 QQ。"""
 
 from __future__ import annotations
 
+from nonebot import require
+
+require("nonebot_plugin_orm")
+require("nonebot_plugin_apscheduler")
+
+from argparse import ArgumentTypeError
 from typing import TYPE_CHECKING, Annotated
 
-from nonebot import logger, on_command, require
+from nonebot import logger, on_shell_command
 from nonebot.exception import FinishedException
-from nonebot.params import CommandArg
+from nonebot.params import ShellCommandArgs
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
+from nonebot.rule import ArgumentParser
+from nonebot_plugin_apscheduler import scheduler
 
 from .commands import (
     HELP,
@@ -24,17 +34,11 @@ from .commands import (
     unsubscribe,
 )
 from .config import Config, plugin_config
-from .events import parse_args
 from .service import service
 
 if TYPE_CHECKING:
-    from nonebot.adapters.onebot.v11 import Message, MessageEvent
+    from nonebot.adapters.onebot.v11 import MessageEvent
     from nonebot_plugin_orm import AsyncSession
-
-require("nonebot_plugin_orm")
-require("nonebot_plugin_apscheduler")
-
-from nonebot_plugin_apscheduler import scheduler  # noqa: E402
 
 __plugin_meta__ = PluginMetadata(
     name="GitHub 轮询通知",
@@ -44,39 +48,70 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-ghp = on_command("ghp", permission=SUPERUSER, block=False, priority=5)
+
+def _target_id(value: str) -> str:
+    """验证群号或 QQ 号，同时保留字符串避免大整数精度/格式问题。"""
+    if not value.isdigit():
+        raise ArgumentTypeError("目标 ID 必须是数字")
+    return value
+
+
+# 由 NoneBot 的 shell parser 负责引号、重复选项和参数边界。
+ghp_parser = ArgumentParser(prog="ghp", description="GitHub 仓库轮询通知")
+ghp_parser.add_argument("positional", nargs="*", help="子命令及其参数")
+ghp_parser.add_argument(
+    "--group",
+    dest="groups",
+    action="append",
+    default=[],
+    type=_target_id,
+    help="群号（可重复）",
+)
+ghp_parser.add_argument(
+    "--private",
+    dest="privates",
+    action="append",
+    default=[],
+    type=_target_id,
+    help="QQ 号（可重复）",
+)
+ghp_parser.add_argument(
+    "--branch", dest="branches", action="append", default=[], help="分支模式（可重复）"
+)
+
+ghp = on_shell_command(
+    "ghp", parser=ghp_parser, permission=SUPERUSER, block=False, priority=5
+)
 
 
 @ghp.handle()
 async def handle_ghp(
     event: MessageEvent,
     session: AsyncSession,
-    message: Annotated[Message, CommandArg()],
+    args: Annotated[object, ShellCommandArgs()],
 ) -> None:
     # 所有子命令统一从这里分发，确保权限和错误提示行为一致。
     try:
-        parsed = parse_args(message.extract_plain_text().strip())
-        if not parsed.positional:
+        # 业务函数仍使用原先的简单参数结构，避免把 argparse Namespace 传入数据层。
+        positional = list(getattr(args, "positional", []))
+        groups = list(getattr(args, "groups", []))
+        privates = list(getattr(args, "privates", []))
+        branches = list(getattr(args, "branches", []))
+        if not positional:
             await ghp.finish(HELP)
-        command, *tokens = parsed.positional
+        command, *tokens = positional
         command = command.lower()
 
         if command == "help":
             result = HELP
         elif command == "subscribe":
-            result = await subscribe(
-                session, event, tokens, parsed.groups, parsed.privates, parsed.branches
-            )
+            result = await subscribe(session, event, tokens, groups, privates, branches)
         elif command == "unsubscribe":
-            result = await unsubscribe(
-                session, event, tokens, parsed.groups, parsed.privates
-            )
+            result = await unsubscribe(session, event, tokens, groups, privates)
         elif command == "list":
-            result = await list_subscriptions(
-                session, event, parsed.groups, parsed.privates
-            )
+            result = await list_subscriptions(session, event, groups, privates)
         elif command == "show":
-            result = await show(session, event, tokens, parsed.groups, parsed.privates)
+            result = await show(session, event, tokens, groups, privates)
         elif command == "event":
             if not tokens:
                 raise ValueError("用法：/ghp event list|add|remove|set ...")
@@ -85,7 +120,7 @@ async def handle_ghp(
                 result = await event_list(arguments)
             elif operation in {"add", "remove", "set"}:
                 result = await edit_events(
-                    session, event, operation, arguments, parsed.groups, parsed.privates
+                    session, event, operation, arguments, groups, privates
                 )
             else:
                 raise ValueError(f"未知 event 操作：{operation}")
@@ -96,16 +131,11 @@ async def handle_ghp(
             if operation not in {"add", "remove", "reset"}:
                 raise ValueError(f"未知 branch 操作：{operation}")
             result = await edit_branches(
-                session, event, operation, arguments, parsed.groups, parsed.privates
+                session, event, operation, arguments, groups, privates
             )
         elif command in {"pause", "resume"}:
             result = await set_enabled(
-                session,
-                event,
-                command == "resume",
-                tokens,
-                parsed.groups,
-                parsed.privates,
+                session, event, command == "resume", tokens, groups, privates
             )
         elif command == "poll":
             repository_id = None
