@@ -4,6 +4,8 @@ from nonebot import get_driver, on_fullmatch, on_regex
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 from nonebot.drivers import Driver
 from nonebot.matcher import Matcher
+from typing import Annotated
+
 from nonebot.params import RegexGroup
 from nonebot.plugin import PluginMetadata
 
@@ -44,7 +46,7 @@ async def tyg_query_func(event: GroupMessageEvent) -> None:
 
 
 @tyg_change.handle()
-async def tyg_change_func(event: GroupMessageEvent, group: tuple[str, str] = RegexGroup()) -> None:
+async def tyg_change_func(event: GroupMessageEvent, group: Annotated[tuple[str, str], RegexGroup()]) -> None:
     if not Tygj.in_business_hours(event.time):
         await tyg_query.finish('tyg闭店中')
 

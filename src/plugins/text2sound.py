@@ -1,6 +1,8 @@
 from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Message, MessageSegment
 from nonebot.internal.matcher import Matcher
+from typing import Annotated
+
 from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
 
@@ -14,5 +16,5 @@ text2sound: type[Matcher] = on_command('文本转语音', aliases={'tts', 'text2
 
 
 @text2sound.handle()
-async def text2sound_func(message: Message = CommandArg()) -> None:
+async def text2sound_func(message: Annotated[Message, CommandArg()]) -> None:
     await text2sound.finish(MessageSegment('tts', {'text': str(message)}))

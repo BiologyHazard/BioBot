@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from pathlib import Path
-from typing import Any, Tuple, Union
+from typing import Annotated, Any, Tuple, Union
 
 import nonebot
 import nonebot.plugin
@@ -136,7 +136,7 @@ music_reply = on_message(priority=2,
 
 @music_regex.handle()
 async def music_receive(bot: Bot, event: Union[GroupMessageEvent, PrivateMessageEvent],
-                        regroup: Tuple[Any, ...] = RegexGroup()):
+                        regroup: Annotated[Tuple[Any, ...], RegexGroup()]):
     nid = regroup[1]
     logger.info(f"已识别NID:{nid}的歌曲")
     nncm.get_session(bot, event)
@@ -145,7 +145,7 @@ async def music_receive(bot: Bot, event: Union[GroupMessageEvent, PrivateMessage
 
 @playlist_regex.handle()
 async def music_list_receive(bot: Bot, event: Union[GroupMessageEvent, PrivateMessageEvent],
-                             regroup: Tuple[Any, ...] = RegexGroup()):
+                             regroup: Annotated[Tuple[Any, ...], RegexGroup()]):
     lid = regroup[0]
     logger.info(f"已识别LID:{lid}的歌单")
     nncm.get_session(bot, event)
@@ -195,7 +195,7 @@ async def music_reply_receive(bot: Bot, event: Union[GroupMessageEvent, PrivateM
 
 @ncm_set.handle()
 async def set_receive(bot: Bot, event: Union[GroupMessageEvent, PrivateMessageEvent],
-                      args: Message = CommandArg()):  # 功能设置接收
+                      args: Annotated[Message, CommandArg()]):  # 功能设置接收
     logger.debug(f"权限为{event.sender.role}的用户<{event.sender.nickname}>尝试使用命令{cmd}ncm {args}")
     if args:
         args = str(args).split()

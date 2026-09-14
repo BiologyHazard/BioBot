@@ -1,4 +1,4 @@
-from typing import NoReturn
+from typing import Annotated, NoReturn
 
 from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Message
@@ -17,7 +17,7 @@ __plugin_meta__ = PluginMetadata(
 
 
 @Rule
-async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
+async def with_command_start_or_to_me(command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]) -> bool:
     return bool(command_start) or to_me
 
 generate: type[Matcher] = on_command('恶臭',
@@ -27,5 +27,5 @@ generate: type[Matcher] = on_command('恶臭',
 
 
 @generate.handle()
-async def homo_func(message: Message = CommandArg()) -> NoReturn:
+async def homo_func(message: Annotated[Message, CommandArg()]) -> NoReturn:
     await generate.finish(generate_homo(message.extract_plain_text()))

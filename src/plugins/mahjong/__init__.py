@@ -1,4 +1,4 @@
-from typing import NoReturn
+from typing import Annotated, NoReturn
 
 from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent
@@ -21,7 +21,7 @@ __plugin_meta__ = PluginMetadata(
 
 
 @Rule
-async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
+async def with_command_start_or_to_me(command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]) -> bool:
     return bool(command_start) or to_me
 
 向听: type[Matcher] = on_command('向听数', aliases={'向听'}, rule=with_command_start_or_to_me, priority=5)
@@ -29,7 +29,7 @@ async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me
 
 
 @向听.handle()
-async def 向听_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> NoReturn:
+async def 向听_func(bot: Bot, event: MessageEvent, message: Annotated[Message, CommandArg()]) -> NoReturn:
     try:
         theory: Theory = Theory(str(message).strip())
     except ValueError:
@@ -44,7 +44,7 @@ async def 向听_func(bot: Bot, event: MessageEvent, message: Message = CommandA
 
 
 @何切.handle()
-async def 何切_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> NoReturn:
+async def 何切_func(bot: Bot, event: MessageEvent, message: Annotated[Message, CommandArg()]) -> NoReturn:
     try:
         theory: Theory = Theory(str(message).strip())
     except ValueError:

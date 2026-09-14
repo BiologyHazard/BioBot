@@ -1,5 +1,7 @@
 import aiohttp
 from nonebot.plugin import PluginMetadata, on_command
+from typing import Annotated
+
 from nonebot.params import CommandArg
 from nonebot.adapters import Message
 
@@ -51,7 +53,7 @@ sx = on_command('缩写', aliases={'sx'}, priority=5, block=False)
 
 
 @sx.handle()
-async def sx_func(message: Message = CommandArg()):
+async def sx_func(message: Annotated[Message, CommandArg()]):
     data = await get_sx(message.extract_plain_text())
     result = ""
     try:

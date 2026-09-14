@@ -2,6 +2,8 @@ from pathlib import Path
 
 from nonebot import on_command, logger
 from nonebot.adapters import Message
+from typing import Annotated
+
 from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
 
@@ -21,7 +23,7 @@ slscq = Slscq(Path(__file__).parent / 'data.json')
 
 
 @sl.handle()
-async def sl_func(message: Message = CommandArg()):
+async def sl_func(message: Annotated[Message, CommandArg()]):
     logger.info(message)
     try:
         args: list[str] = message.extract_plain_text().split()

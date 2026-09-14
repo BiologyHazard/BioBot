@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Final, NoReturn
+from typing import Annotated, Final, NoReturn
 
 from nonebot import MatcherGroup, on_message
 from nonebot.adapters.onebot.v11 import (GroupMessageEvent, Message,
@@ -39,12 +39,12 @@ def event_to_dict_key(event: MessageEvent) -> str:
 
 
 @Rule
-async def with_command_start_or_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
+async def with_command_start_or_to_me(command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]) -> bool:
     return bool(command_start) or to_me
 
 
 @Rule
-async def is_valid_expression(message: str = EventPlainText()) -> bool:
+async def is_valid_expression(message: Annotated[str, EventPlainText()]) -> bool:
     if len(message) > MAX_LENGTH:
         return False
 
@@ -73,7 +73,7 @@ check_answer: type[Matcher] = on_message(rule=is_valid_expression, priority=15)
 
 
 @start_game.handle()
-async def start_game_func(event: MessageEvent, message: Message = CommandArg()) -> NoReturn:
+async def start_game_func(event: MessageEvent, message: Annotated[Message, CommandArg()]) -> NoReturn:
     try:
         parameters: list[str] = message.extract_plain_text().split()
         if len(parameters) >= 3:
@@ -123,7 +123,7 @@ async def look_answer_func(event: MessageEvent) -> NoReturn:
 
 
 @check_answer.handle()
-async def check_answer_func(message: str = EventPlainText()) -> None:
+async def check_answer_func(message: Annotated[str, EventPlainText()]) -> None:
     for k, v in replace_dict.items():
         message = message.replace(k, v)
     try:
@@ -138,7 +138,7 @@ async def check_answer_func(message: str = EventPlainText()) -> None:
 
 
 @set_solvable_probability.handle()
-async def set_solvable_probability_func(event: MessageEvent, message: Message = CommandArg()) -> NoReturn:
+async def set_solvable_probability_func(event: MessageEvent, message: Annotated[Message, CommandArg()]) -> NoReturn:
     try:
         probability: float = float(str(message).strip())
     except ValueError:

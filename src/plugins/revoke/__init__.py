@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Annotated, Any
 
 from nonebot import on_command, on_notice
 from nonebot.adapters import Bot as BaseBot
@@ -117,7 +117,7 @@ def remove_msg_id(key: str, msg_id: str) -> None:
 
 
 # 命令前缀为空则需要to_me，否则不需要
-def smart_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
+def smart_to_me(command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]) -> bool:
     return bool(command_start) or to_me
 
 
@@ -128,7 +128,7 @@ revoke = on_command('revoke', aliases={'撤回'}, block=True, rule=smart_to_me)
 async def _(
     bot: V11Bot | V12Bot,
     event: V11MEvent | V12MEvent,
-    msg: V11Msg | V12Msg = CommandArg(),
+    msg: Annotated[V11Msg | V12Msg, CommandArg()],
 ):
     sub_id = ''
     if isinstance(event, V11MEvent):

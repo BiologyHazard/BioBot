@@ -1,5 +1,7 @@
 from nonebot import MatcherGroup, logger
 from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
+from typing import Annotated
+
 from nonebot.params import Command, CommandArg, CommandStart, EventToMe
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
@@ -29,7 +31,7 @@ __plugin_meta__: PluginMetadata = PluginMetadata(
 
 
 @Rule
-def with_command_start_or_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
+def with_command_start_or_to_me(command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]) -> bool:
     return bool(command_start) or to_me
 
 
@@ -54,7 +56,7 @@ chat = chat_command_group.on_command('chat', aliases=set(models.keys()), force_w
 
 
 @chat.handle()
-async def chat_func(bot: Bot, event: MessageEvent, message: Message = CommandArg(), command: tuple[str, ...] = Command()):
+async def chat_func(bot: Bot, event: MessageEvent, message: Annotated[Message, CommandArg()], command: Annotated[tuple[str, ...], Command()]):
     command_str = '.'.join(command)
     message_plain_text = message.extract_plain_text()
     session = Session()

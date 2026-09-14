@@ -5,6 +5,8 @@ from nonebot import on_command
 from nonebot.log import logger
 from nonebot.matcher import Matcher
 from nonebot.typing import T_Handler
+from typing import Annotated
+
 from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
 from nonebot.adapters.onebot.v11 import Message
@@ -40,7 +42,7 @@ def retry(func: Func, count=3, sleep=3):
 
 def create_matchers():
     def create_handler(source: Source) -> T_Handler:
-        async def handler(matcher: Matcher, msg: Message = CommandArg()):
+        async def handler(matcher: Matcher, msg: Annotated[Message, CommandArg()]):
             keyword = msg.extract_plain_text().strip()
             if not keyword:
                 matcher.block = False
@@ -67,7 +69,7 @@ def create_matchers():
 create_matchers()
 
 
-async def handler(matcher: Matcher, msg: Message = CommandArg()):
+async def handler(matcher: Matcher, msg: Annotated[Message, CommandArg()]):
     keyword = msg.extract_plain_text().strip()
     if not keyword:
         matcher.block = False

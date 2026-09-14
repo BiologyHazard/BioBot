@@ -1,6 +1,6 @@
 import asyncio
 from textwrap import dedent
-from typing import Any
+from typing import Annotated, Any
 
 from nonebot import logger, on_command, on_fullmatch, on_request
 from nonebot.adapters.onebot.v11 import (Bot, FriendRequestEvent, GroupMessageEvent, GroupRequestEvent,
@@ -47,8 +47,8 @@ async def request_matcher_func(bot: Bot, event: FriendRequestEvent | GroupReques
 @approve_friend_request.handle()
 async def approve_friend_request_func(bot: Bot,
                                       event: MessageEvent,
-                                      message: Message = CommandArg(),
-                                      command: str = RawCommand()) -> None:
+                                      message: Annotated[Message, CommandArg()],
+                                      command: Annotated[str, RawCommand()]) -> None:
     global latest_event, latest_user_info
     if not isinstance(latest_event, FriendRequestEvent) or latest_user_info is None:
         await approve_friend_request.finish('没有待处理的请求')
@@ -77,7 +77,7 @@ async def approve_friend_request_func(bot: Bot,
 @approve_group_request.handle()
 async def approve_group_request_func(bot: Bot,
                                      event: MessageEvent,
-                                     command: str = Fullmatch()) -> None:
+                                     command: Annotated[str, Fullmatch()]) -> None:
     global latest_event, latest_user_info
     if not isinstance(latest_event, GroupRequestEvent) or latest_user_info is None:
         await approve_group_request.finish('没有待处理的请求')

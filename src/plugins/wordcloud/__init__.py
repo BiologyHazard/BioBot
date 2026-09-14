@@ -4,7 +4,7 @@ import re
 from base64 import b64decode
 from datetime import datetime, timedelta
 from io import BytesIO
-from typing import List, Tuple, Union, cast
+from typing import Annotated, List, Tuple, Union, cast
 
 try:
     from zoneinfo import ZoneInfo
@@ -120,7 +120,7 @@ def parse_datetime(key: str):
     async def _key_parser(
         matcher: Matcher,
         state: T_State,
-        input: Union[datetime, Message] = Arg(key),
+        input: Annotated[Union[datetime, Message], Arg(key)],
     ):
         if isinstance(input, datetime):
             return
@@ -138,8 +138,8 @@ def parse_datetime(key: str):
 async def handle_first_receive(
     event: Union[GroupMessageEventV11, GroupMessageEventV12, ChannelMessageEvent],
     state: T_State,
-    commands: Tuple[str, ...] = Command(),
-    args: Message = CommandArg(),
+    commands: Annotated[Tuple[str, ...], Command()],
+    args: Annotated[Message, CommandArg()],
 ):
     command = commands[0]
 
@@ -228,9 +228,9 @@ async def handle_get_messages_group_message(
     bot: Union[BotV11, BotV12],
     event: Union[GroupMessageEventV11, GroupMessageEventV12],
     state: T_State,
-    start: datetime = Arg(),
-    stop: datetime = Arg(),
-    my: bool = Arg(),
+    start: Annotated[datetime, Arg()],
+    stop: Annotated[datetime, Arg()],
+    my: Annotated[bool, Arg()],
 ):
     platform = "qq" if isinstance(bot, BotV11) else bot.platform
     # 将时间转换到 UTC 时区
@@ -264,9 +264,9 @@ async def handle_get_messages_channel_message(
     bot: BotV12,
     event: ChannelMessageEvent,
     state: T_State,
-    start: datetime = Arg(),
-    stop: datetime = Arg(),
-    my: bool = Arg(),
+    start: Annotated[datetime, Arg()],
+    stop: Annotated[datetime, Arg()],
+    my: Annotated[bool, Arg()],
 ):
     state["messages"] = await get_messages_plain_text(
         platforms=[bot.platform],
@@ -284,9 +284,9 @@ async def handle_get_messages_channel_message(
 @wordcloud_cmd.handle()
 async def handle_send_message(
     bot: Union[BotV11, BotV12],
-    messages: List[str] = Arg(),
-    mask_key: str = Arg(),
-    my: bool = Arg(),
+    messages: Annotated[List[str], Arg()],
+    mask_key: Annotated[str, Arg()],
+    my: Annotated[bool, Arg()],
 ):
     image = await get_wordcloud(messages, mask_key)
     if not image:
@@ -308,7 +308,7 @@ def parse_image(key: str):
     async def _key_parser(
         matcher: Matcher,
         state: T_State,
-        input: Union[MessageSegment, Message] = Arg(key),
+        input: Annotated[Union[MessageSegment, Message], Arg(key)],
     ):
         if isinstance(input, MessageSegment):
             return
@@ -339,8 +339,8 @@ async def _(
     bot: Union[BotV11, BotV12],
     event: Union[GroupMessageEventV11, GroupMessageEventV12, ChannelMessageEvent],
     state: T_State,
-    args: Message = CommandArg(),
-    commands: Tuple[str, ...] = Command(),
+    args: Annotated[Message, CommandArg()],
+    commands: Annotated[Tuple[str, ...], Command()],
 ):
     command = commands[0]
 
@@ -387,7 +387,7 @@ async def _(
     parameterless=[Depends(parse_image("image"))],
 )
 async def handle_get_image_v11(
-    bot: BotV11, state: T_State, image: MessageSegment = Arg()
+    bot: BotV11, state: T_State, image: Annotated[MessageSegment, Arg()]
 ):
     state["image_bytes"] = await plugin_data.download_file(
         image.data["url"], "masked", cache=True
@@ -400,7 +400,7 @@ async def handle_get_image_v11(
     parameterless=[Depends(parse_image("image"))],
 )
 async def handle_get_image_v12(
-    bot: BotV12, state: T_State, image: MessageSegment = Arg()
+    bot: BotV12, state: T_State, image: Annotated[MessageSegment, Arg()]
 ):
     file_id = image.data["file_id"]
     result = await bot.get_file(type="data", file_id=file_id)
@@ -411,10 +411,10 @@ async def handle_get_image_v12(
 
 @mask_cmd.handle()
 async def handle_save_mask(
-    image_bytes: bytes = Arg(),
-    default: bool = Arg(),
-    mask_key: str = Arg(),
-    msg: str = Arg(),
+    image_bytes: Annotated[bytes, Arg()],
+    default: Annotated[bool, Arg()],
+    mask_key: Annotated[str, Arg()],
+    msg: Annotated[str, Arg()],
 ):
     mask = Image.open(BytesIO(image_bytes))
     if default:
@@ -436,8 +436,8 @@ schedule_cmd = wordcloud.command(
 async def _(
     bot: Union[BotV11, BotV12],
     event: Union[GroupMessageEventV11, GroupMessageEventV12, ChannelMessageEvent],
-    commands: Tuple[str, ...] = Command(),
-    args: Message = CommandArg(),
+    commands: Annotated[Tuple[str, ...], Command()],
+    args: Annotated[Message, CommandArg()],
 ):
     command = commands[0]
 

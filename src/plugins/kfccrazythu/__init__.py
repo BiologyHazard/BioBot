@@ -1,5 +1,5 @@
 import random
-from typing import List
+from typing import Annotated, List
 
 from nonebot import on_regex
 from nonebot.matcher import Matcher
@@ -28,21 +28,21 @@ crazy_cn = on_regex(pattern=r"^疯狂星期\S$", priority=15, block=False)
 crazy_jp = on_regex(pattern=r"^狂乱\S曜日$", priority=15, block=False)
 
 
-async def get_weekday_cn(arg: str = RegexMatched()) -> str:
+async def get_weekday_cn(arg: Annotated[str, RegexMatched()]) -> str:
     return arg[-1].replace("天", "日")
 
 
-async def get_weekday_jp(arg: str = RegexMatched()) -> str:
+async def get_weekday_jp(arg: Annotated[str, RegexMatched()]) -> str:
     return arg[2]
 
 
 @crazy_cn.handle()
-async def _(matcher: Matcher, weekday: str = Depends(get_weekday_cn)):
+async def _(matcher: Matcher, weekday: Annotated[str, Depends(get_weekday_cn)]):
     await matcher.finish(randomKFC(weekday))
 
 
 @crazy_jp.handle()
-async def _(matcher: Matcher, weekday: str = Depends(get_weekday_jp)):
+async def _(matcher: Matcher, weekday: Annotated[str, Depends(get_weekday_jp)]):
     await matcher.finish(randomKFC(weekday))
 
 

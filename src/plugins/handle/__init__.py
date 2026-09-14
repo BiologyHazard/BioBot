@@ -4,7 +4,7 @@ import asyncio
 from io import BytesIO
 from asyncio import TimerHandle
 from dataclasses import dataclass
-from typing import Dict, List, Optional, NoReturn, Union
+from typing import Annotated, Dict, List, Optional, NoReturn, Union
 
 from nonebot.typing import T_State
 from nonebot.matcher import Matcher
@@ -85,7 +85,7 @@ async def _(
     bot: Union[V11Bot, V12Bot],
     matcher: Matcher,
     event: Union[V11MEvent, V12MEvent],
-    argv: List[str] = ShellCommandArgv(),
+    argv: Annotated[List[str], ShellCommandArgv()],
 ):
     await handle_handle(bot, matcher, event, argv)
 
@@ -117,7 +117,7 @@ def match_idiom(msg: str) -> bool:
     return bool(re.fullmatch(r"[\u4e00-\u9fa5]{4}", msg))
 
 
-def get_idiom_input(state: T_State, msg: str = EventPlainText()) -> bool:
+def get_idiom_input(state: T_State, msg: Annotated[str, EventPlainText()]) -> bool:
     if match_idiom(msg):
         state["idiom"] = msg
         return True
@@ -125,7 +125,7 @@ def get_idiom_input(state: T_State, msg: str = EventPlainText()) -> bool:
 
 
 # 命令前缀为空则需要to_me，否则不需要
-def smart_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
+def smart_to_me(command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]) -> bool:
     return bool(command_start) or to_me
 
 
@@ -137,7 +137,7 @@ def shortcut(cmd: str, argv: List[str] = [], **kwargs):
         bot: Union[V11Bot, V12Bot],
         matcher: Matcher,
         event: Union[V11MEvent, V12MEvent],
-        msg: Union[V11Msg, V12Msg] = CommandArg(),
+        msg: Annotated[Union[V11Msg, V12Msg], CommandArg()],
     ):
         try:
             args = shlex.split(msg.extract_plain_text().strip())

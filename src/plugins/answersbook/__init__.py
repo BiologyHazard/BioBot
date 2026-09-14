@@ -1,5 +1,6 @@
 import random
 from pathlib import Path
+from typing import Annotated
 
 from nonebot import get_driver, on_keyword
 from nonebot.adapters.onebot.v11 import Message, MessageEvent, MessageSegment
@@ -26,7 +27,7 @@ def get_answer() -> str:
 
 
 @Rule
-def startswith_or_endswith(message: str = EventPlainText()) -> bool:
+def startswith_or_endswith(message: Annotated[str, EventPlainText()]) -> bool:
     return message.startswith('翻看答案') or message.endswith('翻看答案')
 
 
@@ -36,7 +37,7 @@ look_answer = on_keyword({'翻看答案'}, rule=startswith_or_endswith)
 @look_answer.handle()
 async def answersbook(state: T_State,
                       event: MessageEvent,
-                      message: str = EventPlainText()) -> None:
+                      message: Annotated[str, EventPlainText()]) -> None:
     state['user_id'] = event.user_id
     if event.reply is not None:
         state['reply'] = event.reply

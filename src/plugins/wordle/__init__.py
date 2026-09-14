@@ -4,7 +4,7 @@ import shlex
 from asyncio import TimerHandle
 from dataclasses import dataclass
 from io import BytesIO
-from typing import Dict, List, NoReturn, Optional, Union
+from typing import Annotated, Dict, List, NoReturn, Optional, Union
 
 from nonebot import on_command, on_message, on_shell_command
 from nonebot.adapters.onebot.v11 import Bot as V11Bot
@@ -94,7 +94,7 @@ async def _(
     bot: Union[V11Bot, V12Bot],
     matcher: Matcher,
     event: Union[V11MEvent, V12MEvent],
-    argv: List[str] = ShellCommandArgv(),
+    argv: Annotated[List[str], ShellCommandArgv()],
 ):
     await handle_wordle(bot, matcher, event, argv)
 
@@ -122,7 +122,7 @@ def game_running(
     return bool(games.get(cid, None))
 
 
-def get_word_input(state: T_State, msg: str = EventPlainText()) -> bool:
+def get_word_input(state: T_State, msg: Annotated[str, EventPlainText()]) -> bool:
     if re.fullmatch(r'^[a-zA-Z]{3,8}$', msg):
         state['word'] = msg
         return True
@@ -137,7 +137,7 @@ def shortcut(cmd: str, argv: List[str] = [], **kwargs):
         bot: Union[V11Bot, V12Bot],
         matcher: Matcher,
         event: Union[V11MEvent, V12MEvent],
-        msg: Union[V11Msg, V12Msg] = CommandArg(),
+        msg: Annotated[Union[V11Msg, V12Msg], CommandArg()],
     ):
         try:
             args = shlex.split(msg.extract_plain_text().strip())
@@ -147,7 +147,7 @@ def shortcut(cmd: str, argv: List[str] = [], **kwargs):
 
 
 # 命令前缀为空则需要to_me，否则不需要
-def smart_to_me(command_start: str = CommandStart(), to_me: bool = EventToMe()) -> bool:
+def smart_to_me(command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]) -> bool:
     return bool(command_start) or to_me
 
 

@@ -111,7 +111,7 @@ driver: Driver = get_driver()
 
 @Rule
 async def with_command_start_or_to_me(
-    command_start: str = CommandStart(), to_me: bool = EventToMe()
+    command_start: Annotated[str, CommandStart()], to_me: Annotated[bool, EventToMe()]
 ) -> bool:
     return bool(command_start) or to_me
 

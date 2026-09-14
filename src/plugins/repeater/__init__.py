@@ -1,5 +1,7 @@
 from nonebot import get_plugin_config, logger, on_message
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message
+from typing import Annotated
+
 from nonebot.params import EventMessage
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
@@ -32,12 +34,12 @@ def in_repeater_group(event: GroupMessageEvent) -> bool:
 
 
 @Rule
-def not_in_blacklist(raw_message: Message = EventMessage()) -> bool:
+def not_in_blacklist(raw_message: Annotated[Message, EventMessage()]) -> bool:
     return raw_message not in plugin_config.repeater_blacklist
 
 
 @Rule
-def should_repeat(event: GroupMessageEvent, raw_message: Message = EventMessage()) -> bool:
+def should_repeat(event: GroupMessageEvent, raw_message: Annotated[Message, EventMessage()]) -> bool:
     message: Message = _message_preprocess(raw_message)
     logger.debug(f'[复读姬] 这一次消息: {message}')
     logger.debug(f'[复读姬] 上一次消息: {last_message.get(event.group_id)}')
@@ -54,7 +56,7 @@ repeat = on_message(rule=in_repeater_group & not_in_blacklist & should_repeat, p
 
 
 @repeat.handle()
-async def repeat_func(bot: Bot, event: GroupMessageEvent, raw_message: Message = EventMessage()) -> None:
+async def repeat_func(bot: Bot, event: GroupMessageEvent, raw_message: Annotated[Message, EventMessage()]) -> None:
     logger.debug(f'[复读姬] 原始的消息: {event.message}')
     logger.debug(f"[复读姬] 欲发送信息: {raw_message}")
 

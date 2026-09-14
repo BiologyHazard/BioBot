@@ -4,7 +4,7 @@ import math
 import re
 from bisect import bisect_right
 from random import Random
-from typing import Any, Sequence
+from typing import Annotated, Any, Sequence
 
 import aiofiles
 from nonebot import MatcherGroup, get_driver, logger, require
@@ -130,7 +130,7 @@ def get_event_id(bot: Bot, event: MessageEvent) -> str:
 
 
 @Rule
-def no_command_arg(command_arg: Message = CommandArg()) -> bool:
+def no_command_arg(command_arg: Annotated[Message, CommandArg()]) -> bool:
     return not command_arg
 
 
@@ -357,7 +357,7 @@ async def maimai_what_func() -> None:
 
 
 @spec_rand.handle()
-async def spec_rand_func(group: tuple[str | None, str | None, str | None, str | None] = RegexGroup()) -> None:  # type: ignore
+async def spec_rand_func(group: Annotated[tuple[str | None, str | None, str | None, str | None], RegexGroup()]) -> None:  # type: ignore
     music_type, diff, ds, level = group
     if ds is not None:
         ds = float(ds)
@@ -379,7 +379,7 @@ async def spec_rand_func(group: tuple[str | None, str | None, str | None, str | 
 
 
 @best_50.handle()
-async def best_pic_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
+async def best_pic_func(bot: Bot, event: MessageEvent, message: Annotated[Message, CommandArg()]) -> None:
     payload, nickname = await get_payload_and_nickname(bot, event, message, message.extract_plain_text())
 
     result: MessageSegment | str = await generate_b50(payload, event.user_id)
@@ -387,7 +387,7 @@ async def best_pic_func(bot: Bot, event: MessageEvent, message: Message = Comman
 
 
 @music_score.handle()
-async def music_score_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
+async def music_score_func(bot: Bot, event: MessageEvent, message: Annotated[Message, CommandArg()]) -> None:
     args: list[str] = message.extract_plain_text().strip().rsplit(maxsplit=1)
     if len(args) == 1:
         (name, ) = args
@@ -432,8 +432,8 @@ async def music_score_func(bot: Bot, event: MessageEvent, message: Message = Com
 @plate_process.handle()
 async def plate_process_func(bot: Bot,
                              event: MessageEvent,
-                             message: Message = EventMessage(),
-                             group: tuple[str, str] = RegexGroup()) -> None:  # type: ignore
+                             message: Annotated[Message, EventMessage()],
+                             group: Annotated[tuple[str, str], RegexGroup()]) -> None:  # type: ignore
     plate_name_han, user = group
     version_han, goal_han = plate_name_han[0], plate_name_han[1]
 
@@ -447,9 +447,9 @@ async def plate_process_func(bot: Bot,
 async def process_pic_func(
         bot: Bot,
         event: MessageEvent,
-        message: Message = EventMessage(),
-        group: tuple[str, str | None, str | None, str | None, str | None,
-                     str, str | None, str | None, str | None, str | None, str] = RegexGroup(),  # type: ignore
+        message: Annotated[Message, EventMessage()],
+        group: Annotated[tuple[str, str | None, str | None, str | None, str | None,
+                               str, str | None, str | None, str | None, str | None, str], RegexGroup()],  # type: ignore
 ) -> None:
     user = group[-1]
     payload, nickname = await get_payload_and_nickname(bot, event, message, user)
@@ -462,8 +462,8 @@ async def process_pic_func(
 async def level_achievement_func(
     bot: Bot,
     event: MessageEvent,
-    message: Message = EventMessage(),
-    group: tuple[str | None, str | None, str | None, str | None] = RegexGroup(),  # type: ignore
+    message: Annotated[Message, EventMessage()],
+    group: Annotated[tuple[str | None, str | None, str | None, str | None], RegexGroup()],  # type: ignore
 ) -> None:
     ds, level, page, user = group
     if level is not None and level not in LEVELS:
@@ -514,7 +514,7 @@ async def level_achievement_func(
 
 
 @rating_ranking.handle()
-async def rating_ranking_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
+async def rating_ranking_func(bot: Bot, event: MessageEvent, message: Annotated[Message, CommandArg()]) -> None:
     user: str = message.extract_plain_text().strip()
     payload, nickname = await get_payload_and_nickname(bot, event, message, user)
     data: dict[str, Any] | str = await get_player_data('best', payload, event.user_id)  # 先查一下b50来获取用户名和rating
@@ -545,7 +545,7 @@ async def rating_ranking_func(bot: Bot, event: MessageEvent, message: Message = 
 
 
 @inner_level_pic.handle()
-async def inner_level_pic_func(group: tuple[str] = RegexGroup()) -> None:  # type: ignore
+async def inner_level_pic_func(group: Annotated[tuple[str], RegexGroup()]) -> None:  # type: ignore
     (level,) = group
     if level not in LEVELS:
         await inner_level_pic.finish(f'不存在等级为{level}的乐曲。', reply_message=True)
@@ -553,7 +553,7 @@ async def inner_level_pic_func(group: tuple[str] = RegexGroup()) -> None:  # typ
 
 
 @query_chart.handle()
-async def query_chart_func(group: tuple[str | None, str] = RegexGroup()) -> None:  # type: ignore
+async def query_chart_func(group: Annotated[tuple[str | None, str], RegexGroup()]) -> None:  # type: ignore
     level_han, music_id = group
     music: Music | None = Mai.music_list.by_id(music_id)
     if music is None:
@@ -566,7 +566,7 @@ async def query_chart_func(group: tuple[str | None, str] = RegexGroup()) -> None
 
 
 @search_music_by_title.handle()
-async def search_music_by_title_func(message: Message = CommandArg()) -> None:
+async def search_music_by_title_func(message: Annotated[Message, CommandArg()]) -> None:
     name: str = message.extract_plain_text()
     if not name:
         await search_music_by_title.finish('请输入要查询的乐曲。')
@@ -584,7 +584,7 @@ async def search_music_by_title_func(message: Message = CommandArg()) -> None:
 
 
 @search_music_by_alias.handle()
-async def search_music_by_alias_func(group: tuple[str] = RegexGroup()) -> None:  # type: ignore
+async def search_music_by_alias_func(group: Annotated[tuple[str], RegexGroup()]) -> None:  # type: ignore
     (alias, ) = group
     result: MusicList = Mai.music_list.by_alias(alias)
     if not result:
@@ -599,7 +599,7 @@ async def search_music_by_alias_func(group: tuple[str] = RegexGroup()) -> None: 
 
 
 @search_music_by_inner_level.handle()
-async def search_music_by_inner_level_func(message: Message = CommandArg()) -> None:
+async def search_music_by_inner_level_func(message: Annotated[Message, CommandArg()]) -> None:
     args: list[str] = message.extract_plain_text().strip().split()
     try:
         page: int = 0
@@ -638,7 +638,7 @@ async def search_music_by_inner_level_func(message: Message = CommandArg()) -> N
 
 
 @search_music_by_tempo.handle()
-async def search_music_by_tempo_func(message: Message = CommandArg()) -> None:
+async def search_music_by_tempo_func(message: Annotated[Message, CommandArg()]) -> None:
     args: list[str] = message.extract_plain_text().strip().split()
     try:
         page: int = 0
@@ -673,7 +673,7 @@ async def search_music_by_tempo_func(message: Message = CommandArg()) -> None:
 
 
 @search_music_by_artist.handle()
-async def search_music_by_artist_func(message: Message = CommandArg()) -> None:
+async def search_music_by_artist_func(message: Annotated[Message, CommandArg()]) -> None:
     message_plain_text: str = message.extract_plain_text().strip()
     if not message_plain_text:
         await search_music_by_artist.finish(search_music_by_artist_help_text, reply_message=True)
@@ -703,7 +703,7 @@ async def search_music_by_artist_func(message: Message = CommandArg()) -> None:
 
 
 @search_music_by_charter.handle()
-async def search_music_by_charter_func(message: Message = CommandArg()) -> None:
+async def search_music_by_charter_func(message: Annotated[Message, CommandArg()]) -> None:
     message_plain_text: str = message.extract_plain_text().strip()
     if not message_plain_text:
         await search_music_by_charter.finish(search_music_by_charter_help_text, reply_message=True)
@@ -736,7 +736,7 @@ async def search_music_by_charter_func(message: Message = CommandArg()) -> None:
 
 
 @chart_stats.handle()
-async def chart_stats_func(message: Message = CommandArg()) -> None:
+async def chart_stats_func(message: Annotated[Message, CommandArg()]) -> None:
     plain_text: str = message.extract_plain_text().strip()
     diff_index: int = '绿黄红紫白'.find(plain_text[0])  # 未指定则为-1
     if diff_index == -1:
@@ -774,7 +774,7 @@ async def chart_stats_func(message: Message = CommandArg()) -> None:
 
 
 @music_track.handle()
-async def music_track_func(message: Message = CommandArg()) -> None:
+async def music_track_func(message: Annotated[Message, CommandArg()]) -> None:
     name: str = message.extract_plain_text()
     matched_music: MusicList = Mai.music_list.by_name(name)
     if not matched_music:
@@ -791,7 +791,7 @@ async def music_track_func(message: Message = CommandArg()) -> None:
 
 
 @add_alias.handle()
-async def add_alias_func(event: GroupMessageEvent, message: Message = CommandArg()) -> None:
+async def add_alias_func(event: GroupMessageEvent, message: Annotated[Message, CommandArg()]) -> None:
     try:
         id, alias = message.extract_plain_text().split()
     except ValueError:
@@ -819,7 +819,7 @@ async def add_alias_func(event: GroupMessageEvent, message: Message = CommandArg
 
 
 @delete_alias.handle()
-async def delete_alias_func(bot: Bot, event: GroupMessageEvent, message: Message = CommandArg()) -> None:
+async def delete_alias_func(bot: Bot, event: GroupMessageEvent, message: Annotated[Message, CommandArg()]) -> None:
     try:
         id, alias = message.extract_plain_text().split(maxsplit=1)
     except ValueError:
@@ -845,7 +845,7 @@ async def delete_alias_func(bot: Bot, event: GroupMessageEvent, message: Message
 
 
 @query_alias.handle()
-async def query_alias_func(message: Message = CommandArg()) -> None:
+async def query_alias_func(message: Annotated[Message, CommandArg()]) -> None:
     name: str = message.extract_plain_text()
     matched_music: MusicList = Mai.music_list.by_name(name)
     if not matched_music:
@@ -874,7 +874,7 @@ async def query_alias_func(message: Message = CommandArg()) -> None:
 
 
 @score_line.handle()
-async def score_line_func(message: Message = CommandArg()):
+async def score_line_func(message: Annotated[Message, CommandArg()]):
     regex = r'(绿|黄|红|紫|白)(id)?([0-9]+)'
     argv: list[str] = message.extract_plain_text().strip().split()
     if len(argv) == 1 and argv[0] == '帮助':
@@ -913,7 +913,7 @@ async def score_line_func(message: Message = CommandArg()):
 
 
 @calc_rating.handle()
-async def calc_rating_func(message: Message = CommandArg()) -> None:
+async def calc_rating_func(message: Annotated[Message, CommandArg()]) -> None:
     try:
         ds, achievement = message.extract_plain_text().split(maxsplit=1)
         ds = float(ds)
@@ -928,7 +928,7 @@ async def calc_rating_func(message: Message = CommandArg()) -> None:
 
 
 @guess_music_start.handle()
-async def guess_music_start_func(bot: Bot, event: MessageEvent, message: Message = CommandArg()) -> None:
+async def guess_music_start_func(bot: Bot, event: MessageEvent, message: Annotated[Message, CommandArg()]) -> None:
     if is_now_playing_guess_music(bot, event):
         await guess_music_start.finish('该群已有正在进行的猜歌', reply_message=True)
     if '不限热门' in message.extract_plain_text():
@@ -951,7 +951,7 @@ async def guess_music_start_func(bot: Bot, event: MessageEvent, message: Message
 
 
 @guess_music_solve.handle()
-async def guess_music_solve_func(bot: Bot, event: MessageEvent, message: str = EventPlainText()) -> None:
+async def guess_music_solve_func(bot: Bot, event: MessageEvent, message: Annotated[str, EventPlainText()]) -> None:
     def is_two_type_of_the_same_music(music0: Music, music1: Music) -> bool:
         return (music0.type != music1.type
                 and (music0.title, music0.artist, music0.genre) == (music1.title, music1.artist, music1.genre))
@@ -1004,7 +1004,7 @@ async def give_answer(bot: Bot, event: MessageEvent, guess: Guess) -> None:
 
 
 @set_privacy.handle()
-async def set_privacy_func(event: MessageEvent, message: str = EventPlainText()) -> None:
+async def set_privacy_func(event: MessageEvent, message: Annotated[str, EventPlainText()]) -> None:
     if any(x in message for x in ('禁止', '拒绝', '不允许')):
         enable: bool = False
     elif any(x in message for x in ('同意', '允许')):

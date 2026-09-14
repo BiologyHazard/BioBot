@@ -4,6 +4,8 @@ from re import Match
 
 from nonebot import on_command, on_regex
 from nonebot.adapters.onebot.v11 import Message
+from typing import Annotated
+
 from nonebot.params import CommandArg, EventMessage
 from nonebot.plugin import PluginMetadata
 
@@ -27,7 +29,7 @@ roll = on_command('roll')
 
 
 @roll.handle()
-async def roll_func(message: Message = CommandArg()) -> None:
+async def roll_func(message: Annotated[Message, CommandArg()]) -> None:
     split_chars: list[str] = ['~', '-', ' ']
     try:
         for split_char in split_chars:
@@ -52,7 +54,7 @@ dice = on_regex(dice_regex)
 
 
 @dice.handle()
-async def dice_func(message: Message = EventMessage()) -> None:
+async def dice_func(message: Annotated[Message, EventMessage()]) -> None:
     def find_end(message: Message) -> int:
         match: Match[str] | None = re.match(dice_regex, str(message).strip())
         assert match is not None

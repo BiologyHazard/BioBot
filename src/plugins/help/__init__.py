@@ -3,6 +3,8 @@ import nonebot.plugin
 from nonebot import on_command
 from nonebot.adapters import Event, Message
 from nonebot.matcher import Matcher
+from typing import Annotated
+
 from nonebot.params import CommandArg
 from nonebot.plugin import Plugin, PluginMetadata
 
@@ -53,7 +55,7 @@ def get_list_text() -> str:
 
 
 @helper.handle()
-async def handle_first_receive(args: Message = CommandArg()):
+async def handle_first_receive(args: Annotated[Message, CommandArg()]):
     arg_str = args.extract_plain_text().strip()
     if not arg_str or arg_str == "list":  # help or help list
         result = f"""欢迎使用 BioBot 帮助菜单
