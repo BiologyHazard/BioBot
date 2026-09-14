@@ -2,6 +2,8 @@
 
 """通过 GitHub REST API 轮询仓库变化并推送到 QQ。"""
 
+import sys
+
 from nonebot import get_driver, require
 
 require("nonebot_plugin_orm")
@@ -64,55 +66,88 @@ def _targets(parser: ArgumentParser, *, branches: bool = False) -> None:
         parser.add_argument("--branch", dest="branches", action="append", default=[])
 
 
-ghp_parser = ArgumentParser(prog="ghp", description="GitHub 订阅通知", color=False)
+class NoColorArgumentParser(ArgumentParser):
+    """为根解析器及所有子解析器统一关闭帮助信息颜色。"""
+
+    def __init__(self, *args, **kwargs) -> None:
+        if sys.version_info >= (3, 14):
+            kwargs.setdefault("color", False)
+        super().__init__(*args, **kwargs)
+
+
+ghp_parser = NoColorArgumentParser(prog="ghp", description="GitHub 仓库订阅通知")
 subparsers = ghp_parser.add_subparsers(title="commands", dest="command", required=True)
 
-subscribe_parser = subparsers.add_parser("subscribe")
+subscribe_parser = subparsers.add_parser(
+    "subscribe", help="订阅或更新仓库通知", description="订阅或更新仓库通知"
+)
 subscribe_parser.add_argument("repository")
 subscribe_parser.add_argument("events", nargs="*")
 _targets(subscribe_parser, branches=True)
 
-unsubscribe_parser = subparsers.add_parser("unsubscribe")
+unsubscribe_parser = subparsers.add_parser(
+    "unsubscribe", help="取消仓库通知", description="取消仓库通知"
+)
 unsubscribe_parser.add_argument("repository")
 _targets(unsubscribe_parser)
 
-list_parser = subparsers.add_parser("list")
+list_parser = subparsers.add_parser(
+    "list", help="列出目标的订阅", description="列出目标的订阅"
+)
 _targets(list_parser)
 
-show_parser = subparsers.add_parser("show")
+show_parser = subparsers.add_parser(
+    "show", help="查看仓库订阅配置", description="查看仓库订阅配置"
+)
 show_parser.add_argument("repository")
 _targets(show_parser)
 
-event_parser = subparsers.add_parser("event")
+event_parser = subparsers.add_parser(
+    "event", help="管理事件过滤器", description="管理事件过滤器"
+)
 event_commands = event_parser.add_subparsers(dest="operation", required=True)
-event_list_parser = event_commands.add_parser("list")
+event_list_parser = event_commands.add_parser(
+    "list", help="列出支持的事件", description="列出支持的事件"
+)
 event_list_parser.add_argument("category", nargs="?")
 for operation in ("add", "remove", "set"):
-    operation_parser = event_commands.add_parser(operation)
+    operation_parser = event_commands.add_parser(
+        operation, help=f"{operation} 事件过滤器", description=f"{operation} 事件过滤器"
+    )
     operation_parser.add_argument("repository")
     operation_parser.add_argument("events", nargs="+")
     _targets(operation_parser)
 
-branch_parser = subparsers.add_parser("branch")
+branch_parser = subparsers.add_parser(
+    "branch", help="管理分支过滤器", description="管理分支过滤器"
+)
 branch_commands = branch_parser.add_subparsers(dest="operation", required=True)
 for operation in ("add", "remove"):
-    operation_parser = branch_commands.add_parser(operation)
+    operation_parser = branch_commands.add_parser(
+        operation, help=f"{operation} 分支过滤器", description=f"{operation} 分支过滤器"
+    )
     operation_parser.add_argument("repository")
     operation_parser.add_argument("patterns", nargs="+")
     _targets(operation_parser)
-reset_parser = branch_commands.add_parser("reset")
+reset_parser = branch_commands.add_parser(
+    "reset", help="重置分支过滤器", description="重置分支过滤器"
+)
 reset_parser.add_argument("repository")
 _targets(reset_parser)
 
 for operation in ("pause", "resume"):
-    operation_parser = subparsers.add_parser(operation)
+    operation_parser = subparsers.add_parser(
+        operation, help=f"{operation} 仓库轮询", description=f"{operation} 仓库轮询"
+    )
     operation_parser.add_argument("repository")
     _targets(operation_parser)
 
-poll_parser = subparsers.add_parser("poll")
+poll_parser = subparsers.add_parser(
+    "poll", help="立即轮询仓库", description="立即轮询仓库"
+)
 poll_parser.add_argument("repository", nargs="?")
-subparsers.add_parser("status")
-subparsers.add_parser("help")
+subparsers.add_parser("status", help="查看轮询状态", description="查看轮询状态")
+subparsers.add_parser("help", help="显示命令帮助", description="显示命令帮助")
 
 ghp = on_shell_command(
     "ghp", parser=ghp_parser, permission=SUPERUSER, block=False, priority=5
@@ -123,8 +158,8 @@ ghp = on_shell_command(
 async def handle_parser_exit(
     parser_exit: Annotated[ParserExit, ShellCommandArgs()],
 ) -> None:
-    """按 NoneBot 推荐方式处理 shell parser 的帮助和错误结果。"""
-    await ghp.finish(ghp_parser.format_help())
+    """返回 argparse 生成的帮助或错误信息。"""
+    await ghp.finish(parser_exit.message)
 
 
 @ghp.handle()
