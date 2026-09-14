@@ -2,24 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from nonebot import logger, on_command, require
-from nonebot.adapters.onebot.v11 import Message, MessageEvent
+from nonebot.exception import FinishedException
 from nonebot.params import CommandArg
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
-from nonebot.exception import FinishedException
 
-from .config import Config, plugin_config
-
-require("nonebot_plugin_orm")
-require("nonebot_plugin_apscheduler")
-
-from nonebot_plugin_apscheduler import scheduler  # noqa: E402
-from nonebot_plugin_orm import AsyncSession  # noqa: E402
-
-from .commands import (  # noqa: E402
+from .commands import (
     HELP,
     edit_branches,
     edit_events,
@@ -32,9 +23,18 @@ from .commands import (  # noqa: E402
     subscribe,
     unsubscribe,
 )
-from .events import parse_args  # noqa: E402
-from .service import service  # noqa: E402
+from .config import Config, plugin_config
+from .events import parse_args
+from .service import service
 
+if TYPE_CHECKING:
+    from nonebot.adapters.onebot.v11 import Message, MessageEvent
+    from nonebot_plugin_orm import AsyncSession
+
+require("nonebot_plugin_orm")
+require("nonebot_plugin_apscheduler")
+
+from nonebot_plugin_apscheduler import scheduler  # noqa: E402
 
 __plugin_meta__ = PluginMetadata(
     name="GitHub 轮询通知",
@@ -44,7 +44,7 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-ghp = on_command("ghp", permission=SUPERUSER, block=True, priority=5)
+ghp = on_command("ghp", permission=SUPERUSER, block=False, priority=5)
 
 
 @ghp.handle()
@@ -53,6 +53,7 @@ async def handle_ghp(
     session: AsyncSession,
     message: Annotated[Message, CommandArg()],
 ) -> None:
+    # 所有子命令统一从这里分发，确保权限和错误提示行为一致。
     try:
         parsed = parse_args(message.extract_plain_text().strip())
         if not parsed.positional:
@@ -84,12 +85,7 @@ async def handle_ghp(
                 result = await event_list(arguments)
             elif operation in {"add", "remove", "set"}:
                 result = await edit_events(
-                    session,
-                    event,
-                    operation,
-                    arguments,
-                    parsed.groups,
-                    parsed.privates,
+                    session, event, operation, arguments, parsed.groups, parsed.privates
                 )
             else:
                 raise ValueError(f"未知 event 操作：{operation}")
@@ -100,12 +96,7 @@ async def handle_ghp(
             if operation not in {"add", "remove", "reset"}:
                 raise ValueError(f"未知 branch 操作：{operation}")
             result = await edit_branches(
-                session,
-                event,
-                operation,
-                arguments,
-                parsed.groups,
-                parsed.privates,
+                session, event, operation, arguments, parsed.groups, parsed.privates
             )
         elif command in {"pause", "resume"}:
             result = await set_enabled(
@@ -146,6 +137,7 @@ async def handle_ghp(
     coalesce=True,
 )
 async def scheduled_poll() -> None:
+    # APScheduler 负责周期触发，PollingService 还会用锁防止手动轮询重叠。
     await service.poll_all()
 
 

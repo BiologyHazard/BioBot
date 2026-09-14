@@ -3,6 +3,8 @@ from pydantic import BaseModel, Field
 
 
 class Config(BaseModel):
+    """插件配置；Token 可选，其他参数控制轮询规模和失败退避。"""
+
     github_poller_github_token: str | None = None
     github_poller_poll_interval: float = Field(default=300, ge=10)
     github_poller_user_agent: str = "BioBot"

@@ -1,3 +1,8 @@
+"""轮询、事件标准化和 QQ 投递服务。
+
+每个仓库只请求一次数据源，生成的事件再按订阅过滤并扇出到多个目标。
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -6,13 +11,12 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from githubkit.exception import RateLimitExceeded
 from nonebot import get_bots, logger
 from nonebot_plugin_orm import get_session
 from sqlalchemy import func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from .api import GitHubAPI, Json
 from .config import plugin_config
@@ -27,6 +31,9 @@ from .models import (
     GitHubSubscriptionBranch,
     GitHubSubscriptionFilter,
 )
+
+if TYPE_CHECKING:
+    from nonebot_plugin_orm import AsyncSession
 
 
 def now_utc() -> datetime:
@@ -57,6 +64,8 @@ def actor_login(value: Json) -> str | None:
 
 @dataclass(slots=True)
 class DetectedEvent:
+    """轮询阶段产出的与平台无关事件对象。"""
+
     name: str
     key: str
     resource_type: str
@@ -69,11 +78,14 @@ class DetectedEvent:
 
 
 class PollingService:
+    """协调仓库轮询、事务落库、去重和消息投递。"""
+
     def __init__(self, api: GitHubAPI | None = None) -> None:
         self.api = api or GitHubAPI()
         self.lock = asyncio.Lock()
 
     async def poll_all(self, repository_id: int | None = None) -> None:
+        """串行轮询启用订阅的仓库，并在完成后投递待发送事件。"""
         if self.lock.locked():
             logger.info("GitHub 轮询任务仍在运行，跳过本轮")
             return
@@ -92,6 +104,7 @@ class PollingService:
                     statement = statement.where(GitHubRepository.id == repository_id)
                 repositories = list((await session.scalars(statement)).all())
 
+            # 一个仓库只轮询一次，避免多个 QQ 目标重复请求 GitHub。
             for repository in repositories:
                 try:
                     await self._poll_repository(repository.id)
@@ -127,6 +140,7 @@ class PollingService:
             repository.updated_at = now_utc()
             await session.commit()
 
+        # 只有确实存在对应订阅时才启用数据源，减少 API 请求和限流压力。
         sources: list[tuple[str, Any]] = []
         if any(name.startswith(("commit.", "branch.", "tag.")) for name in patterns):
             sources.append(("refs", self._poll_refs_and_commits))
@@ -144,6 +158,7 @@ class PollingService:
         if any(name.startswith("action.") for name in patterns):
             sources.append(("workflow_runs", self._poll_workflows))
 
+        # 每个数据源独立提交游标；单个端点失败不会回滚其他已成功端点。
         for source, callback in sources:
             try:
                 async with get_session() as session:
@@ -160,6 +175,7 @@ class PollingService:
                         await self._record_event(
                             session, repository, subscriptions, event
                         )
+                    # 首次成功只建立基线；各数据源内部会抑制历史事件。
                     cursor.initialized = True
                     cursor.last_success_at = now_utc()
                     cursor.failure_count = 0
@@ -290,6 +306,7 @@ class PollingService:
         cursor: GitHubPollCursor,
         subscriptions: dict[int, tuple[set[str], set[str], GitHubSubscription]],
     ) -> list[DetectedEvent]:
+        """比较分支、标签和提交快照，生成引用及提交事件。"""
         owner, repo = repository.full_name.split("/", 1)
         branches = await self.api.branches(owner, repo)
         tags = await self.api.tags(owner, repo)
@@ -395,6 +412,7 @@ class PollingService:
         cursor: GitHubPollCursor,
         _subscriptions: Any,
     ) -> list[DetectedEvent]:
+        """按评论更新时间增量检查提交评论。"""
         owner, repo = repository.full_name.split("/", 1)
         items = await self.api.commit_comments(owner, repo)
         events: list[DetectedEvent] = []
@@ -425,6 +443,7 @@ class PollingService:
         cursor: GitHubPollCursor,
         _subscriptions: Any,
     ) -> list[DetectedEvent]:
+        """检查 Issue/PR 状态，并为变化的 PR 补查评审。"""
         owner, repo = repository.full_name.split("/", 1)
         previous_poll = aware(cursor.watermark_time)
         since = previous_poll
@@ -450,12 +469,7 @@ class PollingService:
             if cursor.initialized:
                 events.extend(
                     self._issue_diff(
-                        repository,
-                        detail,
-                        kind,
-                        previous,
-                        state,
-                        previous_poll,
+                        repository, detail, kind, previous, state, previous_poll
                     )
                 )
             if is_pr:
@@ -585,6 +599,7 @@ class PollingService:
         cursor: GitHubPollCursor,
         _subscriptions: Any,
     ) -> list[DetectedEvent]:
+        """把 GitHub Issue Events 映射为 Issue 或 PR 的标准动作。"""
         owner, repo = repository.full_name.split("/", 1)
         items = await self.api.issue_events(owner, repo)
         mapping = {
@@ -659,6 +674,7 @@ class PollingService:
         cursor: GitHubPollCursor,
         _subscriptions: Any,
     ) -> list[DetectedEvent]:
+        """轮询仓库级 Issue 评论，并依据资源快照区分 Issue 与 PR。"""
         owner, repo = repository.full_name.split("/", 1)
         since = aware(cursor.watermark_time)
         if since:
@@ -707,6 +723,7 @@ class PollingService:
         cursor: GitHubPollCursor,
         _subscriptions: Any,
     ) -> list[DetectedEvent]:
+        """轮询 PR Review Comment 的创建和编辑。"""
         owner, repo = repository.full_name.split("/", 1)
         since = aware(cursor.watermark_time)
         if since:
@@ -768,6 +785,7 @@ class PollingService:
         cursor: GitHubPollCursor,
         _subscriptions: Any,
     ) -> list[DetectedEvent]:
+        """比较 Release 快照，识别发布、预发布和内容更新。"""
         owner, repo = repository.full_name.split("/", 1)
         items = await self.api.releases(owner, repo)
         events: list[DetectedEvent] = []
@@ -825,6 +843,7 @@ class PollingService:
         cursor: GitHubPollCursor,
         _subscriptions: Any,
     ) -> list[DetectedEvent]:
+        """比较 Workflow Run 状态；快速运行只报告最终可观察结果。"""
         owner, repo = repository.full_name.split("/", 1)
         items = await self.api.workflow_runs(owner, repo)
         events: list[DetectedEvent] = []
@@ -904,6 +923,7 @@ class PollingService:
         subscriptions: dict[int, tuple[set[str], set[str], GitHubSubscription]],
         event: DetectedEvent,
     ) -> None:
+        """在同一事务中完成事件幂等落库和匹配订阅的投递任务创建。"""
         if event.name not in {
             name
             for filters, _branches, _sub in subscriptions.values()
@@ -932,11 +952,7 @@ class PollingService:
         )
         session.add(record)
         await session.flush()
-        for subscription_id, (
-            filters,
-            branches,
-            subscription,
-        ) in subscriptions.items():
+        for subscription_id, (filters, branches, subscription) in subscriptions.items():
             if not event_matches(filters, event.name):
                 continue
             subscribed_at = aware(subscription.updated_at)
@@ -963,6 +979,7 @@ class PollingService:
             )
 
     async def dispatch_pending(self) -> None:
+        """合并待投递事件并发送；失败任务保留以便后续退避重试。"""
         async with get_session() as session:
             rows = (
                 await session.execute(

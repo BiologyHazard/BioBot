@@ -1,21 +1,29 @@
+"""GitHubKit REST API 的薄封装。
+
+缓存头由 GitHubKit 负责；本模块只负责分页、限流状态和响应 JSON 转换。
+"""
+
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from githubkit import GitHub
 from githubkit.exception import RateLimitExceeded
 
 from .config import plugin_config
 
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 Json = dict[str, Any]
 
 
 @dataclass(slots=True)
 class RateState:
+    """当前 API 配额和暂停窗口，仅保存在进程内，不写入数据库。"""
+
     limit: int | None = None
     remaining: int | None = None
     reset_at: datetime | None = None
@@ -23,6 +31,8 @@ class RateState:
 
 
 class GitHubAPI:
+    """按资源端点提供轮询所需的最小 GitHub REST API。"""
+
     def __init__(self) -> None:
         self.client = GitHub(
             auth=plugin_config.github_poller_github_token,
@@ -38,6 +48,7 @@ class GitHubAPI:
         return bool(plugin_config.github_poller_github_token)
 
     async def _call(self, call: Awaitable[Any]) -> Any:
+        # 限流窗口内不再发起请求，避免重试风暴进一步消耗配额。
         now = datetime.now(UTC)
         if self.rate.paused_until and self.rate.paused_until > now:
             raise RuntimeError(
@@ -78,6 +89,7 @@ class GitHubAPI:
         item_key: str | None = None,
         **kwargs: Any,
     ) -> list[Json]:
+        """读取分页端点；达到最大页数或返回短页时停止。"""
         result: list[Json] = []
         per_page = plugin_config.github_poller_per_page
         for page in range(1, plugin_config.github_poller_max_pages + 1):

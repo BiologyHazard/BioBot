@@ -1,8 +1,11 @@
+"""ghp 命令实现：校验目标后修改订阅配置或触发服务操作。"""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
 from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent
-from nonebot_plugin_orm import AsyncSession
 from sqlalchemy import delete, func, or_, select
 
 from .events import (
@@ -24,6 +27,8 @@ from .models import (
 )
 from .service import service
 
+if TYPE_CHECKING:
+    from nonebot_plugin_orm import AsyncSession
 
 HELP = """GitHub 仓库轮询通知（仅超级用户）
 /ghp subscribe <owner/repo|URL> [事件...] [--branch 模式...] [目标...]
@@ -42,6 +47,7 @@ HELP = """GitHub 仓库轮询通知（仅超级用户）
 def targets_from(
     event: MessageEvent, groups: list[str], privates: list[str]
 ) -> list[Target]:
+    """解析目标；群聊缺省当前群，私聊必须显式指定目标。"""
     targets = [Target("group", value) for value in groups]
     targets.extend(Target("private", value) for value in privates)
     if not targets:
@@ -91,6 +97,7 @@ async def subscribe(
     privates: list[str],
     branches: list[str],
 ) -> str:
+    """创建或幂等更新订阅，并保存事件与分支配置。"""
     if not tokens:
         raise ValueError("缺少仓库参数")
     owner, repo = normalize_repository(tokens[0])

@@ -1,7 +1,11 @@
+"""GitHub Poller 的持久化模型。
+
+游标记录增量位置，快照记录资源上一次状态，事件和投递记录保证重启后可恢复。
+"""
+
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from nonebot_plugin_orm import Model
 from sqlalchemy import (
@@ -18,8 +22,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
 
 class GitHubRepository(Model):
+    """规范化后的仓库元数据；同一 GitHub 仓库只保留一行。"""
+
     __tablename__ = "github_repository"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -38,6 +47,8 @@ class GitHubRepository(Model):
 
 
 class GitHubSubscription(Model):
+    """一个 QQ 群或私聊目标对仓库的独立订阅开关。"""
+
     __tablename__ = "github_subscription"
     __table_args__ = (
         UniqueConstraint(
@@ -63,6 +74,8 @@ class GitHubSubscription(Model):
 
 
 class GitHubSubscriptionFilter(Model):
+    """订阅的原子事件过滤器。"""
+
     __tablename__ = "github_subscription_filter"
     __table_args__ = (
         UniqueConstraint("subscription_id", "event_pattern", name="uq_gh_filter"),
@@ -76,6 +89,8 @@ class GitHubSubscriptionFilter(Model):
 
 
 class GitHubSubscriptionBranch(Model):
+    """订阅的分支模式，支持 @default 和 fnmatch 通配符。"""
+
     __tablename__ = "github_subscription_branch"
     __table_args__ = (
         UniqueConstraint("subscription_id", "pattern", name="uq_gh_branch"),
@@ -89,6 +104,8 @@ class GitHubSubscriptionBranch(Model):
 
 
 class GitHubPollCursor(Model):
+    """每个仓库数据源的业务增量游标和失败重试状态。"""
+
     __tablename__ = "github_poll_cursor"
     __table_args__ = (
         UniqueConstraint("repository_id", "source", "scope", name="uq_gh_cursor"),
@@ -112,6 +129,8 @@ class GitHubPollCursor(Model):
 
 
 class GitHubResourceSnapshot(Model):
+    """资源上次观察到的状态，用于从 REST 列表推导状态变化事件。"""
+
     __tablename__ = "github_resource_snapshot"
     __table_args__ = (
         UniqueConstraint(
@@ -132,6 +151,8 @@ class GitHubResourceSnapshot(Model):
 
 
 class GitHubEvent(Model):
+    """标准化事件；event_key 是跨重启去重的幂等键。"""
+
     __tablename__ = "github_event"
     __table_args__ = (Index("ix_gh_event_repo_time", "repository_id", "occurred_at"),)
 
@@ -153,6 +174,8 @@ class GitHubEvent(Model):
 
 
 class GitHubDelivery(Model):
+    """事件到具体订阅目标的投递任务及重试状态。"""
+
     __tablename__ = "github_delivery"
     __table_args__ = (
         UniqueConstraint("event_id", "subscription_id", name="uq_gh_delivery"),

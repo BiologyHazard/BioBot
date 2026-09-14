@@ -1,11 +1,16 @@
+"""命令参数和订阅事件的纯函数定义。
+
+这里不访问数据库或 GitHub，便于命令层和轮询层复用同一套匹配规则。
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from fnmatch import fnmatchcase
 from shlex import split as shlex_split
 
-
 EVENTS: dict[str, tuple[str, ...]] = {
+    # 键是可用于命令的类别；值是该类别允许的原子动作。
     "commit": ("created",),
     "commit.comment": ("created", "updated"),
     "branch": ("created", "deleted"),
@@ -85,6 +90,7 @@ DEFAULT_EVENTS = frozenset(
 
 
 def expand_event_patterns(patterns: list[str]) -> set[str]:
+    """把 default、all、类别名和原子事件统一展开为原子事件集合。"""
     if not patterns or patterns == ["default"]:
         return set(DEFAULT_EVENTS)
     result: set[str] = set()
@@ -106,10 +112,12 @@ def expand_event_patterns(patterns: list[str]) -> set[str]:
 
 
 def event_matches(patterns: set[str], event_name: str) -> bool:
+    """判断一个标准化事件是否被订阅过滤器命中。"""
     return event_name in patterns
 
 
 def branch_matches(patterns: set[str], branch: str, default_branch: str) -> bool:
+    """匹配分支通配符；@default 始终解析为仓库当前默认分支。"""
     return any(
         branch == default_branch
         if pattern == "@default"
@@ -133,6 +141,7 @@ class ParsedArgs:
 
 
 def parse_args(text: str) -> ParsedArgs:
+    """解析 ghp 子命令参数，保留重复目标和分支选项。"""
     result = ParsedArgs()
     tokens = shlex_split(text)
     index = 0
@@ -160,6 +169,7 @@ def parse_args(text: str) -> ParsedArgs:
 
 
 def normalize_repository(value: str) -> tuple[str, str]:
+    """将 owner/repo、GitHub URL 或 .git 地址规范化为 API 参数。"""
     value = value.strip().rstrip("/")
     for prefix in ("https://github.com/", "http://github.com/", "github.com/"):
         if value.lower().startswith(prefix):
