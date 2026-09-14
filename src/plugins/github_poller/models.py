@@ -3,9 +3,8 @@
 游标记录增量位置，快照记录资源上一次状态，事件和投递记录保证重启后可恢复。
 """
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any
+from datetime import datetime
+from typing import Any
 
 from nonebot_plugin_orm import Model
 from sqlalchemy import (
@@ -21,9 +20,6 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
-
-if TYPE_CHECKING:
-    from datetime import datetime
 
 
 class GitHubRepository(Model):
