@@ -10,7 +10,7 @@ require("nonebot_plugin_orm")
 require("nonebot_plugin_apscheduler")
 
 from argparse import ArgumentTypeError
-from typing import Any, Annotated
+from typing import Annotated, Any
 
 from nonebot import logger, on_shell_command
 from nonebot.adapters.onebot.v11 import MessageEvent
@@ -101,10 +101,7 @@ ghp_parser = NoColorArgumentParser(
     epilog="仓库可写成 owner/repo 或 GitHub 仓库 URL；目标选项可重复指定。",
 )
 subparsers = ghp_parser.add_subparsers(
-    title="命令",
-    dest="command",
-    required=True,
-    metavar="COMMAND",
+    title="命令", dest="command", required=True, metavar="COMMAND"
 )
 
 subscribe_parser = subparsers.add_parser(
@@ -133,10 +130,7 @@ unsubscribe_parser = subparsers.add_parser(
     description="取消指定目标对仓库的订阅；当所有目标都取消后，仓库数据也会被清理。",
 )
 unsubscribe_parser.add_argument(
-    "repository",
-    type=str,
-    metavar="REPOSITORY",
-    help="已订阅的 GitHub 仓库",
+    "repository", type=str, metavar="REPOSITORY", help="已订阅的 GitHub 仓库"
 )
 _targets(unsubscribe_parser)
 
@@ -153,10 +147,7 @@ show_parser = subparsers.add_parser(
     description="查看指定仓库的事件过滤器、分支过滤器和目标订阅状态。",
 )
 show_parser.add_argument(
-    "repository",
-    type=str,
-    metavar="REPOSITORY",
-    help="已订阅的 GitHub 仓库",
+    "repository", type=str, metavar="REPOSITORY", help="已订阅的 GitHub 仓库"
 )
 _targets(show_parser)
 
@@ -195,10 +186,7 @@ for operation in ("add", "remove", "set"):
         }[operation],
     )
     operation_parser.add_argument(
-        "repository",
-        type=str,
-        metavar="REPOSITORY",
-        help="已订阅的 GitHub 仓库",
+        "repository", type=str, metavar="REPOSITORY", help="已订阅的 GitHub 仓库"
     )
     operation_parser.add_argument(
         "events",
@@ -227,10 +215,7 @@ for operation in ("add", "remove"):
         }[operation],
     )
     operation_parser.add_argument(
-        "repository",
-        type=str,
-        metavar="REPOSITORY",
-        help="已订阅的 GitHub 仓库",
+        "repository", type=str, metavar="REPOSITORY", help="已订阅的 GitHub 仓库"
     )
     operation_parser.add_argument(
         "patterns",
@@ -246,10 +231,7 @@ reset_parser = branch_commands.add_parser(
     description="将目标订阅的分支过滤器恢复为仓库默认分支。",
 )
 reset_parser.add_argument(
-    "repository",
-    type=str,
-    metavar="REPOSITORY",
-    help="已订阅的 GitHub 仓库",
+    "repository", type=str, metavar="REPOSITORY", help="已订阅的 GitHub 仓库"
 )
 _targets(reset_parser)
 
@@ -263,10 +245,7 @@ for operation in ("pause", "resume"):
         }[operation],
     )
     operation_parser.add_argument(
-        "repository",
-        type=str,
-        metavar="REPOSITORY",
-        help="已订阅的 GitHub 仓库",
+        "repository", type=str, metavar="REPOSITORY", help="已订阅的 GitHub 仓库"
     )
     _targets(operation_parser)
 
@@ -288,9 +267,7 @@ subparsers.add_parser(
     description="查看 GitHub API、订阅数量、最近轮询和失败状态。",
 )
 subparsers.add_parser(
-    "help",
-    help="显示命令帮助",
-    description="显示 ghp 命令的完整帮助信息。",
+    "help", help="显示命令帮助", description="显示 ghp 命令的完整帮助信息。"
 )
 
 ghp = on_shell_command(
