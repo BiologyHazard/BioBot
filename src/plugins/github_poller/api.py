@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from githubkit import GitHub
 from githubkit.exception import RateLimitExceeded
+from nonebot import logger
 
 from .config import plugin_config
 
@@ -47,13 +48,14 @@ class GitHubAPI:
     def authenticated(self) -> bool:
         return bool(plugin_config.github_poller_github_token)
 
-    async def _call(self, call: Awaitable[Any]) -> Any:
+    async def _call(self, call: Awaitable[Any], description: str) -> Any:
         # 限流窗口内不再发起请求，避免重试风暴进一步消耗配额。
         now = datetime.now(UTC)
         if self.rate.paused_until and self.rate.paused_until > now:
             raise RuntimeError(
                 f"GitHub API 已暂停至 {self.rate.paused_until.astimezone().isoformat()}"
             )
+        logger.debug("GitHub Poller 请求：{}", description)
         try:
             response = await call
         except RateLimitExceeded as exc:
@@ -61,6 +63,11 @@ class GitHubAPI:
             self._update_rate(exc.response.headers)
             raise
         self._update_rate(response.headers)
+        logger.debug(
+            "GitHub Poller 响应：{}（剩余配额：{}）",
+            description,
+            self.rate.remaining if self.rate.remaining is not None else "未知",
+        )
         return response
 
     def _update_rate(self, headers: Any) -> None:
@@ -87,6 +94,7 @@ class GitHubAPI:
         /,
         *args: Any,
         item_key: str | None = None,
+        description: str,
         **kwargs: Any,
     ) -> list[Json]:
         """读取分页端点；达到最大页数或返回短页时停止。"""
@@ -94,7 +102,8 @@ class GitHubAPI:
         per_page = plugin_config.github_poller_per_page
         for page in range(1, plugin_config.github_poller_max_pages + 1):
             response = await self._call(
-                method(*args, per_page=per_page, page=page, **kwargs)
+                method(*args, per_page=per_page, page=page, **kwargs),
+                f"GET {description} page={page}",
             )
             body = response.json()
             items = body.get(item_key, []) if item_key else body
@@ -104,7 +113,10 @@ class GitHubAPI:
         return result
 
     async def get_repository(self, owner: str, repo: str) -> Json:
-        response = await self._call(self.client.rest.repos.async_get(owner, repo))
+        response = await self._call(
+            self.client.rest.repos.async_get(owner, repo),
+            f"GET /repos/{owner}/{repo}",
+        )
         return response.json()
 
     async def commits(
@@ -114,20 +126,35 @@ class GitHubAPI:
         if since:
             kwargs["since"] = since
         return await self._pages(
-            self.client.rest.repos.async_list_commits, owner, repo, **kwargs
+            self.client.rest.repos.async_list_commits,
+            owner,
+            repo,
+            description=f"/repos/{owner}/{repo}/commits branch={branch}",
+            **kwargs,
         )
 
     async def branches(self, owner: str, repo: str) -> list[Json]:
         return await self._pages(
-            self.client.rest.repos.async_list_branches, owner, repo
+            self.client.rest.repos.async_list_branches,
+            owner,
+            repo,
+            description=f"/repos/{owner}/{repo}/branches",
         )
 
     async def tags(self, owner: str, repo: str) -> list[Json]:
-        return await self._pages(self.client.rest.repos.async_list_tags, owner, repo)
+        return await self._pages(
+            self.client.rest.repos.async_list_tags,
+            owner,
+            repo,
+            description=f"/repos/{owner}/{repo}/tags",
+        )
 
     async def commit_comments(self, owner: str, repo: str) -> list[Json]:
         return await self._pages(
-            self.client.rest.repos.async_list_commit_comments_for_repo, owner, repo
+            self.client.rest.repos.async_list_commit_comments_for_repo,
+            owner,
+            repo,
+            description=f"/repos/{owner}/{repo}/comments",
         )
 
     async def issues(self, owner: str, repo: str, since: datetime | None) -> list[Json]:
@@ -135,12 +162,19 @@ class GitHubAPI:
         if since:
             kwargs["since"] = since
         return await self._pages(
-            self.client.rest.issues.async_list_for_repo, owner, repo, **kwargs
+            self.client.rest.issues.async_list_for_repo,
+            owner,
+            repo,
+            description=f"/repos/{owner}/{repo}/issues",
+            **kwargs,
         )
 
     async def issue_events(self, owner: str, repo: str) -> list[Json]:
         return await self._pages(
-            self.client.rest.issues.async_list_events_for_repo, owner, repo
+            self.client.rest.issues.async_list_events_for_repo,
+            owner,
+            repo,
+            description=f"/repos/{owner}/{repo}/issues/events",
         )
 
     async def issue_comments(
@@ -150,18 +184,27 @@ class GitHubAPI:
         if since:
             kwargs["since"] = since
         return await self._pages(
-            self.client.rest.issues.async_list_comments_for_repo, owner, repo, **kwargs
+            self.client.rest.issues.async_list_comments_for_repo,
+            owner,
+            repo,
+            description=f"/repos/{owner}/{repo}/issues/comments",
+            **kwargs,
         )
 
     async def pull(self, owner: str, repo: str, number: int) -> Json:
         response = await self._call(
-            self.client.rest.pulls.async_get(owner, repo, number)
+            self.client.rest.pulls.async_get(owner, repo, number),
+            f"GET /repos/{owner}/{repo}/pulls/{number}",
         )
         return response.json()
 
     async def pull_reviews(self, owner: str, repo: str, number: int) -> list[Json]:
         return await self._pages(
-            self.client.rest.pulls.async_list_reviews, owner, repo, number
+            self.client.rest.pulls.async_list_reviews,
+            owner,
+            repo,
+            number,
+            description=f"/repos/{owner}/{repo}/pulls/{number}/reviews",
         )
 
     async def review_comments(
@@ -174,12 +217,16 @@ class GitHubAPI:
             self.client.rest.pulls.async_list_review_comments_for_repo,
             owner,
             repo,
+            description=f"/repos/{owner}/{repo}/pulls/comments",
             **kwargs,
         )
 
     async def releases(self, owner: str, repo: str) -> list[Json]:
         return await self._pages(
-            self.client.rest.repos.async_list_releases, owner, repo
+            self.client.rest.repos.async_list_releases,
+            owner,
+            repo,
+            description=f"/repos/{owner}/{repo}/releases",
         )
 
     async def workflow_runs(self, owner: str, repo: str) -> list[Json]:
@@ -188,8 +235,12 @@ class GitHubAPI:
             owner,
             repo,
             item_key="workflow_runs",
+            description=f"/repos/{owner}/{repo}/actions/runs",
         )
 
     async def rate_limit(self) -> Json:
-        response = await self._call(self.client.rest.rate_limit.async_get())
+        response = await self._call(
+            self.client.rest.rate_limit.async_get(),
+            "GET /rate_limit",
+        )
         return response.json()
