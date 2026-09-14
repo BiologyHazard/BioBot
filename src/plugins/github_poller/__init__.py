@@ -16,9 +16,10 @@ from githubkit import GitHub
 from nonebot import get_bots, get_driver, logger, on_command, require
 from nonebot.adapters.onebot.v11 import GroupMessageEvent, Message, MessageEvent
 from nonebot.params import CommandArg
+from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 
-from .config import plugin_config
+from .config import Config, plugin_config
 
 require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler  # noqa: E402
@@ -28,9 +29,16 @@ __plugin_meta__ = PluginMetadata(
     description="通过 GitHub REST API 轮询仓库动态并发送纯文本通知",
     usage="/repo.add owner/repo [group_id]",
     type="application",
-    homepage="https://github.com/HTony03/nonebot_plugin_github_release_notifier",
-    config=plugin_config.__class__,
+    config=Config,
 )
+
+
+repo_add = on_command("订阅仓库", permission=SUPERUSER)
+repo_delete = on_command("取消订阅仓库", permission=SUPERUSER)
+repo_show = on_command("查看订阅仓库", permission=SUPERUSER)
+repo_refresh = on_command("刷新订阅仓库", permission=SUPERUSER)
+api_usage_cmd = on_command("检查ghapi用量", permission=SUPERUSER)
+
 
 driver = get_driver()
 poll_lock = asyncio.Lock()
@@ -274,7 +282,16 @@ async def _is_admin(event: MessageEvent) -> bool:
     }
 
 
-repo_add = on_command("repo.add", aliases={"add_group_repo"}, priority=5, block=True)
+@driver.on_startup
+async def _startup() -> None:
+    await poll_all()
+
+
+@scheduler.scheduled_job(
+    "interval", seconds=plugin_config.github_poll_interval, id="github_poller"
+)
+async def _scheduled_poll() -> None:
+    await poll_all()
 
 
 @repo_add.handle()
@@ -307,11 +324,6 @@ async def _(event: MessageEvent, arg: Annotated[Message, CommandArg()]):
     )
 
 
-repo_delete = on_command(
-    "repo.delete", aliases={"repo.del", "del_group_repo"}, priority=5, block=True
-)
-
-
 @repo_delete.handle()
 async def _(event: MessageEvent, arg: Annotated[Message, CommandArg()]):
     if not await _is_admin(event):
@@ -323,9 +335,6 @@ async def _(event: MessageEvent, arg: Annotated[Message, CommandArg()]):
     data.pop(repo)
     _save(data)
     await repo_delete.finish(f"已删除 {repo}。")
-
-
-repo_show = on_command("repo.show", aliases={"show_group_repo"}, priority=5, block=True)
 
 
 @repo_show.handle()
@@ -341,18 +350,10 @@ async def _():
     )
 
 
-repo_refresh = on_command(
-    "repo.refresh", aliases={"refresh_group_repo"}, priority=5, block=True
-)
-
-
 @repo_refresh.handle()
 async def _():
     await poll_all()
     await repo_refresh.finish("GitHub 状态刷新完成。")
-
-
-api_usage_cmd = on_command("check_api_usage", priority=5, block=True)
 
 
 @api_usage_cmd.handle()
@@ -360,15 +361,3 @@ async def _():
     await api_usage_cmd.finish(
         f"本进程已请求 GitHub API {api_usage['requests']} 次；剩余额度：{api_usage['last_remaining']}"
     )
-
-
-@driver.on_startup
-async def _startup() -> None:
-    await poll_all()
-
-
-@scheduler.scheduled_job(
-    "interval", seconds=plugin_config.github_poll_interval, id="github_poller"
-)
-async def _scheduled_poll() -> None:
-    await poll_all()
