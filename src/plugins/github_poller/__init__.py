@@ -10,7 +10,7 @@ require("nonebot_plugin_orm")
 require("nonebot_plugin_apscheduler")
 
 from argparse import ArgumentTypeError
-from typing import Annotated
+from typing import Any, Annotated
 
 from nonebot import logger, on_shell_command
 from nonebot.adapters.onebot.v11 import MessageEvent
@@ -57,97 +57,241 @@ def _target_id(value: str) -> str:
 def _targets(parser: ArgumentParser, *, branches: bool = False) -> None:
     """向子命令添加统一的目标选项；subscribe 额外支持分支模式。"""
     parser.add_argument(
-        "--group", dest="groups", action="append", default=[], type=_target_id
+        "--group",
+        dest="groups",
+        action="append",
+        default=[],
+        type=_target_id,
+        metavar="GROUP_ID",
+        help="将订阅应用到指定群聊；可重复指定，缺省时使用当前群聊",
     )
     parser.add_argument(
-        "--private", dest="privates", action="append", default=[], type=_target_id
+        "--private",
+        dest="privates",
+        action="append",
+        default=[],
+        type=_target_id,
+        metavar="QQ_ID",
+        help="将订阅应用到指定私聊账号；可重复指定，私聊中必须显式提供目标",
     )
     if branches:
-        parser.add_argument("--branch", dest="branches", action="append", default=[])
+        parser.add_argument(
+            "--branch",
+            dest="branches",
+            action="append",
+            default=[],
+            type=str,
+            metavar="PATTERN",
+            help="限制通知来源分支；支持分支名或通配模式，可重复指定（默认使用默认分支）",
+        )
 
 
 class NoColorArgumentParser(ArgumentParser):
     """为根解析器及所有子解析器统一关闭帮助信息颜色。"""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         if sys.version_info >= (3, 14):
             kwargs.setdefault("color", False)
         super().__init__(*args, **kwargs)
 
 
-ghp_parser = NoColorArgumentParser(prog="ghp", description="GitHub 仓库订阅通知")
-subparsers = ghp_parser.add_subparsers(title="commands", dest="command", required=True)
+ghp_parser = NoColorArgumentParser(
+    prog="ghp",
+    description="管理 GitHub 仓库订阅，并将仓库动态推送到 QQ。",
+    epilog="仓库可写成 owner/repo 或 GitHub 仓库 URL；目标选项可重复指定。",
+)
+subparsers = ghp_parser.add_subparsers(
+    title="命令",
+    dest="command",
+    required=True,
+    metavar="COMMAND",
+)
 
 subscribe_parser = subparsers.add_parser(
-    "subscribe", help="订阅或更新仓库通知", description="订阅或更新仓库通知"
+    "subscribe",
+    help="订阅或更新仓库通知",
+    description="订阅仓库并设置事件、分支过滤器；重复执行会更新已有配置。",
 )
-subscribe_parser.add_argument("repository")
-subscribe_parser.add_argument("events", nargs="*")
+subscribe_parser.add_argument(
+    "repository",
+    type=str,
+    metavar="REPOSITORY",
+    help="GitHub 仓库，格式为 owner/repo 或仓库 URL",
+)
+subscribe_parser.add_argument(
+    "events",
+    type=str,
+    nargs="*",
+    metavar="EVENT",
+    help="事件过滤器，如 pr、pr.merged 或 default；不指定时使用默认事件集",
+)
 _targets(subscribe_parser, branches=True)
 
 unsubscribe_parser = subparsers.add_parser(
-    "unsubscribe", help="取消仓库通知", description="取消仓库通知"
+    "unsubscribe",
+    help="取消仓库通知",
+    description="取消指定目标对仓库的订阅；当所有目标都取消后，仓库数据也会被清理。",
 )
-unsubscribe_parser.add_argument("repository")
+unsubscribe_parser.add_argument(
+    "repository",
+    type=str,
+    metavar="REPOSITORY",
+    help="已订阅的 GitHub 仓库",
+)
 _targets(unsubscribe_parser)
 
 list_parser = subparsers.add_parser(
-    "list", help="列出目标的订阅", description="列出目标的订阅"
+    "list",
+    help="列出目标的订阅",
+    description="列出目标当前的所有 GitHub 仓库订阅及启用状态。",
 )
 _targets(list_parser)
 
 show_parser = subparsers.add_parser(
-    "show", help="查看仓库订阅配置", description="查看仓库订阅配置"
+    "show",
+    help="查看仓库订阅配置",
+    description="查看指定仓库的事件过滤器、分支过滤器和目标订阅状态。",
 )
-show_parser.add_argument("repository")
+show_parser.add_argument(
+    "repository",
+    type=str,
+    metavar="REPOSITORY",
+    help="已订阅的 GitHub 仓库",
+)
 _targets(show_parser)
 
 event_parser = subparsers.add_parser(
-    "event", help="管理事件过滤器", description="管理事件过滤器"
+    "event",
+    help="管理事件过滤器",
+    description="查看或修改仓库订阅的 GitHub 事件过滤器。",
 )
-event_commands = event_parser.add_subparsers(dest="operation", required=True)
+event_commands = event_parser.add_subparsers(
+    title="事件操作", dest="operation", required=True, metavar="OPERATION"
+)
 event_list_parser = event_commands.add_parser(
-    "list", help="列出支持的事件", description="列出支持的事件"
+    "list",
+    help="列出支持的事件",
+    description="列出所有事件类别；指定类别可查看该类别下的原子事件。",
 )
-event_list_parser.add_argument("category", nargs="?")
+event_list_parser.add_argument(
+    "category",
+    type=str,
+    nargs="?",
+    metavar="CATEGORY",
+    help="可选的事件类别，如 pr；省略时列出所有类别",
+)
 for operation in ("add", "remove", "set"):
     operation_parser = event_commands.add_parser(
-        operation, help=f"{operation} 事件过滤器", description=f"{operation} 事件过滤器"
+        operation,
+        help={
+            "add": "添加事件过滤器",
+            "remove": "移除事件过滤器",
+            "set": "覆盖事件过滤器",
+        }[operation],
+        description={
+            "add": "为目标订阅追加事件过滤器。",
+            "remove": "从目标订阅中移除事件过滤器。",
+            "set": "用给定事件过滤器覆盖目标订阅的现有配置。",
+        }[operation],
     )
-    operation_parser.add_argument("repository")
-    operation_parser.add_argument("events", nargs="+")
+    operation_parser.add_argument(
+        "repository",
+        type=str,
+        metavar="REPOSITORY",
+        help="已订阅的 GitHub 仓库",
+    )
+    operation_parser.add_argument(
+        "events",
+        type=str,
+        nargs="+",
+        metavar="EVENT",
+        help="一个或多个事件过滤器，如 pr、pr.merged 或 all",
+    )
     _targets(operation_parser)
 
 branch_parser = subparsers.add_parser(
-    "branch", help="管理分支过滤器", description="管理分支过滤器"
+    "branch",
+    help="管理分支过滤器",
+    description="查看范围由订阅事件通知的分支；模式支持通配符。",
 )
-branch_commands = branch_parser.add_subparsers(dest="operation", required=True)
+branch_commands = branch_parser.add_subparsers(
+    title="分支操作", dest="operation", required=True, metavar="OPERATION"
+)
 for operation in ("add", "remove"):
     operation_parser = branch_commands.add_parser(
-        operation, help=f"{operation} 分支过滤器", description=f"{operation} 分支过滤器"
+        operation,
+        help={"add": "添加分支过滤器", "remove": "移除分支过滤器"}[operation],
+        description={
+            "add": "为目标订阅追加分支模式。",
+            "remove": "从目标订阅中移除分支模式。",
+        }[operation],
     )
-    operation_parser.add_argument("repository")
-    operation_parser.add_argument("patterns", nargs="+")
+    operation_parser.add_argument(
+        "repository",
+        type=str,
+        metavar="REPOSITORY",
+        help="已订阅的 GitHub 仓库",
+    )
+    operation_parser.add_argument(
+        "patterns",
+        type=str,
+        nargs="+",
+        metavar="PATTERN",
+        help="一个或多个分支名或通配模式，如 main、release/*",
+    )
     _targets(operation_parser)
 reset_parser = branch_commands.add_parser(
-    "reset", help="重置分支过滤器", description="重置分支过滤器"
+    "reset",
+    help="重置分支过滤器",
+    description="将目标订阅的分支过滤器恢复为仓库默认分支。",
 )
-reset_parser.add_argument("repository")
+reset_parser.add_argument(
+    "repository",
+    type=str,
+    metavar="REPOSITORY",
+    help="已订阅的 GitHub 仓库",
+)
 _targets(reset_parser)
 
 for operation in ("pause", "resume"):
     operation_parser = subparsers.add_parser(
-        operation, help=f"{operation} 仓库轮询", description=f"{operation} 仓库轮询"
+        operation,
+        help={"pause": "暂停仓库轮询", "resume": "恢复仓库轮询"}[operation],
+        description={
+            "pause": "暂停目标订阅的通知推送，但保留订阅配置。",
+            "resume": "恢复目标订阅的通知推送。",
+        }[operation],
     )
-    operation_parser.add_argument("repository")
+    operation_parser.add_argument(
+        "repository",
+        type=str,
+        metavar="REPOSITORY",
+        help="已订阅的 GitHub 仓库",
+    )
     _targets(operation_parser)
 
 poll_parser = subparsers.add_parser(
-    "poll", help="立即轮询仓库", description="立即轮询仓库"
+    "poll",
+    help="立即轮询仓库",
+    description="立即执行一次轮询；省略仓库时轮询所有已订阅仓库。",
 )
-poll_parser.add_argument("repository", nargs="?")
-subparsers.add_parser("status", help="查看轮询状态", description="查看轮询状态")
-subparsers.add_parser("help", help="显示命令帮助", description="显示命令帮助")
+poll_parser.add_argument(
+    "repository",
+    type=str,
+    nargs="?",
+    metavar="REPOSITORY",
+    help="可选的已订阅仓库；省略时轮询全部仓库",
+)
+subparsers.add_parser(
+    "status",
+    help="查看轮询状态",
+    description="查看 GitHub API、订阅数量、最近轮询和失败状态。",
+)
+subparsers.add_parser(
+    "help",
+    help="显示命令帮助",
+    description="显示 ghp 命令的完整帮助信息。",
+)
 
 ghp = on_shell_command(
     "ghp", parser=ghp_parser, permission=SUPERUSER, block=False, priority=5
