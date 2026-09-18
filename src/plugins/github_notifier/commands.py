@@ -200,7 +200,7 @@ async def unsubscribe(
                 GithubNotifierSubscription.id == subscription.id
             )
         )
-        removed += result.rowcount or 0
+        removed += result.rowcount or 0  # type: ignore
     deleted_urls: list[str] = []
     for webhook_id in affected_webhooks:
         remaining_on_webhook = await session.scalar(
