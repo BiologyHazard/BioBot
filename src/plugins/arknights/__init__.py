@@ -1,25 +1,20 @@
 # ruff: noqa: E402
 
-from __future__ import annotations
-
 from nonebot import require
 
-# 先加载共享数据插件，确保所有查询引用同一个可热更新的 game_data 单例。
 require("src.plugins.arknights_game_data")
 
 from collections import defaultdict
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 import nonebot
 from arknights_game_model.utils import escape_description, find_dollar_tags
 from nonebot import MatcherGroup
+from nonebot.adapters import Message
 from nonebot.params import CommandArg, RegexGroup
 from nonebot.plugin import PluginMetadata
 
 from src.plugins.arknights_game_data import game_data
-
-if TYPE_CHECKING:
-    from nonebot.adapters import Message
 
 driver = nonebot.get_driver()
 default_command_start: str = tuple(driver.config.command_start)[0]
