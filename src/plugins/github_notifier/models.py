@@ -4,6 +4,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 
 class GithubNotifierRepository(Model):
+    """被订阅的 GitHub 仓库。"""
+
     __tablename__ = "github_notifier_repository"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -11,6 +13,8 @@ class GithubNotifierRepository(Model):
 
 
 class GithubNotifierWebhook(Model):
+    """一个 webhook 批次及其签名凭据。"""
+
     __tablename__ = "github_notifier_webhook"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -22,6 +26,8 @@ class GithubNotifierWebhook(Model):
 
 
 class GithubNotifierSubscription(Model):
+    """仓库 webhook 与 QQ 群或用户之间的订阅关系。"""
+
     __tablename__ = "github_notifier_subscription"
     __table_args__ = (
         UniqueConstraint("repository_id", "target_type", "target_id"),
@@ -39,6 +45,8 @@ class GithubNotifierSubscription(Model):
 
 
 class GithubNotifierDelivery(Model):
+    """已经成功发送到某个目标的 GitHub delivery 去重记录。"""
+
     __tablename__ = "github_notifier_delivery"
     __table_args__ = (
         UniqueConstraint("webhook_id", "delivery_id", "target_type", "target_id"),

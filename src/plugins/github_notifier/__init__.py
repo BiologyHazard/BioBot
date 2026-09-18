@@ -14,4 +14,5 @@ driver = get_driver()
 
 @driver.on_startup
 async def _() -> None:
+    """在 NoneBot 启动完成后注册 GitHub webhook HTTP 路由。"""
     add_routes(driver)

@@ -21,10 +21,12 @@ from .models import (
 )
 from .signature import verify_signature
 
+# 同一个 webhook 可能同时收到重复投递，串行处理可以避免去重记录竞争。
 _delivery_lock = asyncio.Lock()
 
 
 async def _send(target_type: str, target_id: str, message: str) -> bool:
+    """向一个 QQ 群或用户发送格式化后的 GitHub 通知。"""
     for bot in get_bots().values():
         try:
             if target_type == "group":
@@ -42,7 +44,14 @@ async def _send(target_type: str, target_id: str, message: str) -> bool:
 
 
 async def receive_webhook(request: Request) -> Response:
+    """校验、解析并分发一条 GitHub webhook 投递。
+
+    请求体必须保持原始字节形式，因为 GitHub 的 HMAC 签名覆盖的就是这段
+    原始内容。通过 token 找到 webhook 后，再校验仓库、事件类型和投递 ID，
+    最后按订阅目标发送通知并记录已成功处理的投递。
+    """
     token = request.url.path.rsplit("/", 1)[-1]
+    # 验签必须使用 request.content，不能使用已经反序列化的 JSON 对象。
     body = request.content
     logger.debug(
         "收到 GitHub webhook：headers={!r}, payload={!r}", dict(request.headers), body
@@ -75,6 +84,7 @@ async def receive_webhook(request: Request) -> Response:
             return Response(403, content="Webhook repository mismatch")
 
         kind = request.headers.get("X-GitHub-Event", "")
+        # 未支持的事件直接确认收件，避免 GitHub 因无关事件反复重试。
         if kind not in {"push", "pull_request", "issues"}:
             return Response(200, content="Event ignored")
         try:
@@ -88,6 +98,7 @@ async def receive_webhook(request: Request) -> Response:
         if not delivery_id or len(delivery_id) > 128:
             return Response(400, content="Missing or invalid delivery ID")
 
+        # 记录按 webhook、delivery 和目标三者联合去重，允许同一事件发送给多个目标。
         async with _delivery_lock:
             subscriptions = (
                 await session.scalars(
@@ -129,9 +140,11 @@ async def receive_webhook(request: Request) -> Response:
 
 
 def add_routes(driver: Driver) -> None:
+    """根据配置中的 URL 路径注册带 token 的 POST webhook 路由。"""
     if not isinstance(driver, ASGIMixin):
         raise RuntimeError("github_notifier 需要支持 HTTP 服务的驱动器")
     base_path = urlsplit(plugin_config.github_notifier_webhook_payload_url).path
+    # token 是每个 webhook 批次的独立凭据，因此路由末尾必须保留动态参数。
     path = f"{base_path.rstrip('/')}/{{token}}"
     driver.setup_http_server(
         HTTPServerSetup(
