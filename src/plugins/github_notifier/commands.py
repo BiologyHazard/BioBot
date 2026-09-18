@@ -122,6 +122,8 @@ async def subscribe(
             target_type=kind,
             target_id=identifier,
         ))
+    webhook_token = webhook.token
+    webhook_secret = webhook.secret
     await session.commit()
     skipped = len(targets) - len(new_targets)
     summary = f"{repository_name_value} 已添加 {len(new_targets)} 个订阅目标。"
@@ -129,10 +131,10 @@ async def subscribe(
         summary += f"另有 {skipped} 个目标已订阅，保持原有 webhook。"
     return (
         f"{summary}\n"
-        f"Webhook URL：{webhook_url(webhook.token)}\n"
+        f"Webhook URL：{webhook_url(webhook_token)}\n"
         "Content type：application/json\n"
         "Events：push、pull_request、issues\n"
-        f"Secret：{webhook.secret}\n"
+        f"Secret：{webhook_secret}\n"
         "请在 GitHub 仓库 Settings → Webhooks 中填写以上信息。"
     )
 
