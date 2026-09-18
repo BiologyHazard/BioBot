@@ -1,11 +1,21 @@
-from pathlib import Path
+from urllib.parse import urlsplit
 
 from nonebot import get_plugin_config
-from pydantic import BaseModel, FilePath
+from pydantic import BaseModel, field_validator
 
 
 class Config(BaseModel):
-    data_path: FilePath = Path("data/github_notifier/data.json")
+    github_notifier_webhook_payload_url: str
+
+    @field_validator("github_notifier_webhook_payload_url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("github_notifier_webhook_payload_url 必须是 HTTP(S) URL")
+        if parsed.query or parsed.fragment:
+            raise ValueError("webhook URL 不得包含查询参数或片段")
+        return value
 
 
 plugin_config: Config = get_plugin_config(Config)
