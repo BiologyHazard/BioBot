@@ -42,7 +42,6 @@ def main() -> None:
     nonebot.load_plugin("src.plugins.arknights")
     nonebot.load_plugin("src.plugins.autoreply")
     nonebot.load_plugin("src.plugins.github_notifier")
-    nonebot.load_plugin("src.plugins.github_poller")
     nonebot.load_plugin("src.plugins.poke")
     nonebot.load_plugin("src.plugins.roll")
     nonebot.load_plugin("src.plugins.homo")
@@ -60,6 +59,7 @@ def main() -> None:
     nonebot.load_plugin("src.plugins.kfccrazythu")
     nonebot.load_plugin("src.plugins.choose")
 
+    # nonebot.load_plugin("src.plugins.github_poller")
     # nonebot.load_plugin('src.plugins.fwdrequests')
     # nonebot.load_plugin('src.plugins.runcode')
     # nonebot.load_plugin('src.plugins.maimai')
