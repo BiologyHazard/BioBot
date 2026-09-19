@@ -32,6 +32,11 @@ def webhook_url(token: str) -> str:
     return f"{plugin_config.github_notifier_webhook_payload_url.rstrip('/')}/{token}"
 
 
+def webhook_settings_url(repository: str) -> str:
+    """生成 GitHub 仓库的“新建 Webhook”页面地址。"""
+    return f"https://github.com/{repository}/settings/hooks/new"
+
+
 def repository_name(value: str) -> str:
     """校验并规范化 `owner/repository` 形式的仓库名。"""
     if not REPOSITORY_PATTERN.fullmatch(value):
@@ -155,11 +160,13 @@ async def subscribe(
         summary += f"另有 {skipped} 个目标已订阅，保持原有 webhook。"
     return (
         f"{summary}\n"
-        f"Webhook URL：{webhook_url(webhook_token)}\n"
+        f"添加 Webhook：{webhook_settings_url(repository_name_value)}\n"
+        "请打开上面的链接，在 GitHub 页面填写以下信息：\n"
+        f"Payload URL：{webhook_url(webhook_token)}\n"
         "Content type：application/json\n"
         "Events：push、pull_request、issues\n"
         f"Secret：{webhook_secret}\n"
-        "请在 GitHub 仓库 Settings → Webhooks 中填写以上信息。"
+        "填写完成后点击 Add webhook。"
     )
 
 
