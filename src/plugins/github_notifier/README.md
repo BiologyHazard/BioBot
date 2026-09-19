@@ -16,6 +16,6 @@ ghn list
 
 群主和群管理员可管理本群订阅，任何群员可查看本群订阅；私聊时管理自己的订阅。超级管理员可在以上命令中添加可重复的 `--group 群号` 或 `--private QQ号`，指定其他目标。
 
-订阅回复包含专属 Webhook URL 和明文 secret。请在 GitHub 仓库 Settings → Webhooks 添加 webhook，Content type 选 `application/json`，事件选择 `push`、`pull_request`、`issues`，并填写回复中的 secret。普通用户只能为自己或当前群创建单目标订阅，因此各目标使用独立 URL 和 secret；超级管理员在一条命令里指定多个目标时，这批目标共用一组 URL 和 secret。只有通过该组 secret 验签的事件才会发给这批目标。重复订阅已有目标不会重新生成或显示凭据；取消最后一个目标后，需要在 GitHub 删除对应 webhook。
+订阅回复会直接给出 GitHub 的“新建 Webhook”页面链接，以及本次订阅专属的 Payload URL 和明文 secret。打开链接后，Content type 选 `application/json`，事件选择 `push`、`pull_request`、`issues`、`issue_comment`、`pull_request_review`、`pull_request_review_comment`、`workflow_run`、`release`、`deployment_status`、`dependabot_alert`、`code_scanning_alert`、`secret_scanning_alert`、`discussion`、`discussion_comment`、`issue_dependencies`，并填写回复中的 secret。普通用户只能为自己或当前群创建单目标订阅，因此各目标使用独立 URL 和 secret；超级管理员在一条命令里指定多个目标时，这批目标共用一组 URL 和 secret。只有通过该组 secret 验签的事件才会发给这批目标。重复订阅已有目标不会重新生成或显示凭据；取消最后一个目标后，需要在 GitHub 删除对应 webhook。已有 webhook 不会自动更新事件选择，升级后请在 GitHub 的 webhook 设置中重新勾选新增事件。
 
 Webhook 签名和 payload 解析使用 `githubkit.webhooks` 提供的 GitHubKit/Pydantic 模型；GitHubKit 会按事件类型严格校验完整 payload。

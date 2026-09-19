@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 
 from .config import plugin_config
+from .events import SUPPORTED_WEBHOOK_EVENTS
 from .formatting import WebhookEnvelope, format_event
 from .models import (
     GithubNotifierDelivery,
@@ -85,7 +86,7 @@ async def receive_webhook(request: Request) -> Response:
 
         kind = request.headers.get("X-GitHub-Event", "")
         # 未支持的事件直接确认收件，避免 GitHub 因无关事件反复重试。
-        if kind not in {"push", "pull_request", "issues"}:
+        if kind not in SUPPORTED_WEBHOOK_EVENTS:
             return Response(200, content="Event ignored")
         try:
             event = parse(kind, body)
