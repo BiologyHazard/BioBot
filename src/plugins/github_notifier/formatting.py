@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from githubkit.utils import UNSET
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -54,7 +55,7 @@ def _actor(event: WebhookEvent) -> str:
 
 def _name(value: Any, fallback: str = "") -> str:
     """从 GitHub 的用户、标签等嵌套对象中读取一个适合展示的名字。"""
-    if value is None:
+    if value is None or value is UNSET:
         return fallback
     return (
         _text(getattr(value, "login", None))
