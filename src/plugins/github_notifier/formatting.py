@@ -357,6 +357,12 @@ def format_push(event: PushEvent) -> str:
     else:
         branch = ref.removeprefix("refs/heads/")
         ref_kind = "分支"
+    if getattr(event, "deleted", False):
+        lines = [f"[GitHub] {actor} 删除了 {name} 的 {branch} {ref_kind}"]
+        return _with_url(lines, event.repository.html_url)
+    if getattr(event, "created", False) and not commits:
+        lines = [f"[GitHub] {actor} 创建了 {name} 的 {branch} {ref_kind}"]
+        return _with_url(lines, event.repository.html_url)
     lines = [
         f"[GitHub] {actor} 向 {name} 的 {branch} {ref_kind}推送了 {len(commits)} 个提交"
     ]
