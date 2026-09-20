@@ -163,16 +163,10 @@ COMMENT_ACTIONS = {
 }
 
 
-REVIEW_ACTIONS = {
-    "edited": "编辑了评审",
-    "dismissed": "撤销了评审",
-}
+REVIEW_ACTIONS = {"edited": "编辑了评审", "dismissed": "撤销了评审"}
 
 
-WORKFLOW_ACTIONS = {
-    "requested": "已请求执行",
-    "in_progress": "正在执行",
-}
+WORKFLOW_ACTIONS = {"requested": "已请求执行", "in_progress": "正在执行"}
 
 
 RELEASE_ACTIONS = {
@@ -367,11 +361,12 @@ def format_push(event: PushEvent) -> str:
     lines = [
         f"[GitHub] {actor} 向 {name} 的 {branch} {ref_kind}推送了 {len(commits)} 个提交"
     ]
-    # Push 可能包含大量提交，只保留前五条并在末尾给出总数提示。
-    for commit in commits[:5]:
-        lines.append(f"- {_text(commit.id, 7)} {_text(commit.message)}")
-    if len(commits) > 5:
-        lines.append(f"……另有 {len(commits) - 5} 个提交")
+    # Push 可能包含大量提交，只保留前 8 条并在末尾给出总数提示。
+    for commit in commits[:8]:
+        title = commit.message.partition("\n")[0]
+        lines.append(f"- {_text(commit.id, 7)} {_text(title)}")
+    if len(commits) > 8:
+        lines.append(f"……另有 {len(commits) - 8} 个提交")
     return _with_url(lines, event.compare or event.repository.html_url)
 
 
@@ -447,10 +442,7 @@ def format_issue_comment(event: IssueCommentEvent) -> str:
     body = _body_line(comment, "评论")
     if body:
         lines.append(body)
-    return _with_url(
-        lines,
-        _path(comment, "html_url") or _path(issue, "html_url"),
-    )
+    return _with_url(lines, _path(comment, "html_url") or _path(issue, "html_url"))
 
 
 def format_pull_request_review(event: PullRequestReviewEvent) -> str:
@@ -477,14 +469,11 @@ def format_pull_request_review(event: PullRequestReviewEvent) -> str:
     if body:
         lines.append(body)
     return _with_url(
-        lines,
-        _path(review, "html_url") or _path(pull_request, "html_url"),
+        lines, _path(review, "html_url") or _path(pull_request, "html_url")
     )
 
 
-def format_pull_request_review_comment(
-    event: PullRequestReviewCommentEvent,
-) -> str:
+def format_pull_request_review_comment(event: PullRequestReviewCommentEvent) -> str:
     """格式化 PR 代码行评论事件。"""
     repository = _text(event.repository.full_name)
     pull_request = event.pull_request
@@ -505,8 +494,7 @@ def format_pull_request_review_comment(
     if body:
         lines.append(body)
     return _with_url(
-        lines,
-        _path(comment, "html_url") or _path(pull_request, "html_url"),
+        lines, _path(comment, "html_url") or _path(pull_request, "html_url")
     )
 
 
@@ -626,11 +614,7 @@ def format_dependabot_alert(event: DependabotAlertEvent) -> str:
     )
     severity = _path(alert, "security_advisory", "severity")
     return _format_security_alert(
-        event,
-        "Dependabot 告警",
-        DEPENDABOT_ACTIONS,
-        subject,
-        severity=severity,
+        event, "Dependabot 告警", DEPENDABOT_ACTIONS, subject, severity=severity
     )
 
 
@@ -646,11 +630,7 @@ def format_code_scanning_alert(event: CodeScanningAlertEvent) -> str:
         alert, "rule", "severity"
     )
     return _format_security_alert(
-        event,
-        "代码扫描告警",
-        CODE_SCANNING_ACTIONS,
-        subject,
-        severity=severity,
+        event, "代码扫描告警", CODE_SCANNING_ACTIONS, subject, severity=severity
     )
 
 
@@ -663,10 +643,7 @@ def format_secret_scanning_alert(event: SecretScanningAlertEvent) -> str:
         or "秘密泄露告警"
     )
     return _format_security_alert(
-        event,
-        "秘密扫描告警",
-        SECRET_SCANNING_ACTIONS,
-        subject,
+        event, "秘密扫描告警", SECRET_SCANNING_ACTIONS, subject
     )
 
 
@@ -708,10 +685,7 @@ def format_discussion_comment(event: DiscussionCommentEvent) -> str:
     body = _body_line(comment, "评论")
     if body:
         lines.append(body)
-    return _with_url(
-        lines,
-        _path(comment, "html_url") or _path(discussion, "html_url"),
-    )
+    return _with_url(lines, _path(comment, "html_url") or _path(discussion, "html_url"))
 
 
 def format_issue_dependencies(event: IssueDependenciesEvent) -> str:
@@ -732,8 +706,7 @@ def format_issue_dependencies(event: IssueDependenciesEvent) -> str:
         )
     lines = [f"[GitHub] {_actor(event)} 在 {repository} 中{phrase}"]
     return _with_url(
-        lines,
-        _path(main_issue, "html_url") or _path(related_issue, "html_url"),
+        lines, _path(main_issue, "html_url") or _path(related_issue, "html_url")
     )
 
 
