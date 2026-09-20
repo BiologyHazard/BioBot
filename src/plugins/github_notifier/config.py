@@ -1,13 +1,14 @@
 from urllib.parse import urlsplit
 
 from nonebot import get_plugin_config
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class Config(BaseModel):
     """GitHub webhook 通知插件的配置。"""
 
     github_notifier_webhook_payload_url: str
+    github_notifier_batch_window_seconds: float = Field(default=60, gt=0)
 
     @field_validator("github_notifier_webhook_payload_url")
     @classmethod
