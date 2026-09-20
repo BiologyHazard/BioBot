@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 
 from githubkit.webhooks import parse
 from nonebot import get_bots, logger
-from nonebot.adapters.onebot.v11 import MessageSegment
+from nonebot.adapters.onebot.v11 import Message, MessageSegment
 from nonebot.drivers import URL, ASGIMixin, Driver, HTTPServerSetup, Request, Response
 from nonebot_plugin_orm import get_session
 from pydantic import ValidationError
@@ -54,11 +54,6 @@ _pending_batches: dict[int, _PendingBatch] = {}
 _pending_delivery_keys: set[DeliveryKey] = set()
 
 
-def _merge_messages(messages: list[str]) -> str:
-    """将同一目标在同一时间窗内的消息合并为一条 QQ 消息。"""
-    return "\n\n".join(messages)
-
-
 async def _flush_batch(repository_id: int, batch: _PendingBatch) -> None:
     """等待时间窗结束后，按目标发送一个仓库的合并通知。"""
     try:
@@ -78,10 +73,15 @@ async def _flush_batch(repository_id: int, batch: _PendingBatch) -> None:
         async with _delivery_lock:
             async with get_session() as session:
                 for target, target_notifications in grouped.items():
-                    message = _merge_messages(
-                        [notification.message for notification in target_notifications]
+                    messages = [
+                        notification.message for notification in target_notifications
+                    ]
+                    delivered = (
+                        await _send(target[0], target[1], messages[0])
+                        if len(messages) == 1
+                        else await _send_forward(target[0], target[1], messages)
                     )
-                    if not await _send(target[0], target[1], message):
+                    if not delivered:
                         logger.error(
                             "GitHub 合并通知发送失败：仓库 {}，目标 {} {}",
                             repository_id,
@@ -155,6 +155,32 @@ async def _send(target_type: str, target_id: str, message: str) -> bool:
             return True
         except Exception:
             logger.exception("GitHub 通知发送失败：{} {}", target_type, target_id)
+    return False
+
+
+async def _send_forward(
+    target_type: str, target_id: str, messages: list[str]
+) -> bool:
+    """通过 OneBot 扩展 API 发送真正的合并转发消息。"""
+    for bot in get_bots().values():
+        try:
+            nodes = Message(
+                MessageSegment.node_custom(
+                    int(bot.self_id), "GitHub", Message(MessageSegment.text(message))
+                )
+                for message in messages
+            )
+            if target_type == "group":
+                await bot.send_group_forward_msg(
+                    group_id=int(target_id), messages=nodes
+                )
+            else:
+                await bot.send_private_forward_msg(
+                    user_id=int(target_id), messages=nodes
+                )
+            return True
+        except Exception:
+            logger.exception("GitHub 合并转发发送失败：{} {}", target_type, target_id)
     return False
 
 
