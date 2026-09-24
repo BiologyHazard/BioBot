@@ -17,7 +17,7 @@ from nonebot_plugin_orm import AsyncSession
 from sqlalchemy import delete, func, select
 
 from .config import plugin_config
-from .events import NOTIFICATION_WEBHOOK_EVENTS_TEXT
+from .filters import event_filters
 from .models import (
     GithubNotifierDelivery,
     GithubNotifierRepository,
@@ -112,6 +112,9 @@ async def subscribe(
     session: AsyncSession, repository_name_value: str, targets: list[tuple[str, str]]
 ) -> str:
     """为仓库添加订阅，并返回新的 webhook 配置说明。"""
+    webhook_events = event_filters.webhook_events(repository_name_value)
+    if not webhook_events:
+        return f"{repository_name_value} 的过滤配置未启用任何事件，暂不能创建 Webhook。"
     repository = await session.scalar(
         select(GithubNotifierRepository).where(
             GithubNotifierRepository.full_name == repository_name_value
@@ -165,7 +168,7 @@ async def subscribe(
         "请打开上面的链接，在 GitHub 页面填写以下信息：\n"
         f"Payload URL：{webhook_url(webhook_token)}\n"
         "Content type：application/json\n"
-        f"Events：{NOTIFICATION_WEBHOOK_EVENTS_TEXT}\n"
+        f"Events：{'、'.join(webhook_events)}\n"
         f"Secret：{webhook_secret}\n"
         "填写完成后点击 Add webhook。"
     )

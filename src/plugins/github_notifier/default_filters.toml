@@ -1,0 +1,13 @@
+[default]
+events = [
+    "issues.opened",
+    "issues.closed",
+    "issues.reopened",
+    "pull_request.opened",
+    "pull_request.closed",
+    "pull_request.reopened",
+    "pull_request.merged",
+    "workflow_run.failure",
+    "star.created",
+    "release",
+]

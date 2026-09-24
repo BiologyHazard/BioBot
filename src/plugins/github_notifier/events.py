@@ -1,73 +1,70 @@
 """GitHub webhook event types supported by the notifier."""
 
-from __future__ import annotations
+from enum import StrEnum
 
-from typing import TYPE_CHECKING, cast
+from githubkit_schemas.latest import webhooks
 
-if TYPE_CHECKING:
-    from githubkit_schemas.latest.webhooks import (
-        DiscussionEvent,
-        IssuesEvent,
-        PullRequestEvent,
-        PushEvent,
-        WebhookEvent,
-        WorkflowRunEvent,
-    )
 
-# 可解析并格式化的事件类型，包括暂不推送的类型。
-SUPPORTED_WEBHOOK_EVENTS: tuple[str, ...] = (
-    "push",
-    "pull_request",
-    "issues",
-    "issue_comment",
-    "pull_request_review",
-    "pull_request_review_comment",
-    "workflow_run",
-    "release",
-    "deployment_status",
-    "dependabot_alert",
-    "code_scanning_alert",
-    "secret_scanning_alert",
-    "discussion",
-    "discussion_comment",
-    "issue_dependencies",
+class GitHubWebhookEvent(StrEnum):
+    """GitHub 官方 X-GitHub-Event 请求头中的事件名。"""
+
+    PUSH = "push"
+    PULL_REQUEST = "pull_request"
+    ISSUES = "issues"
+    ISSUE_COMMENT = "issue_comment"
+    PULL_REQUEST_REVIEW = "pull_request_review"
+    PULL_REQUEST_REVIEW_COMMENT = "pull_request_review_comment"
+    WORKFLOW_RUN = "workflow_run"
+    RELEASE = "release"
+    DEPLOYMENT_STATUS = "deployment_status"
+    DEPENDABOT_ALERT = "dependabot_alert"
+    CODE_SCANNING_ALERT = "code_scanning_alert"
+    SECRET_SCANNING_ALERT = "secret_scanning_alert"
+    DISCUSSION = "discussion"
+    DISCUSSION_COMMENT = "discussion_comment"
+    ISSUE_DEPENDENCIES = "issue_dependencies"
+    STAR = "star"
+
+
+class GitHubWorkflowConclusion(StrEnum):
+    """GitHub 官方 workflow_run.conclusion 字段中的结果值。"""
+
+    SUCCESS = "success"
+    FAILURE = "failure"
+    CANCELLED = "cancelled"
+    TIMED_OUT = "timed_out"
+    SKIPPED = "skipped"
+    NEUTRAL = "neutral"
+    ACTION_REQUIRED = "action_required"
+    STALE = "stale"
+
+
+class DerivedEvent(StrEnum):
+    """BioBot 自定义的过滤分类；这些值不是 GitHub 的事件名。"""
+
+    PULL_REQUEST_MERGED = "pull_request.merged"
+    WORKFLOW_SUCCESS = f"workflow_run.{GitHubWorkflowConclusion.SUCCESS}"
+    WORKFLOW_FAILURE = f"workflow_run.{GitHubWorkflowConclusion.FAILURE}"
+    WORKFLOW_CANCELLED = f"workflow_run.{GitHubWorkflowConclusion.CANCELLED}"
+    WORKFLOW_TIMED_OUT = f"workflow_run.{GitHubWorkflowConclusion.TIMED_OUT}"
+    WORKFLOW_SKIPPED = f"workflow_run.{GitHubWorkflowConclusion.SKIPPED}"
+    WORKFLOW_NEUTRAL = f"workflow_run.{GitHubWorkflowConclusion.NEUTRAL}"
+    WORKFLOW_ACTION_REQUIRED = f"workflow_run.{GitHubWorkflowConclusion.ACTION_REQUIRED}"
+    WORKFLOW_STALE = f"workflow_run.{GitHubWorkflowConclusion.STALE}"
+
+
+SUPPORTED_WEBHOOK_EVENTS = frozenset(GitHubWebhookEvent)
+
+
+# action 名称来自 githubkit 的 GitHub Webhook schema；配置也允许只写事件名，
+# 表示该事件下所有动作。PR 合并与工作流结果另外使用 BioBot 自定义分类。
+def _actions(kind: GitHubWebhookEvent) -> tuple[str, ...]:
+    schema = getattr(webhooks, f"{kind}_action_types", None)
+    return tuple(schema) if isinstance(schema, dict) else ()
+
+
+SUPPORTED_FILTER_KEYS = frozenset(
+    {str(kind) for kind in GitHubWebhookEvent}
+    | {f"{kind}.{action}" for kind in GitHubWebhookEvent for action in _actions(kind)}
+    | {str(kind) for kind in DerivedEvent}
 )
-
-# 当前允许进入通知队列的事件类型。
-NOTIFICATION_WEBHOOK_EVENTS: tuple[str, ...] = (
-    "push",
-    "pull_request",
-    "issues",
-    "workflow_run",
-    "release",
-    "deployment_status",
-    "dependabot_alert",
-    "code_scanning_alert",
-    "secret_scanning_alert",
-    "discussion",
-)
-NOTIFICATION_WEBHOOK_EVENTS_TEXT = "、".join(NOTIFICATION_WEBHOOK_EVENTS)
-NOTIFIED_ITEM_ACTIONS = frozenset({"opened", "closed", "reopened"})
-NOTIFIED_DISCUSSION_ACTIONS = frozenset({"created", "closed", "reopened"})
-
-
-def should_notify(kind: str, event: WebhookEvent) -> bool:
-    """判断已解析的 webhook 事件是否需要发送通知。"""
-    if kind not in NOTIFICATION_WEBHOOK_EVENTS:
-        return False
-    if kind == "push":
-        push = cast("PushEvent", event)
-        return not push.deleted and bool(push.commits)
-    if kind == "issues":
-        return cast("IssuesEvent", event).action in NOTIFIED_ITEM_ACTIONS
-    if kind == "pull_request":
-        return cast("PullRequestEvent", event).action in NOTIFIED_ITEM_ACTIONS
-    if kind == "discussion":
-        return cast("DiscussionEvent", event).action in NOTIFIED_DISCUSSION_ACTIONS
-    if kind == "workflow_run":
-        workflow = cast("WorkflowRunEvent", event)
-        return (
-            workflow.action == "completed"
-            and workflow.workflow_run.conclusion != "success"
-        )
-    return True

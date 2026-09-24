@@ -14,7 +14,8 @@ from pydantic import ValidationError
 from sqlalchemy import select
 
 from .config import plugin_config
-from .events import SUPPORTED_WEBHOOK_EVENTS, should_notify
+from .events import SUPPORTED_WEBHOOK_EVENTS
+from .filters import event_filters
 from .formatting import WebhookEnvelope, format_event
 from .models import (
     GithubNotifierDelivery,
@@ -136,9 +137,7 @@ async def _queue_notifications(
         batch.notifications.extend(new_notifications)
 
 
-async def _send_forward(
-    target_type: str, target_id: str, messages: list[str]
-) -> bool:
+async def _send_forward(target_type: str, target_id: str, messages: list[str]) -> bool:
     """通过 OneBot 扩展 API 发送真正的合并转发消息。"""
     for bot in get_bots().values():
         try:
@@ -173,7 +172,9 @@ async def receive_webhook(request: Request) -> Response:
     # 验签必须使用 request.content，不能使用已经反序列化的 JSON 对象。
     body = request.content
     logger.debug(
-        "收到 GitHub webhook：headers={!r}, payload={!r}", dict(request.headers), body
+        "收到 GitHub webhook：事件 {}，投递 {}",
+        request.headers.get("X-GitHub-Event"),
+        request.headers.get("X-GitHub-Delivery"),
     )
     if not isinstance(body, bytes):
         return Response(400, content="Expected a JSON request body")
@@ -205,12 +206,21 @@ async def receive_webhook(request: Request) -> Response:
         kind = request.headers.get("X-GitHub-Event", "")
         # 未支持的事件直接确认收件，避免 GitHub 因无关事件反复重试。
         if kind not in SUPPORTED_WEBHOOK_EVENTS:
+            logger.debug("忽略未支持的 GitHub 事件：仓库 {}，事件 {}", repository.full_name, kind)
             return Response(200, content="Event ignored")
         try:
             event = parse(kind, body)
         except (ValidationError, ValueError):
             return Response(400, content="Invalid GitHub webhook payload")
-        if not should_notify(kind, event):
+        if not event_filters.allows(repository.full_name, kind, event):
+            logger.debug(
+                "GitHub 事件被过滤：仓库 {}，事件 {}，动作 {}，结果 {}，投递 {}",
+                repository.full_name,
+                kind,
+                getattr(event, "action", None),
+                getattr(getattr(event, "workflow_run", None), "conclusion", None),
+                request.headers.get("X-GitHub-Delivery"),
+            )
             return Response(200, content="Event ignored")
         message = format_event(kind, event)
         delivery_id = request.headers.get("X-GitHub-Delivery")
@@ -253,6 +263,15 @@ async def receive_webhook(request: Request) -> Response:
                     )
                 )
             await _queue_notifications(repository.id, notifications)
+            logger.info(
+                "GitHub 事件已入队：仓库 {}，事件 {}，动作 {}，结果 {}，投递 {}，候选目标 {} 个",
+                repository.full_name,
+                kind,
+                getattr(event, "action", None),
+                getattr(getattr(event, "workflow_run", None), "conclusion", None),
+                delivery_id,
+                len(notifications),
+            )
             return Response(200, content="Queued")
 
 
