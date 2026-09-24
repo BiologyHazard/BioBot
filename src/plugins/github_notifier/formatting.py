@@ -341,7 +341,7 @@ def _with_url(lines: list[str], url: Any) -> str:
 
 
 def format_push(event: PushEvent) -> str:
-    """格式化 push 事件。提交列表最多展示五条。"""
+    """格式化 push 事件。提交列表最多展示八条。"""
     name = _text(event.repository.full_name)
     ref = _text(event.ref)
     commits = event.commits
@@ -498,7 +498,7 @@ def format_pull_request_review_comment(event: PullRequestReviewCommentEvent) -> 
     )
 
 
-def format_workflow_run(event: WorkflowRunEvent) -> str | None:
+def format_workflow_run(event: WorkflowRunEvent) -> str:
     """格式化 GitHub Actions 工作流运行事件。"""
     repository = _text(event.repository.full_name)
     workflow_run = event.workflow_run
@@ -506,13 +506,8 @@ def format_workflow_run(event: WorkflowRunEvent) -> str | None:
         _path(event.workflow, "name") or _path(workflow_run, "name") or "GitHub Actions"
     )
     action = _text(event.action)
-    # 请求执行、开始执行和成功完成都是正常流程，不需要推送。
-    if action in {"requested", "in_progress"}:
-        return None
     if action == "completed":
         conclusion = _path(workflow_run, "conclusion").lower()
-        if conclusion == "success":
-            return None
         outcome = {
             "failure": "执行失败",
             "cancelled": "已取消",
@@ -710,8 +705,8 @@ def format_issue_dependencies(event: IssueDependenciesEvent) -> str:
     )
 
 
-def format_event(kind: str, event: WebhookEvent) -> str | None:
-    """按 webhook 类型分发到对应 formatter；未支持的事件返回 ``None``。"""
+def format_event(kind: str, event: WebhookEvent) -> str:
+    """按 webhook 类型分发到对应 formatter；未知类型属于调用错误。"""
     if kind == "push":
         return format_push(cast("PushEvent", event))
     if kind == "pull_request":
@@ -744,4 +739,4 @@ def format_event(kind: str, event: WebhookEvent) -> str | None:
         return format_discussion_comment(cast("DiscussionCommentEvent", event))
     if kind == "issue_dependencies":
         return format_issue_dependencies(cast("IssueDependenciesEvent", event))
-    return None
+    raise ValueError(f"Unsupported webhook event: {kind}")

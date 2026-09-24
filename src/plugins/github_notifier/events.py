@@ -11,8 +11,10 @@ if TYPE_CHECKING:
         PullRequestEvent,
         PushEvent,
         WebhookEvent,
+        WorkflowRunEvent,
     )
 
+# 可解析并格式化的事件类型，包括暂不推送的类型。
 SUPPORTED_WEBHOOK_EVENTS: tuple[str, ...] = (
     "push",
     "pull_request",
@@ -31,26 +33,27 @@ SUPPORTED_WEBHOOK_EVENTS: tuple[str, ...] = (
     "issue_dependencies",
 )
 
-# 保留所有事件的解析和格式化能力；这些事件暂不发送通知。
-SILENCED_WEBHOOK_EVENTS = frozenset(
-    {
-        "issue_comment",
-        "issue_dependencies",
-        "discussion_comment",
-        "pull_request_review",
-        "pull_request_review_comment",
-    }
+# 当前允许进入通知队列的事件类型。
+NOTIFICATION_WEBHOOK_EVENTS: tuple[str, ...] = (
+    "push",
+    "pull_request",
+    "issues",
+    "workflow_run",
+    "release",
+    "deployment_status",
+    "dependabot_alert",
+    "code_scanning_alert",
+    "secret_scanning_alert",
+    "discussion",
 )
-NOTIFICATION_WEBHOOK_EVENTS_TEXT = "、".join(
-    kind for kind in SUPPORTED_WEBHOOK_EVENTS if kind not in SILENCED_WEBHOOK_EVENTS
-)
+NOTIFICATION_WEBHOOK_EVENTS_TEXT = "、".join(NOTIFICATION_WEBHOOK_EVENTS)
 NOTIFIED_ITEM_ACTIONS = frozenset({"opened", "closed", "reopened"})
 NOTIFIED_DISCUSSION_ACTIONS = frozenset({"created", "closed", "reopened"})
 
 
 def should_notify(kind: str, event: WebhookEvent) -> bool:
     """判断已解析的 webhook 事件是否需要发送通知。"""
-    if kind in SILENCED_WEBHOOK_EVENTS:
+    if kind not in NOTIFICATION_WEBHOOK_EVENTS:
         return False
     if kind == "push":
         push = cast("PushEvent", event)
@@ -61,4 +64,10 @@ def should_notify(kind: str, event: WebhookEvent) -> bool:
         return cast("PullRequestEvent", event).action in NOTIFIED_ITEM_ACTIONS
     if kind == "discussion":
         return cast("DiscussionEvent", event).action in NOTIFIED_DISCUSSION_ACTIONS
-    return kind in SUPPORTED_WEBHOOK_EVENTS
+    if kind == "workflow_run":
+        workflow = cast("WorkflowRunEvent", event)
+        return (
+            workflow.action == "completed"
+            and workflow.workflow_run.conclusion != "success"
+        )
+    return True

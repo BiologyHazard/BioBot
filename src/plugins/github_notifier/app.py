@@ -213,8 +213,6 @@ async def receive_webhook(request: Request) -> Response:
         if not should_notify(kind, event):
             return Response(200, content="Event ignored")
         message = format_event(kind, event)
-        if message is None:
-            return Response(200, content="Event ignored")
         delivery_id = request.headers.get("X-GitHub-Delivery")
         if not delivery_id or len(delivery_id) > 128:
             return Response(400, content="Missing or invalid delivery ID")
