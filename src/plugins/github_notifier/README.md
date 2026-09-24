@@ -35,7 +35,7 @@ ghn subscribe owner/repo --group 123456 --private 654321
 ghn list --group 123456
 ```
 
-`subscribe` 为新增目标生成一组 Payload URL 和 secret，并回复 GitHub 仓库的 Webhook 创建页面。打开页面后，填写：
+`subscribe` 为新增目标生成一组 Payload URL 和 secret，并回复 GitHub 仓库的 Webhook 创建页面。打开页面后，按回复填写：
 
 1. **Payload URL**：使用回复中的完整地址，包含末尾 token。
 2. **Content type**：选择 `application/json`。
