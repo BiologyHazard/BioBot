@@ -2,6 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from githubkit_schemas.latest.webhooks import (
+        IssuesEvent,
+        PullRequestEvent,
+        PushEvent,
+        WebhookEvent,
+    )
+
 SUPPORTED_WEBHOOK_EVENTS: tuple[str, ...] = (
     "push",
     "pull_request",
@@ -20,4 +30,30 @@ SUPPORTED_WEBHOOK_EVENTS: tuple[str, ...] = (
     "issue_dependencies",
 )
 
-SUPPORTED_WEBHOOK_EVENTS_TEXT = "、".join(SUPPORTED_WEBHOOK_EVENTS)
+# 保留所有事件的解析和格式化能力；这些事件暂不发送通知。
+SILENCED_WEBHOOK_EVENTS = frozenset(
+    {
+        "issue_comment",
+        "issue_dependencies",
+        "pull_request_review",
+        "pull_request_review_comment",
+    }
+)
+NOTIFICATION_WEBHOOK_EVENTS_TEXT = "、".join(
+    kind for kind in SUPPORTED_WEBHOOK_EVENTS if kind not in SILENCED_WEBHOOK_EVENTS
+)
+NOTIFIED_ITEM_ACTIONS = frozenset({"opened", "closed", "reopened"})
+
+
+def should_notify(kind: str, event: WebhookEvent) -> bool:
+    """判断已解析的 webhook 事件是否需要发送通知。"""
+    if kind in SILENCED_WEBHOOK_EVENTS:
+        return False
+    if kind == "push":
+        push = cast("PushEvent", event)
+        return not push.deleted and bool(push.commits)
+    if kind == "issues":
+        return cast("IssuesEvent", event).action in NOTIFIED_ITEM_ACTIONS
+    if kind == "pull_request":
+        return cast("PullRequestEvent", event).action in NOTIFIED_ITEM_ACTIONS
+    return kind in SUPPORTED_WEBHOOK_EVENTS

@@ -17,7 +17,7 @@ from nonebot_plugin_orm import AsyncSession
 from sqlalchemy import delete, func, select
 
 from .config import plugin_config
-from .events import SUPPORTED_WEBHOOK_EVENTS_TEXT
+from .events import NOTIFICATION_WEBHOOK_EVENTS_TEXT
 from .models import (
     GithubNotifierDelivery,
     GithubNotifierRepository,
@@ -165,7 +165,7 @@ async def subscribe(
         "请打开上面的链接，在 GitHub 页面填写以下信息：\n"
         f"Payload URL：{webhook_url(webhook_token)}\n"
         "Content type：application/json\n"
-        f"Events：{SUPPORTED_WEBHOOK_EVENTS_TEXT}\n"
+        f"Events：{NOTIFICATION_WEBHOOK_EVENTS_TEXT}\n"
         f"Secret：{webhook_secret}\n"
         "填写完成后点击 Add webhook。"
     )

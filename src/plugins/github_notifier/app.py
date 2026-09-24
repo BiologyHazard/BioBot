@@ -14,7 +14,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 
 from .config import plugin_config
-from .events import SUPPORTED_WEBHOOK_EVENTS
+from .events import SUPPORTED_WEBHOOK_EVENTS, should_notify
 from .formatting import WebhookEnvelope, format_event
 from .models import (
     GithubNotifierDelivery,
@@ -210,6 +210,8 @@ async def receive_webhook(request: Request) -> Response:
             event = parse(kind, body)
         except (ValidationError, ValueError):
             return Response(400, content="Invalid GitHub webhook payload")
+        if not should_notify(kind, event):
+            return Response(200, content="Event ignored")
         message = format_event(kind, event)
         if message is None:
             return Response(200, content="Event ignored")
