@@ -73,9 +73,6 @@ class EventFiltersTest(unittest.TestCase):
         self.assertTrue(filters.allows("bio/project", "pull_request", unmerged))
         self.assertFalse(filters.allows("bio/project", "issues", event("opened")))
         self.assertTrue(filters.allows("other/repo", "issues", event("opened")))
-        self.assertEqual(
-            filters.webhook_events("bio/project"), ("pull_request", "star")
-        )
 
     def test_invalid_event_name_fails_loading(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -100,7 +97,6 @@ class EventFiltersTest(unittest.TestCase):
             filters = load_filters(config)
 
         self.assertFalse(filters.allows("bio/project", "issues", event("opened")))
-        self.assertEqual(filters.webhook_events("bio/project"), ())
         self.assertTrue(filters.allows("other/repo", "issues", event("opened")))
 
     def test_new_star_has_readable_notification(self) -> None:

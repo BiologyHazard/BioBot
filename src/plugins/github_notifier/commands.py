@@ -1,5 +1,6 @@
 """QQ commands for managing GitHub webhook subscriptions."""
 
+import re
 import secrets
 import sys
 from argparse import ArgumentTypeError
@@ -16,13 +17,15 @@ from nonebot_plugin_orm import AsyncSession
 from sqlalchemy import delete, func, select
 
 from .config import plugin_config
-from .filters import REPOSITORY_PATTERN, event_filters
+from .events import NOTIFICATION_WEBHOOK_EVENTS_TEXT
 from .models import (
     GithubNotifierDelivery,
     GithubNotifierRepository,
     GithubNotifierSubscription,
     GithubNotifierWebhook,
 )
+
+REPOSITORY_PATTERN = re.compile(r"[A-Za-z0-9-]+/[A-Za-z0-9_.-]+\Z")
 
 
 def webhook_url(token: str) -> str:
@@ -109,7 +112,6 @@ async def subscribe(
     session: AsyncSession, repository_name_value: str, targets: list[tuple[str, str]]
 ) -> str:
     """为仓库添加订阅，并返回新的 webhook 配置说明。"""
-    webhook_events = event_filters.webhook_events(repository_name_value)
     repository = await session.scalar(
         select(GithubNotifierRepository).where(
             GithubNotifierRepository.full_name == repository_name_value
@@ -157,25 +159,15 @@ async def subscribe(
     summary = f"{repository_name_value} 已添加 {len(new_targets)} 个订阅目标。"
     if skipped:
         summary += f"另有 {skipped} 个目标已订阅，保持原有 webhook。"
-    if webhook_events:
-        setup_link = "添加 Webhook"
-        setup_prompt = "请打开上面的链接，在 GitHub 页面填写以下信息："
-        setup_end = "填写完成后点击 Add webhook。"
-        events_text = "、".join(webhook_events)
-    else:
-        setup_link = "日后启用时添加 Webhook"
-        setup_prompt = "当前仓库已静音，暂不需要创建 Webhook。日后启用时请填写以下信息："
-        setup_end = "启用事件后，请按新规则勾选 Events，再点击 Add webhook。"
-        events_text = "无（当前静音）"
     return (
         f"{summary}\n"
-        f"{setup_link}：{webhook_settings_url(repository_name_value)}\n"
-        f"{setup_prompt}\n"
+        f"添加 Webhook：{webhook_settings_url(repository_name_value)}\n"
+        "请打开上面的链接，在 GitHub 页面填写以下信息：\n"
         f"Payload URL：{webhook_url(webhook_token)}\n"
         "Content type：application/json\n"
-        f"Events：{events_text}\n"
+        f"Events：{NOTIFICATION_WEBHOOK_EVENTS_TEXT}\n"
         f"Secret：{webhook_secret}\n"
-        f"{setup_end}"
+        "填写完成后点击 Add webhook。"
     )
 
 

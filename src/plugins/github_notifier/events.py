@@ -55,6 +55,22 @@ class DerivedEvent(StrEnum):
 
 SUPPORTED_WEBHOOK_EVENTS = frozenset(GitHubWebhookEvent)
 
+# 保留 QQ 订阅命令原有的 Webhook 设置提示；实际推送由过滤配置决定。
+NOTIFICATION_WEBHOOK_EVENTS_TEXT = "、".join(
+    (
+        "push",
+        "pull_request",
+        "issues",
+        "workflow_run",
+        "release",
+        "deployment_status",
+        "dependabot_alert",
+        "code_scanning_alert",
+        "secret_scanning_alert",
+        "discussion",
+    )
+)
+
 
 # action 名称来自 githubkit 的 GitHub Webhook schema；配置也允许只写事件名，
 # 表示该事件下所有动作。PR 合并与工作流结果另外使用 BioBot 自定义分类。

@@ -35,12 +35,12 @@ ghn subscribe owner/repo --group 123456 --private 654321
 ghn list --group 123456
 ```
 
-`subscribe` 为新增目标生成一组 Payload URL 和 secret，并回复 GitHub 仓库的 Webhook 创建页面。打开页面后，按回复填写：
+`subscribe` 为新增目标生成一组 Payload URL 和 secret，并回复 GitHub 仓库的 Webhook 创建页面。打开页面后，填写：
 
 1. **Payload URL**：使用回复中的完整地址，包含末尾 token。
 2. **Content type**：选择 `application/json`。
 3. **Secret**：填写回复中的 secret。
-4. **Events**：选择机器人回复中列出的事件类型，然后创建 Webhook。
+4. **Events**：选择需要送到机器人的 GitHub 事件类型，然后创建 Webhook。默认过滤规则需要勾选 `issues`、`pull_request`、`workflow_run`、`release`、`star`。命令回复中的 Events 是原有通用提示，不随过滤配置变化。
 
 一次命令指定多个新目标时，这些目标共用该次生成的 Webhook。已订阅的目标不会重复创建订阅。取消订阅后，如果命令回复列出了待删除的 Webhook URL，还需在 GitHub 仓库设置中删除对应 Webhook。
 
@@ -57,9 +57,9 @@ events = ["issues.opened", "pull_request.merged", "star.created", "release"]
 
 事件名可写 GitHub 的 Webhook 类型（如 `release`，匹配该类型的全部动作），或 `类型.动作`（如 `issues.opened`）。动作名按 GitHub Webhook schema 校验。`pull_request.merged` 和 `workflow_run.<结果>` 是 BioBot 从 GitHub payload 字段派生的过滤分类。无效事件名会在启动时报错。QQ 命令只管理订阅，过滤规则由配置文件管理。
 
-GitHub Webhook 必须勾选有效规则所需的原始事件类型。新订阅的命令回复会列出这些类型；已有 Webhook 若此前未勾选 `star` 或其他新增类型，需要在 GitHub 仓库设置中手动更新。过滤文件只决定已收到的事件是否发送到 QQ。推送消息包含事件摘要和相关链接；包含多个提交的 Push 最多展示前 8 条提交。
+GitHub Webhook 必须勾选有效规则所需的原始事件类型。修改过滤配置时，若启用了新的类型，也要在 GitHub 仓库设置中勾选；已有 Webhook 若此前未勾选 `star`，需手动补上。过滤文件只决定已收到的事件是否发送到 QQ。推送消息包含事件摘要和相关链接；包含多个提交的 Push 最多展示前 8 条提交。
 
-静音仓库仍可新增订阅。机器人会保存 Webhook 凭据并在回复中说明当前无需创建 GitHub Webhook；日后通过配置启用事件时，使用回复中的地址和 Secret 在 GitHub 创建 Webhook，并按新的事件规则勾选 Events。
+静音仓库仍可照常新增或取消订阅，Webhook 的创建与接收流程也不变；收到事件后，空过滤规则使机器人不向 QQ 推送。
 
 ## 发送方式
 

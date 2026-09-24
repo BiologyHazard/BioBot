@@ -27,12 +27,6 @@ class EventFilters:
     def events_for(self, repository: str) -> frozenset[str]:
         return self.repositories.get(repository.lower(), self.default_events)
 
-    def webhook_events(self, repository: str) -> tuple[str, ...]:
-        """GitHub 设置页应勾选的原始 Webhook 事件类型。"""
-        return tuple(
-            sorted({key.partition(".")[0] for key in self.events_for(repository)})
-        )
-
     def allows(self, repository: str, kind: str, event: Any) -> bool:
         """过滤已验签、已解析的事件；PR 合并和 CI 结果单独分类。"""
         selected = self.events_for(repository)
