@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from githubkit_schemas.latest.webhooks import (
+        DiscussionEvent,
         IssuesEvent,
         PullRequestEvent,
         PushEvent,
@@ -35,6 +36,7 @@ SILENCED_WEBHOOK_EVENTS = frozenset(
     {
         "issue_comment",
         "issue_dependencies",
+        "discussion_comment",
         "pull_request_review",
         "pull_request_review_comment",
     }
@@ -43,6 +45,7 @@ NOTIFICATION_WEBHOOK_EVENTS_TEXT = "、".join(
     kind for kind in SUPPORTED_WEBHOOK_EVENTS if kind not in SILENCED_WEBHOOK_EVENTS
 )
 NOTIFIED_ITEM_ACTIONS = frozenset({"opened", "closed", "reopened"})
+NOTIFIED_DISCUSSION_ACTIONS = frozenset({"created", "closed", "reopened"})
 
 
 def should_notify(kind: str, event: WebhookEvent) -> bool:
@@ -56,4 +59,6 @@ def should_notify(kind: str, event: WebhookEvent) -> bool:
         return cast("IssuesEvent", event).action in NOTIFIED_ITEM_ACTIONS
     if kind == "pull_request":
         return cast("PullRequestEvent", event).action in NOTIFIED_ITEM_ACTIONS
+    if kind == "discussion":
+        return cast("DiscussionEvent", event).action in NOTIFIED_DISCUSSION_ACTIONS
     return kind in SUPPORTED_WEBHOOK_EVENTS
