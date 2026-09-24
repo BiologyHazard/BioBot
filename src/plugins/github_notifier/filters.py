@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from nonebot import logger
-
 from .config import plugin_config
 from .events import (
     DerivedEvent,
@@ -70,6 +68,8 @@ def _events(value: Any, source: str) -> frozenset[str]:
     items = value["events"]
     if not isinstance(items, list) or not all(isinstance(item, str) for item in items):
         raise ValueError(f"{source}: events 必须是字符串数组")
+    if not items:
+        raise ValueError(f"{source}: events 至少需要一个事件")
     unknown = set(items) - SUPPORTED_FILTER_KEYS
     if unknown:
         raise ValueError(f"{source}: 未知事件分类 {', '.join(sorted(unknown))}")
@@ -95,12 +95,6 @@ def load_filters(override_path: Path | None = None) -> EventFilters:
             if normalized in repositories:
                 raise ValueError(f"{override_path}: 重复仓库名 {name}")
             repositories[normalized] = _events(rules, f"{override_path}: {name}")
-    logger.info(
-        "GitHub 通知过滤配置已加载：默认 {} 类事件，{} 个仓库覆盖，覆盖文件 {}",
-        len(default),
-        len(repositories),
-        str(override_path) if override_path else "无",
-    )
     return EventFilters(default, repositories)
 
 

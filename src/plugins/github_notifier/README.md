@@ -48,7 +48,7 @@ ghn list --group 123456
 
 版本化默认规则见 `default_filters.toml`。默认推送 Issue 和 PR 的开启、关闭、重新开启，已合并 PR、失败的 GitHub Actions 工作流、新增 Star，以及全部 Release 动作。工作流只有 `completed` 且 `conclusion=failure` 才归为 `workflow_run.failure`；取消和超时可分别配置。关闭且已合并的 PR 归为 `pull_request.merged`，未合并的关闭归为 `pull_request.closed`。
 
-通过 `GITHUB_NOTIFIER_FILTER_CONFIG` 指定自己的 TOML 文件。`[default]` 可整体替换版本化默认规则；每个 `[repositories."owner/repo"]` 又可整体替换该仓库的有效规则。省略的部分沿用默认规则，`events = []` 表示该仓库不推送。示例：
+通过 `GITHUB_NOTIFIER_FILTER_CONFIG` 指定自己的 TOML 文件。`[default]` 可整体替换版本化默认规则；每个 `[repositories."owner/repo"]` 又可整体替换该仓库的有效规则。省略的部分沿用默认规则；每份事件列表至少包含一个事件。示例：
 
 ```toml
 [repositories."bio/project"]

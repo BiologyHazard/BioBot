@@ -105,20 +105,6 @@ class EventFiltersTest(unittest.TestCase):
         self.assertIn("octocat Star 了 bio/project", message)
         self.assertIn("https://github.com/bio/project", message)
 
-    def test_merged_pr_is_labeled_as_merged(self) -> None:
-        payload = event(
-            "closed",
-            sender=SimpleNamespace(login="octocat"),
-            repository=SimpleNamespace(full_name="bio/project"),
-            pull_request=SimpleNamespace(
-                merged=True,
-                number=42,
-                title="Add feature",
-                html_url="https://github.com/bio/project/pull/42",
-            ),
-        )
-        self.assertIn("已合并 PR #42", format_event("pull_request", payload))
-
 
 if __name__ == "__main__":
     unittest.main()

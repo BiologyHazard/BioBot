@@ -24,6 +24,7 @@ from .models import (
     GithubNotifierWebhook,
 )
 
+
 def webhook_url(token: str) -> str:
     """根据 webhook token 生成提供给 GitHub 的完整 URL。"""
     return f"{plugin_config.github_notifier_webhook_payload_url.rstrip('/')}/{token}"
@@ -109,8 +110,6 @@ async def subscribe(
 ) -> str:
     """为仓库添加订阅，并返回新的 webhook 配置说明。"""
     webhook_events = event_filters.webhook_events(repository_name_value)
-    if not webhook_events:
-        return f"{repository_name_value} 的过滤配置未启用任何事件，暂不能创建 Webhook。"
     repository = await session.scalar(
         select(GithubNotifierRepository).where(
             GithubNotifierRepository.full_name == repository_name_value

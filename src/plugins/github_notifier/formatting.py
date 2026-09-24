@@ -359,7 +359,9 @@ def format_push(event: PushEvent) -> str:
     if getattr(event, "created", False) and not commits:
         lines = [f"{actor} 创建了 {name} 的 {branch} {ref_kind}"]
         return _with_url(lines, event.repository.html_url)
-    lines = [f"{actor} 向 {name} 的 {branch} {ref_kind}推送了 {len(commits)} 个提交"]
+    lines = [
+        f"{actor} 向 {name} 的 {branch} {ref_kind}推送了 {len(commits)} 个提交"
+    ]
     # Push 可能包含大量提交，只保留前 8 条并在末尾给出总数提示。
     for commit in commits[:8]:
         title = commit.message.partition("\n")[0]
@@ -378,7 +380,9 @@ def format_pull_request(event: PullRequestEvent) -> str:
     if action == "closed" and item.merged:
         action = "merged"
     if action == "merged":
-        lines = [f"{_actor(event)} 在 {name} 中已合并 PR #{_text(item.number)}"]
+        lines = [
+            f"{_actor(event)} 在 {name} 中合并了 PR #{_text(item.number)}"
+        ]
     else:
         lines = [
             _item_line(
@@ -537,7 +541,9 @@ def format_release(event: ReleaseEvent) -> str:
     if action == "created" and getattr(release, "draft", False):
         phrase = "保存了"
     release_name = _path(release, "name") or _path(release, "tag_name") or "未命名版本"
-    lines = [f"{_actor(event)} 在 {repository} 中{phrase} Release {release_name}"]
+    lines = [
+        f"{_actor(event)} 在 {repository} 中{phrase} Release {release_name}"
+    ]
     body = _body_line(release, "发布说明")
     if body:
         lines.append(body)
