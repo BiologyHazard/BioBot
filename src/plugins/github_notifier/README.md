@@ -48,7 +48,7 @@ ghn list --group 123456
 
 版本化默认规则见 `default_filters.toml`。默认推送 Issue 和 PR 的开启、关闭、重新开启，已合并 PR、失败的 GitHub Actions 工作流、新增 Star，以及全部 Release 动作。工作流只有 `completed` 且 `conclusion=failure` 才归为 `workflow_run.failure`；取消和超时可分别配置。关闭且已合并的 PR 归为 `pull_request.merged`，未合并的关闭归为 `pull_request.closed`。
 
-通过 `GITHUB_NOTIFIER_FILTER_CONFIG` 指定自己的 TOML 文件。`[default]` 可整体替换版本化默认规则；每个 `[repositories."owner/repo"]` 又可整体替换该仓库的有效规则。省略的部分沿用默认规则；每份事件列表至少包含一个事件。示例：
+通过 `GITHUB_NOTIFIER_FILTER_CONFIG` 指定自己的 TOML 文件。`[default]` 可整体替换版本化默认规则；每个 `[repositories."owner/repo"]` 又可整体替换该仓库的有效规则。省略的部分沿用默认规则；`events = []` 表示静音该仓库，但保留 QQ 订阅。示例：
 
 ```toml
 [repositories."bio/project"]
@@ -58,6 +58,8 @@ events = ["issues.opened", "pull_request.merged", "star.created", "release"]
 事件名可写 GitHub 的 Webhook 类型（如 `release`，匹配该类型的全部动作），或 `类型.动作`（如 `issues.opened`）。动作名按 GitHub Webhook schema 校验。`pull_request.merged` 和 `workflow_run.<结果>` 是 BioBot 从 GitHub payload 字段派生的过滤分类。无效事件名会在启动时报错。QQ 命令只管理订阅，过滤规则由配置文件管理。
 
 GitHub Webhook 必须勾选有效规则所需的原始事件类型。新订阅的命令回复会列出这些类型；已有 Webhook 若此前未勾选 `star` 或其他新增类型，需要在 GitHub 仓库设置中手动更新。过滤文件只决定已收到的事件是否发送到 QQ。推送消息包含事件摘要和相关链接；包含多个提交的 Push 最多展示前 8 条提交。
+
+静音仓库仍可新增订阅。机器人会保存 Webhook 凭据并在回复中说明当前无需创建 GitHub Webhook；日后通过配置启用事件时，使用回复中的地址和 Secret 在 GitHub 创建 Webhook，并按新的事件规则勾选 Events。
 
 ## 发送方式
 

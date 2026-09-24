@@ -68,8 +68,6 @@ def _events(value: Any, source: str) -> frozenset[str]:
     items = value["events"]
     if not isinstance(items, list) or not all(isinstance(item, str) for item in items):
         raise ValueError(f"{source}: events 必须是字符串数组")
-    if not items:
-        raise ValueError(f"{source}: events 至少需要一个事件")
     unknown = set(items) - SUPPORTED_FILTER_KEYS
     if unknown:
         raise ValueError(f"{source}: 未知事件分类 {', '.join(sorted(unknown))}")

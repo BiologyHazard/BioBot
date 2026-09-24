@@ -157,15 +157,25 @@ async def subscribe(
     summary = f"{repository_name_value} 已添加 {len(new_targets)} 个订阅目标。"
     if skipped:
         summary += f"另有 {skipped} 个目标已订阅，保持原有 webhook。"
+    if webhook_events:
+        setup_link = "添加 Webhook"
+        setup_prompt = "请打开上面的链接，在 GitHub 页面填写以下信息："
+        setup_end = "填写完成后点击 Add webhook。"
+        events_text = "、".join(webhook_events)
+    else:
+        setup_link = "日后启用时添加 Webhook"
+        setup_prompt = "当前仓库已静音，暂不需要创建 Webhook。日后启用时请填写以下信息："
+        setup_end = "启用事件后，请按新规则勾选 Events，再点击 Add webhook。"
+        events_text = "无（当前静音）"
     return (
         f"{summary}\n"
-        f"添加 Webhook：{webhook_settings_url(repository_name_value)}\n"
-        "请打开上面的链接，在 GitHub 页面填写以下信息：\n"
+        f"{setup_link}：{webhook_settings_url(repository_name_value)}\n"
+        f"{setup_prompt}\n"
         f"Payload URL：{webhook_url(webhook_token)}\n"
         "Content type：application/json\n"
-        f"Events：{'、'.join(webhook_events)}\n"
+        f"Events：{events_text}\n"
         f"Secret：{webhook_secret}\n"
-        "填写完成后点击 Add webhook。"
+        f"{setup_end}"
     )
 
 
