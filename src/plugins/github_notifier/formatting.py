@@ -378,7 +378,7 @@ def format_pull_request(event: PullRequestEvent) -> str:
     if action == "closed" and item.merged:
         action = "merged"
     if action == "merged":
-        lines = [f"{_actor(event)} 在 {name} 中合并了 PR #{_text(item.number)}"]
+        lines = [f"{_actor(event)} 在 {name} 中已合并 PR #{_text(item.number)}"]
     else:
         lines = [
             _item_line(

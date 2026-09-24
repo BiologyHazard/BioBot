@@ -1,6 +1,5 @@
 """QQ commands for managing GitHub webhook subscriptions."""
 
-import re
 import secrets
 import sys
 from argparse import ArgumentTypeError
@@ -17,16 +16,13 @@ from nonebot_plugin_orm import AsyncSession
 from sqlalchemy import delete, func, select
 
 from .config import plugin_config
-from .filters import event_filters
+from .filters import REPOSITORY_PATTERN, event_filters
 from .models import (
     GithubNotifierDelivery,
     GithubNotifierRepository,
     GithubNotifierSubscription,
     GithubNotifierWebhook,
 )
-
-REPOSITORY_PATTERN = re.compile(r"[A-Za-z0-9-]+/[A-Za-z0-9_.-]+\Z")
-
 
 def webhook_url(token: str) -> str:
     """根据 webhook token 生成提供给 GitHub 的完整 URL。"""
