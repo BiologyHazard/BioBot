@@ -267,7 +267,7 @@ def _item_line(
     """生成“谁在什么仓库做了什么”的事件首行。"""
     item_name = "Issue" if kind == "issue" else "PR"
     return (
-        f"[GitHub] {actor} 在 {repository} 中"
+        f"{actor} 在 {repository} 中"
         f"{_item_action(action, ISSUE_ACTIONS if kind == 'issue' else PULL_REQUEST_ACTIONS)} "
         f"{item_name} #{_text(number)}{extra}"
     )
@@ -353,13 +353,13 @@ def format_push(event: PushEvent) -> str:
         branch = ref.removeprefix("refs/heads/")
         ref_kind = "分支"
     if getattr(event, "deleted", False):
-        lines = [f"[GitHub] {actor} 删除了 {name} 的 {branch} {ref_kind}"]
+        lines = [f"{actor} 删除了 {name} 的 {branch} {ref_kind}"]
         return _with_url(lines, event.repository.html_url)
     if getattr(event, "created", False) and not commits:
-        lines = [f"[GitHub] {actor} 创建了 {name} 的 {branch} {ref_kind}"]
+        lines = [f"{actor} 创建了 {name} 的 {branch} {ref_kind}"]
         return _with_url(lines, event.repository.html_url)
     lines = [
-        f"[GitHub] {actor} 向 {name} 的 {branch} {ref_kind}推送了 {len(commits)} 个提交"
+        f"{actor} 向 {name} 的 {branch} {ref_kind}推送了 {len(commits)} 个提交"
     ]
     # Push 可能包含大量提交，只保留前 8 条并在末尾给出总数提示。
     for commit in commits[:8]:
@@ -380,7 +380,7 @@ def format_pull_request(event: PullRequestEvent) -> str:
         action = "merged"
     if action == "merged":
         lines = [
-            f"[GitHub] {_actor(event)} 在 {name} 中合并了 PR #{_text(item.number)}"
+            f"{_actor(event)} 在 {name} 中合并了 PR #{_text(item.number)}"
         ]
     else:
         lines = [
@@ -435,7 +435,7 @@ def format_issue_comment(event: IssueCommentEvent) -> str:
     subject = _subject_line(issue, item_kind)
     action = _text(event.action)
     phrase = COMMENT_ACTIONS.get(action, "更新了评论")
-    lines = [f"[GitHub] {_actor(event)} 在 {repository} 的 {subject} 下{phrase}"]
+    lines = [f"{_actor(event)} 在 {repository} 的 {subject} 下{phrase}"]
     title = _text(getattr(issue, "title", None))
     if title:
         lines.append(f"标题：{title}")
@@ -461,7 +461,7 @@ def format_pull_request_review(event: PullRequestReviewEvent) -> str:
         }.get(state, "提交了评审")
     else:
         phrase = REVIEW_ACTIONS.get(action, "更新了评审")
-    lines = [f"[GitHub] {_actor(event)} 在 {repository} 中{phrase} {subject}"]
+    lines = [f"{_actor(event)} 在 {repository} 中{phrase} {subject}"]
     title = _text(getattr(pull_request, "title", None))
     if title:
         lines.append(f"标题：{title}")
@@ -485,7 +485,7 @@ def format_pull_request_review_comment(event: PullRequestReviewCommentEvent) -> 
         "edited": "编辑了代码评论",
         "deleted": "删除了代码评论",
     }.get(action, "更新了代码评论")
-    lines = [f"[GitHub] {_actor(event)} 在 {repository} 的 {subject} 中{phrase}"]
+    lines = [f"{_actor(event)} 在 {repository} 的 {subject} 中{phrase}"]
     path = _path(comment, "path")
     line = _path(comment, "line") or _path(comment, "original_line")
     if path:
@@ -523,7 +523,7 @@ def format_workflow_run(event: WorkflowRunEvent) -> str | None:
         }.get(conclusion, "执行完成")
     else:
         outcome = WORKFLOW_ACTIONS.get(action, "状态已更新")
-    lines = [f"[GitHub] {repository} 的工作流「{workflow_name}」{outcome}"]
+    lines = [f"{repository} 的工作流「{workflow_name}」{outcome}"]
     branch = _path(workflow_run, "head_branch")
     if branch:
         lines.append(f"分支：{branch}")
@@ -546,7 +546,7 @@ def format_release(event: ReleaseEvent) -> str:
         phrase = "保存了"
     release_name = _path(release, "name") or _path(release, "tag_name") or "未命名版本"
     lines = [
-        f"[GitHub] {_actor(event)} 在 {repository} 中{phrase} Release {release_name}"
+        f"{_actor(event)} 在 {repository} 中{phrase} Release {release_name}"
     ]
     body = _body_line(release, "发布说明")
     if body:
@@ -563,7 +563,7 @@ def format_deployment_status(event: DeploymentStatusEvent) -> str:
     state_text = DEPLOYMENT_STATES.get(state, state or "状态未知")
     environment = _path(status, "environment") or _path(deployment, "environment")
     target = f"{environment} 环境" if environment else "目标环境"
-    lines = [f"[GitHub] {_actor(event)} 在 {repository} 的 {target} 部署{state_text}"]
+    lines = [f"{_actor(event)} 在 {repository} 的 {target} 部署{state_text}"]
     ref = _path(deployment, "ref") or _path(deployment, "sha", limit=7)
     if ref:
         lines.append(f"版本：{ref}")
@@ -593,7 +593,7 @@ def _format_security_alert(
     number = _number(alert)
     alert_label = f" #{number}" if number else ""
     phrase = actions.get(action, "状态已更新")
-    lines = [f"[GitHub] {repository} 的 {category}{alert_label} {phrase}：{subject}"]
+    lines = [f"{repository} 的 {category}{alert_label} {phrase}：{subject}"]
     if severity:
         lines.append(f"严重程度：{severity}")
     state = _path(alert, "state")
@@ -655,7 +655,7 @@ def format_discussion(event: DiscussionEvent) -> str:
     subject = _subject_line(discussion, "Discussion")
     phrase = DISCUSSION_ACTIONS.get(action, "更新了")
     lines = [
-        f"[GitHub] {_actor(event)} 在 {repository} 中{phrase} "
+        f"{_actor(event)} 在 {repository} 中{phrase} "
         f"{subject}{_discussion_extra(event, action)}"
     ]
     title = _text(getattr(discussion, "title", None))
@@ -678,7 +678,7 @@ def format_discussion_comment(event: DiscussionCommentEvent) -> str:
     subject = _subject_line(discussion, "Discussion")
     action = _text(event.action)
     phrase = DISCUSSION_COMMENT_ACTIONS.get(action, "更新了讨论评论")
-    lines = [f"[GitHub] {_actor(event)} 在 {repository} 的 {subject} 下{phrase}"]
+    lines = [f"{_actor(event)} 在 {repository} 的 {subject} 下{phrase}"]
     title = _text(getattr(discussion, "title", None))
     if title:
         lines.append(f"标题：{title}")
@@ -704,7 +704,7 @@ def format_issue_dependencies(event: IssueDependenciesEvent) -> str:
         phrase = (
             f"Issue #{_number(main_issue)} {relation} Issue #{_number(related_issue)}"
         )
-    lines = [f"[GitHub] {_actor(event)} 在 {repository} 中{phrase}"]
+    lines = [f"{_actor(event)} 在 {repository} 中{phrase}"]
     return _with_url(
         lines, _path(main_issue, "html_url") or _path(related_issue, "html_url")
     )

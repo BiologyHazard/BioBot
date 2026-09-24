@@ -76,11 +76,7 @@ async def _flush_batch(repository_id: int, batch: _PendingBatch) -> None:
                     messages = [
                         notification.message for notification in target_notifications
                     ]
-                    delivered = (
-                        await _send(target[0], target[1], messages[0])
-                        if len(messages) == 1
-                        else await _send_forward(target[0], target[1], messages)
-                    )
+                    delivered = await _send_forward(target[0], target[1], messages)
                     if not delivered:
                         logger.error(
                             "GitHub 合并通知发送失败：仓库 {}，目标 {} {}",
@@ -138,24 +134,6 @@ async def _queue_notifications(
             _pending_batches[repository_id] = batch
             batch.task = asyncio.create_task(_flush_batch(repository_id, batch))
         batch.notifications.extend(new_notifications)
-
-
-async def _send(target_type: str, target_id: str, message: str) -> bool:
-    """向一个 QQ 群或用户发送格式化后的 GitHub 通知。"""
-    for bot in get_bots().values():
-        try:
-            if target_type == "group":
-                await bot.send_group_msg(
-                    group_id=int(target_id), message=MessageSegment.text(message)
-                )
-            else:
-                await bot.send_private_msg(
-                    user_id=int(target_id), message=MessageSegment.text(message)
-                )
-            return True
-        except Exception:
-            logger.exception("GitHub 通知发送失败：{} {}", target_type, target_id)
-    return False
 
 
 async def _send_forward(

@@ -20,4 +20,4 @@ ghn list
 
 Webhook 签名和 payload 解析使用 `githubkit.webhooks` 提供的 GitHubKit/Pydantic 模型；GitHubKit 会按事件类型严格校验完整 payload。
 
-事件不会立即推送：同一仓库的首个事件会开启 60 秒时间窗，窗口内没有后续事件时发送原消息；如果窗口内有多个事件，则按订阅目标通过 OneBot 合并转发节点发送。可通过 `GITHUB_NOTIFIER_BATCH_WINDOW_SECONDS` 调整时间窗，单位为秒，默认值为 60。
+事件不会立即推送：同一仓库的首个事件会开启 60 秒时间窗。窗口结束后，按订阅目标通过 OneBot 合并转发节点发送；即使窗口内只有一个事件，也会发送单节点合并转发。可通过 `GITHUB_NOTIFIER_BATCH_WINDOW_SECONDS` 调整时间窗，单位为秒，默认值为 60。
