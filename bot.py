@@ -42,6 +42,7 @@ def main() -> None:
     nonebot.load_plugin("src.plugins.arknights")
     nonebot.load_plugin("src.plugins.autoreply")
     nonebot.load_plugin("src.plugins.github_notifier")
+    nonebot.load_plugin("src.plugins.github_query")
     nonebot.load_plugin("src.plugins.poke")
     nonebot.load_plugin("src.plugins.roll")
     nonebot.load_plugin("src.plugins.homo")
