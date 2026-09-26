@@ -10,6 +10,7 @@
 | --- | --- |
 | `GITHUB_NOTIFIER_WEBHOOK_PAYLOAD_URL` | 必填。GitHub 可访问的 HTTP(S) 基础地址，例如 `https://example.com/github/webhook`。地址不能包含查询参数或片段。 |
 | `GITHUB_NOTIFIER_BATCH_WINDOW_SECONDS` | 汇总时间窗，单位为秒，必须大于 0；默认 60。 |
+| `GITHUB_NOTIFIER_FILTER_CONFIG` | 可选。过滤配置 TOML 文件的路径；相对路径从机器人工作目录解析。修改文件后需重启机器人。 |
 
 插件会在基础地址后追加订阅专属的 token，例如 `https://example.com/github/webhook/<token>`。如果使用反向代理，需要将包含 token 的完整路径转发给机器人。项目的 `bot.py` 已加载本插件；运行时需使用支持 ASGI 的 FastAPI 驱动器，以接收 GitHub 的 HTTP 请求。
 
@@ -39,22 +40,26 @@ ghn list --group 123456
 1. **Payload URL**：使用回复中的完整地址，包含末尾 token。
 2. **Content type**：选择 `application/json`。
 3. **Secret**：填写回复中的 secret。
-4. **Events**：选择下表列出的事件类型，然后创建 Webhook。
+4. **Events**：选择需要送到机器人的 GitHub 事件类型，然后创建 Webhook。默认过滤规则需要勾选 `issues`、`pull_request`、`workflow_run`、`release`、`star`。命令回复中的 Events 是原有通用提示，不随过滤配置变化。
 
 一次命令指定多个新目标时，这些目标共用该次生成的 Webhook。已订阅的目标不会重复创建订阅。取消订阅后，如果命令回复列出了待删除的 Webhook URL，还需在 GitHub 仓库设置中删除对应 Webhook。
 
-## 通知范围
+## 通知范围与过滤配置
 
-| GitHub 事件 | 推送条件 |
-| --- | --- |
-| `push` | 包含提交且不是删除分支或标签的推送。 |
-| `issues`、`pull_request` | 新建、关闭、重开。已合并 PR 的关闭事件显示为“合并”。 |
-| `discussion` | 创建、关闭、重开。 |
-| `workflow_run` | 运行已完成，且结果不是成功。 |
-| `release`、`deployment_status` | 收到的事件均推送。 |
-| `dependabot_alert`、`code_scanning_alert`、`secret_scanning_alert` | 收到的告警事件均推送。 |
+版本化默认规则见 `default_filters.toml`。默认推送 Issue 和 PR 的开启、关闭、重新开启，已合并 PR、失败的 GitHub Actions 工作流、新增 Star，以及全部 Release 动作。工作流只有 `completed` 且 `conclusion=failure` 才归为 `workflow_run.failure`；取消和超时可分别配置。关闭且已合并的 PR 归为 `pull_request.merged`，未合并的关闭归为 `pull_request.closed`。
 
-Webhook 收到事件后，插件会校验签名、仓库和事件内容，再按上表筛选。推送消息包含事件摘要和相关链接；包含多个提交的 Push 最多展示前 8 条提交。
+通过 `GITHUB_NOTIFIER_FILTER_CONFIG` 指定自己的 TOML 文件。`[default]` 可整体替换版本化默认规则；每个 `[repositories."owner/repo"]` 又可整体替换该仓库的有效规则。省略的部分沿用默认规则；`events = []` 表示静音该仓库，但保留 QQ 订阅。示例：
+
+```toml
+[repositories."bio/project"]
+events = ["issues.opened", "pull_request.merged", "star.created", "release"]
+```
+
+事件名可写 GitHub 的 Webhook 类型（如 `release`，匹配该类型的全部动作），或 `类型.动作`（如 `issues.opened`）。动作名按 GitHub Webhook schema 校验。`pull_request.merged` 和 `workflow_run.<结果>` 是 BioBot 从 GitHub payload 字段派生的过滤分类。无效事件名会在启动时报错。QQ 命令只管理订阅，过滤规则由配置文件管理。
+
+GitHub Webhook 必须勾选有效规则所需的原始事件类型。修改过滤配置时，若启用了新的类型，也要在 GitHub 仓库设置中勾选；已有 Webhook 若此前未勾选 `star`，需手动补上。过滤文件只决定已收到的事件是否发送到 QQ。推送消息包含事件摘要和相关链接；包含多个提交的 Push 最多展示前 8 条提交。
+
+静音仓库仍可照常新增或取消订阅，Webhook 的创建与接收流程也不变；收到事件后，空过滤规则使机器人不向 QQ 推送。
 
 ## 发送方式
 

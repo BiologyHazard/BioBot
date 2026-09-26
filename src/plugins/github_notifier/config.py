@@ -1,4 +1,5 @@
 from urllib.parse import urlsplit
+from pathlib import Path
 
 from nonebot import get_plugin_config
 from pydantic import BaseModel, Field, field_validator
@@ -9,6 +10,7 @@ class Config(BaseModel):
 
     github_notifier_webhook_payload_url: str
     github_notifier_batch_window_seconds: float = Field(default=60, gt=0)
+    github_notifier_filter_config: Path | None = None
 
     @field_validator("github_notifier_webhook_payload_url")
     @classmethod

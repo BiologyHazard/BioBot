@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         PushEvent,
         ReleaseEvent,
         SecretScanningAlertEvent,
+        StarEvent,
         WebhookEvent,
         WorkflowRunEvent,
     )
@@ -549,6 +550,15 @@ def format_release(event: ReleaseEvent) -> str:
     return _with_url(lines, _path(release, "html_url"))
 
 
+def format_star(event: StarEvent) -> str:
+    """格式化新增或取消仓库 Star。"""
+    repository = _text(event.repository.full_name)
+    action = "Star 了" if event.action == "created" else "取消 Star 了"
+    return _with_url(
+        [f"{_actor(event)} {action} {repository}"], event.repository.html_url
+    )
+
+
 def format_deployment_status(event: DeploymentStatusEvent) -> str:
     """格式化部署状态事件。"""
     repository = _text(event.repository.full_name)
@@ -725,6 +735,8 @@ def format_event(kind: str, event: WebhookEvent) -> str:
         return format_workflow_run(cast("WorkflowRunEvent", event))
     if kind == "release":
         return format_release(cast("ReleaseEvent", event))
+    if kind == "star":
+        return format_star(cast("StarEvent", event))
     if kind == "deployment_status":
         return format_deployment_status(cast("DeploymentStatusEvent", event))
     if kind == "dependabot_alert":
