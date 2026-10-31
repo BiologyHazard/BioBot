@@ -40,6 +40,7 @@ def main() -> None:
     nonebot.load_plugin("src.plugins.blacklist")
     nonebot.load_plugin("src.plugins.sklassistant")
     nonebot.load_plugin("src.plugins.arknights")
+    nonebot.load_plugin("src.plugins.arknights_server_status")
     nonebot.load_plugin("src.plugins.autoreply")
     nonebot.load_plugin("src.plugins.github_notifier")
     nonebot.load_plugin("src.plugins.github_query")
