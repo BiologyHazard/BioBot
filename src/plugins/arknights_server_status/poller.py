@@ -10,6 +10,16 @@ from .client import ServerStatus, StatusCheckError, client
 from .config import plugin_config
 from .storage import load_last_status, save_last_status
 
+_STATUS_LABELS = {
+    ServerStatus.OPEN: "已开服",
+    ServerStatus.CLOSED: "停机更新中",
+    ServerStatus.UNKNOWN: "无法判定",
+}
+
+
+def _label(status: str | None) -> str:
+    return _STATUS_LABELS.get(status, "未知") if status else "尚未检查"
+
 
 class ServerStatusPoller:
     """把「探测结果」变成「可推送的状态变化」。
@@ -52,6 +62,11 @@ class ServerStatusPoller:
             except StatusCheckError as error:
                 logger.warning("明日方舟服务器状态探测失败：{}", error)
                 return
+            logger.debug(
+                "明日方舟服务器状态检查结果：{}（上次：{}）",
+                _label(status),
+                _label(self._status),
+            )
             should_notify = self._apply(status)
         if should_notify:
             await notify_server_open()
@@ -61,7 +76,7 @@ class ServerStatusPoller:
         if status == ServerStatus.UNKNOWN:
             logger.warning(
                 "明日方舟服务器状态无法判定（u8 getToken 返回非预期结果），保持当前状态：{}",
-                self._status,
+                _label(self._status),
             )
             return False
 
