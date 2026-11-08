@@ -15,9 +15,9 @@ __plugin_meta__ = PluginMetadata(
     config=Config,
 )
 
-if not plugin_config.arknights_server_notify_groups:
+if not plugin_config.arknights_version_notify_groups:
     logger.warning(
-        "arknights_version_poller 未配置 ARKNIGHTS_SERVER_NOTIFY_GROUPS，"
+        "arknights_version_poller 未配置 ARKNIGHTS_VERSION_NOTIFY_GROUPS，"
         "检测到版本变化时只记录日志，不推送群通知"
     )
 

@@ -58,11 +58,11 @@ def build_message(change: VersionChange) -> str:
 
 
 async def notify_changes(changes: list[VersionChange]) -> None:
-    """向 `ARKNIGHTS_SERVER_NOTIFY_GROUPS` 中的每个群推送变化通知。"""
-    groups = plugin_config.arknights_server_notify_groups
+    """向 `ARKNIGHTS_VERSION_NOTIFY_GROUPS` 中的每个群推送变化通知。"""
+    groups = plugin_config.arknights_version_notify_groups
     if not groups:
         logger.warning(
-            "明日方舟版本发生变化，但未配置 ARKNIGHTS_SERVER_NOTIFY_GROUPS，跳过群通知"
+            "明日方舟版本发生变化，但未配置 ARKNIGHTS_VERSION_NOTIFY_GROUPS，跳过群通知"
         )
         return
 
