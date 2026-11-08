@@ -21,7 +21,7 @@ class Config(BaseModel):
 
     arknights_server_data_dir: Path = Field(
         default=Path("data") / "arknights_server_status",
-        description="设备标识与最后一次状态的落盘目录，相对路径基于工作目录",
+        description="设备标识的落盘目录，相对路径基于工作目录",
     )
 
     arknights_device_id: str | None = None

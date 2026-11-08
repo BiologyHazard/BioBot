@@ -1,12 +1,11 @@
-"""插件运行数据（设备标识与上一次观测到的服务器状态）的持久化。
+"""设备标识的持久化。
 
-设备标识必须跨次运行保持一致，否则每次登录都像新设备，更容易触发账号风控；
-上一次的服务器状态用于机器人重启后判断是否发生过「停服 → 开服」。
+设备标识必须跨次运行保持一致，否则每次登录都像新设备，更容易触发账号风控。
+服务器状态只保存在内存中，不落盘。
 """
 
 import json
 import secrets
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,10 +23,6 @@ def data_dir() -> Path:
 
 def device_id_file() -> Path:
     return data_dir() / "device-id.json"
-
-
-def state_file() -> Path:
-    return data_dir() / "state.json"
 
 
 def _read_json(path: Path) -> Any:
@@ -65,32 +60,3 @@ def get_device_id() -> str:
     _device_id = secrets.token_hex(20)
     _write_json(device_id_file(), _device_id)
     return _device_id
-
-
-def load_last_status() -> tuple[str, datetime | None] | None:
-    """读取上一次记录的服务器状态；没有记录或记录损坏时返回 `None`。"""
-    data = _read_json(state_file())
-    if not isinstance(data, dict):
-        return None
-    status = data.get("status")
-    if not isinstance(status, str):
-        return None
-
-    updated_at: datetime | None = None
-    raw_updated_at = data.get("updated_at")
-    if isinstance(raw_updated_at, str):
-        try:
-            updated_at = datetime.fromisoformat(raw_updated_at)
-        except ValueError:
-            updated_at = None
-    return status, updated_at
-
-
-def save_last_status(status: str) -> None:
-    _write_json(
-        state_file(),
-        {
-            "status": status,
-            "updated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-        },
-    )

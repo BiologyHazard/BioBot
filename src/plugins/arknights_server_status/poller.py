@@ -8,7 +8,6 @@ from nonebot.adapters.onebot.v11 import Bot as BotV11
 
 from .client import ServerStatus, StatusCheckError, client
 from .config import plugin_config
-from .storage import load_last_status, save_last_status
 
 _STATUS_LABELS = {
     ServerStatus.OPEN: "已开服",
@@ -24,6 +23,7 @@ def _label(status: str | None) -> str:
 class ServerStatusPoller:
     """把「探测结果」变成「可推送的状态变化」。
 
+    - 状态只保存在内存中，进程重启后从「尚未检查」重新开始。
     - 探测失败或结果不可判定时保持已有状态，只记日志。
     - 状态变为停服时启动每 30 秒（可配置）一次的高频轮询。
     - 状态从停服变为开服时返回「需要推送通知」，由调用方在锁外发送。
@@ -32,22 +32,11 @@ class ServerStatusPoller:
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
         self._fast_task: asyncio.Task[None] | None = None
-        self._status = self._load_persisted_status()
+        self._status: str | None = None
 
     @property
     def status(self) -> str | None:
         return self._status
-
-    @staticmethod
-    def _load_persisted_status() -> str | None:
-        stored = load_last_status()
-        if stored is None:
-            return None
-        status, updated_at = stored
-        if status not in (ServerStatus.OPEN, ServerStatus.CLOSED):
-            return None
-        logger.info("恢复上次记录的明日方舟服务器状态：{}（{}）", status, updated_at)
-        return status
 
     async def probe(self) -> str:
         """只探测，不改变状态机，供手动查询使用。"""
@@ -83,7 +72,6 @@ class ServerStatusPoller:
         previous = self._status
         if previous != status:
             self._status = status
-            save_last_status(status)
             if status == ServerStatus.CLOSED:
                 logger.info(
                     "明日方舟服务器处于停机更新中，改为每 {} 秒检查一次",
